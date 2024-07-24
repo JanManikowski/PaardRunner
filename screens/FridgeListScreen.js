@@ -1,15 +1,23 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useContext } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { FridgeContext } from '../contexts/FridgeContext';
 
-const FridgeListScreen = ({ route }) => {
-  const { inventory } = route.params;
+const FridgeListScreen = ({ route, navigation }) => {
+  const { fridges } = useContext(FridgeContext);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Fridge Items</Text>
+      <Text style={styles.title}>Fridges in {route.params.bar.name}</Text>
       <ScrollView>
-        {inventory.fridges.map((item, index) => (
-          <Text key={index} style={styles.itemText}>{item.type}</Text>
+        {fridges.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.itemContainer}
+            onPress={() => navigation.navigate('FridgeDetail', { fridgeIndex: index })}
+          >
+            <Text style={styles.itemText}>{item.type}</Text>
+            <Text style={styles.missingText}>{item.missing > 0 ? `${item.missing} missing` : ''}</Text>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
@@ -27,9 +35,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
   },
+  itemContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
   itemText: {
     fontSize: 18,
-    marginBottom: 10,
+  },
+  missingText: {
+    fontSize: 16,
+    color: 'red',
   },
 });
 

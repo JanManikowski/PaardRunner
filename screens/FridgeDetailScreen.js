@@ -1,20 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, Button, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { FridgeContext } from '../contexts/FridgeContext';
 
 const FridgeDetailScreen = ({ route, navigation }) => {
-  const { fridge, setFridges, index, fridges } = route.params;
+  const { fridgeIndex } = route.params;
+  const { fridges, setFridges, saveFridges } = useContext(FridgeContext);
+  const fridge = fridges[fridgeIndex];
   const [missing, setMissing] = useState(fridge.missing);
   const [customValue, setCustomValue] = useState('');
+
+  useEffect(() => {
+    const updatedFridges = [...fridges];
+    updatedFridges[fridgeIndex] = { ...updatedFridges[fridgeIndex], missing };
+    saveFridges(updatedFridges);
+  }, [missing]);
 
   const updateMissing = (value) => {
     const newMissing = Math.max(0, missing + value);
     setMissing(newMissing);
-    setFridges((prevFridges) => {
-      const updatedFridges = [...prevFridges];
-      updatedFridges[index] = { ...updatedFridges[index], missing: newMissing };
-      return updatedFridges;
-    });
   };
 
   const handleCustomValue = (isAdd) => {
@@ -26,33 +30,20 @@ const FridgeDetailScreen = ({ route, navigation }) => {
 
   const clearMissing = () => {
     setMissing(0);
-    setFridges((prevFridges) => {
-      const updatedFridges = [...prevFridges];
-      updatedFridges[index] = { ...updatedFridges[index], missing: 0 };
-      return updatedFridges;
-    });
   };
 
   const goToNextItem = () => {
-    if (index < fridges.length - 1) {
-      const nextIndex = index + 1;
+    if (fridgeIndex < fridges.length - 1) {
       navigation.replace('FridgeDetail', {
-        fridge: fridges[nextIndex],
-        setFridges,
-        index: nextIndex,
-        fridges,
+        fridgeIndex: fridgeIndex + 1,
       });
     }
   };
 
   const goToPreviousItem = () => {
-    if (index > 0) {
-      const prevIndex = index - 1;
+    if (fridgeIndex > 0) {
       navigation.replace('FridgeDetail', {
-        fridge: fridges[prevIndex],
-        setFridges,
-        index: prevIndex,
-        fridges,
+        fridgeIndex: fridgeIndex - 1,
       });
     }
   };
@@ -83,11 +74,11 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.navigationContainer}>
-        <TouchableOpacity onPress={goToPreviousItem} style={styles.arrowButton} disabled={index === 0}>
-          <Icon name="arrow-back" size={30} color={index === 0 ? '#ccc' : '#000'} />
+        <TouchableOpacity onPress={goToPreviousItem} style={styles.arrowButton} disabled={fridgeIndex === 0}>
+          <Icon name="arrow-back" size={30} color={fridgeIndex === 0 ? '#ccc' : '#000'} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={goToNextItem} style={styles.arrowButton} disabled={index === fridges.length - 1}>
-          <Icon name="arrow-forward" size={30} color={index === fridges.length - 1 ? '#ccc' : '#000'} />
+        <TouchableOpacity onPress={goToNextItem} style={styles.arrowButton} disabled={fridgeIndex === fridges.length - 1}>
+          <Icon name="arrow-forward" size={30} color={fridgeIndex === fridges.length - 1 ? '#ccc' : '#000'} />
         </TouchableOpacity>
       </View>
       <Text style={styles.title}>{fridge.type} Details</Text>
@@ -98,10 +89,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
           <Button title="-1" onPress={() => updateMissing(-1)} />
           <Button title="-5" onPress={() => updateMissing(-5)} />
         </View>
-        <Image
-          source={getImageSource(fridge.type)}
-          style={styles.image}
-        />
+        <Image source={getImageSource(fridge.type)} style={styles.image} />
         <View style={styles.buttonColumn}>
           <Button title="+1" onPress={() => updateMissing(1)} />
           <Button title="+5" onPress={() => updateMissing(5)} />

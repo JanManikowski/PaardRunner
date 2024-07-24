@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Button, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BarDetailScreen = ({ route, navigation }) => {
   const { bar } = route.params;
-
   const [modalVisible, setModalVisible] = useState(false);
 
   const inventory = {
@@ -43,8 +43,8 @@ const BarDetailScreen = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{bar.name} Inventory</Text>
-      <Button title="View Fridges" onPress={() => navigation.navigate('FridgeList', { inventory })} />
-      <Button title="View Shelves" onPress={() => navigation.navigate('ShelfList', { inventory })} />
+      <Button title="View Fridges" onPress={() => navigation.navigate('FridgeList', { inventory, bar })} />
+      <Button title="View Shelves" onPress={() => navigation.navigate('ShelfList', { inventory, bar })} />
       <Button title="Show Missing Items" onPress={() => setModalVisible(true)} />
 
       <Modal
