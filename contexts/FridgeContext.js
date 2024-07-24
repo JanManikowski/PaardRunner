@@ -1,37 +1,38 @@
+// FridgeContext.js
 import React, { createContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getData, saveData } from '../storage/AsyncStorageHelper';
 
 export const FridgeContext = createContext();
 
 export const FridgeProvider = ({ children }) => {
-  const [fridges, setFridges] = useState([]);
+  const [barFridges, setBarFridges] = useState({});
 
   useEffect(() => {
-    const loadFridges = async () => {
+    const loadBarFridges = async () => {
       try {
-        const storedFridges = await AsyncStorage.getItem('fridges');
-        if (storedFridges) {
-          setFridges(JSON.parse(storedFridges));
+        const storedBarFridges = await getData('barFridges');
+        if (storedBarFridges) {
+          setBarFridges(storedBarFridges);
         }
       } catch (error) {
-        console.error('Error loading fridges from local storage:', error);
+        console.error('Error loading bar fridges from local storage:', error);
       }
     };
 
-    loadFridges();
+    loadBarFridges();
   }, []);
 
-  const saveFridges = async (updatedFridges) => {
+  const saveBarFridges = async (updatedBarFridges) => {
     try {
-      await AsyncStorage.setItem('fridges', JSON.stringify(updatedFridges));
-      setFridges(updatedFridges);
+      await saveData('barFridges', updatedBarFridges);
+      setBarFridges(updatedBarFridges);
     } catch (error) {
-      console.error('Error saving fridges to local storage:', error);
+      console.error('Error saving bar fridges to local storage:', error);
     }
   };
 
   return (
-    <FridgeContext.Provider value={{ fridges, setFridges, saveFridges }}>
+    <FridgeContext.Provider value={{ barFridges, setBarFridges, saveBarFridges }}>
       {children}
     </FridgeContext.Provider>
   );

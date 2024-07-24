@@ -1,50 +1,37 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Button, ScrollView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useContext, useEffect } from 'react';
+import { View, Text, Button, StyleSheet, Modal, ScrollView } from 'react-native';
+import { FridgeContext } from '../contexts/FridgeContext';
 
 const BarDetailScreen = ({ route, navigation }) => {
   const { bar } = route.params;
+  const { barFridges, setBarFridges } = useContext(FridgeContext);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const inventory = {
-    fridges: [
-      { type: 'Spa blauw', rows: 7, depth: 5, missing: 2 },
-      { type: '0.0', rows: 3, depth: 6, missing: 0 },
-      { type: 'Grimbergen', rows: 3, depth: 6, missing: 3 },
-      { type: 'Radler', rows: 2, depth: 6, missing: 1 },
-      { type: 'Spa rood', rows: 4, depth: 6, missing: 0 },
-      { type: 'Weizen 0.0', rows: 2, depth: 6, missing: 4 },
-      { type: 'Bok', rows: 1, depth: 6, missing: 0 },
-      { type: 'IPA', rows: 2, depth: 6, missing: 0 }
-    ],
-    shelves: [
-      { type: '7up', rows: 1, depth: 4, missing: 0 },
-      { type: 'Sisi', rows: 1, depth: 4, missing: 2 },
-      { type: 'Tonic', rows: 1, depth: 4, missing: 0 },
-      { type: 'Sprite', rows: 1, depth: 4, missing: 0 },
-      { type: 'Apple juice', rows: 1, depth: 2, missing: 3 },
-      { type: 'Orange juice', rows: 1, depth: 2, missing: 0 },
-      { type: 'Cassis', rows: 1, depth: 2, missing: 0 },
-      { type: 'Bitter lemon', rows: 1, depth: 2, missing: 0 },
-      { type: 'White wine', rows: 2, depth: 4, missing: 5 },
-      { type: 'Rose', rows: 1, depth: 4, missing: 0 },
-      { type: 'Sweet wine', rows: 1, depth: 4, missing: 0 },
-      { type: 'Ginger beer', rows: 1, depth: 4, missing: 1 },
-      { type: 'Ginger ale', rows: 1, depth: 4, missing: 0 }
-    ]
-  };
+  useEffect(() => {
+    if (!barFridges[bar.name]) {
+      const initialFridges = [
+        { type: 'Spa blauw', rows: 7, depth: 5, missing: 0 },
+        { type: '0.0', rows: 3, depth: 6, missing: 0 },
+        { type: 'Grimbergen', rows: 3, depth: 6, missing: 0 },
+        { type: 'Radler', rows: 2, depth: 6, missing: 0 },
+        { type: 'Spa rood', rows: 4, depth: 6, missing: 0 },
+        { type: 'Weizen 0.0', rows: 2, depth: 6, missing: 0 },
+        { type: 'Bok', rows: 1, depth: 6, missing: 0 },
+        { type: 'IPA', rows: 2, depth: 6, missing: 0 },
+      ];
+      setBarFridges(prev => ({ ...prev, [bar.name]: initialFridges }));
+    }
+  }, [bar.name]);
 
   const getTotalMissingItems = () => {
-    const fridgeItems = inventory.fridges.filter(item => item.missing > 0);
-    const shelfItems = inventory.shelves.filter(item => item.missing > 0);
-    return [...fridgeItems, ...shelfItems];
+    const fridgeItems = (barFridges[bar.name] || []).filter(item => item.missing > 0);
+    return fridgeItems;
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{bar.name} Inventory</Text>
-      <Button title="View Fridges" onPress={() => navigation.navigate('FridgeList', { inventory, bar })} />
-      <Button title="View Shelves" onPress={() => navigation.navigate('ShelfList', { inventory, bar })} />
+      <Button title="View Fridges" onPress={() => navigation.navigate('FridgeList', { bar })} />
       <Button title="Show Missing Items" onPress={() => setModalVisible(true)} />
 
       <Modal

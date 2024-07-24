@@ -1,19 +1,21 @@
+// FridgeDetailScreen.js
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, Button, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FridgeContext } from '../contexts/FridgeContext';
 
 const FridgeDetailScreen = ({ route, navigation }) => {
-  const { fridgeIndex } = route.params;
-  const { fridges, setFridges, saveFridges } = useContext(FridgeContext);
-  const fridge = fridges[fridgeIndex];
+  const { barName, fridgeIndex } = route.params;
+  const { barFridges, setBarFridges, saveBarFridges } = useContext(FridgeContext);
+  const barFridge = barFridges[barName] || [];
+  const fridge = barFridge[fridgeIndex];
   const [missing, setMissing] = useState(fridge.missing);
   const [customValue, setCustomValue] = useState('');
 
   useEffect(() => {
-    const updatedFridges = [...fridges];
-    updatedFridges[fridgeIndex] = { ...updatedFridges[fridgeIndex], missing };
-    saveFridges(updatedFridges);
+    const updatedBarFridges = { ...barFridges };
+    updatedBarFridges[barName][fridgeIndex] = { ...fridge, missing };
+    saveBarFridges(updatedBarFridges);
   }, [missing]);
 
   const updateMissing = (value) => {
@@ -33,8 +35,9 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   };
 
   const goToNextItem = () => {
-    if (fridgeIndex < fridges.length - 1) {
+    if (fridgeIndex < barFridge.length - 1) {
       navigation.replace('FridgeDetail', {
+        barName,
         fridgeIndex: fridgeIndex + 1,
       });
     }
@@ -43,6 +46,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   const goToPreviousItem = () => {
     if (fridgeIndex > 0) {
       navigation.replace('FridgeDetail', {
+        barName,
         fridgeIndex: fridgeIndex - 1,
       });
     }
@@ -77,8 +81,8 @@ const FridgeDetailScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={goToPreviousItem} style={styles.arrowButton} disabled={fridgeIndex === 0}>
           <Icon name="arrow-back" size={30} color={fridgeIndex === 0 ? '#ccc' : '#000'} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={goToNextItem} style={styles.arrowButton} disabled={fridgeIndex === fridges.length - 1}>
-          <Icon name="arrow-forward" size={30} color={fridgeIndex === fridges.length - 1 ? '#ccc' : '#000'} />
+        <TouchableOpacity onPress={goToNextItem} style={styles.arrowButton} disabled={fridgeIndex === barFridge.length - 1}>
+          <Icon name="arrow-forward" size={30} color={fridgeIndex === barFridge.length - 1 ? '#ccc' : '#000'} />
         </TouchableOpacity>
       </View>
       <Text style={styles.title}>{fridge.type} Details</Text>

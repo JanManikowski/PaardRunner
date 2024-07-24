@@ -3,17 +3,19 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { FridgeContext } from '../contexts/FridgeContext';
 
 const FridgeListScreen = ({ route, navigation }) => {
-  const { fridges } = useContext(FridgeContext);
+  const { bar } = route.params;
+  const { barFridges } = useContext(FridgeContext);
+  const fridges = barFridges[bar.name] || [];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Fridges in {route.params.bar.name}</Text>
+      <Text style={styles.title}>Fridges in {bar.name}</Text>
       <ScrollView>
         {fridges.map((item, index) => (
           <TouchableOpacity
             key={index}
             style={styles.itemContainer}
-            onPress={() => navigation.navigate('FridgeDetail', { fridgeIndex: index })}
+            onPress={() => navigation.navigate('FridgeDetail', { barName: bar.name, fridgeIndex: index })}
           >
             <Text style={styles.itemText}>{item.type}</Text>
             <Text style={styles.missingText}>{item.missing > 0 ? `${item.missing} missing` : ''}</Text>
