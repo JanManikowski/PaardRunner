@@ -4,7 +4,7 @@ import { FridgeContext } from '../contexts/FridgeContext';
 
 const BarDetailScreen = ({ route, navigation }) => {
   const { bar } = route.params;
-  const { barFridges, setBarFridges } = useContext(FridgeContext);
+  const { barFridges, setBarFridges, barShelves, setBarShelves } = useContext(FridgeContext);
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
@@ -21,17 +21,40 @@ const BarDetailScreen = ({ route, navigation }) => {
       ];
       setBarFridges(prev => ({ ...prev, [bar.name]: initialFridges }));
     }
-  }, [bar.name]);
+  }, [bar.name, barFridges, setBarFridges]);
+
+  useEffect(() => {
+    if (!barShelves[bar.name]) {
+      const initialShelves = [
+        { type: '7up', rows: 1, depth: 4, missing: 0 },
+        { type: 'Sisi', rows: 1, depth: 4, missing: 0 },
+        { type: 'Tonic', rows: 1, depth: 4, missing: 0 },
+        { type: 'Sprite', rows: 1, depth: 4, missing: 0 },
+        { type: 'Apple Juice', rows: 1, depth: 2, missing: 0 },
+        { type: 'Orange Juice', rows: 1, depth: 2, missing: 0 },
+        { type: 'Cassis', rows: 1, depth: 2, missing: 0 },
+        { type: 'Bitter Lemon', rows: 1, depth: 2, missing: 0 },
+        { type: 'White Wine', rows: 2, depth: 4, missing: 0 },
+        { type: 'Rose', rows: 1, depth: 4, missing: 0 },
+        { type: 'Sweet Wine', rows: 1, depth: 4, missing: 0 },
+        { type: 'Ginger Beer', rows: 1, depth: 4, missing: 0 },
+        { type: 'Ginger Ale', rows: 1, depth: 4, missing: 0 },
+      ];
+      setBarShelves(prev => ({ ...prev, [bar.name]: initialShelves }));
+    }
+  }, [bar.name, barShelves, setBarShelves]);
 
   const getTotalMissingItems = () => {
     const fridgeItems = (barFridges[bar.name] || []).filter(item => item.missing > 0);
-    return fridgeItems;
+    const shelfItems = (barShelves[bar.name] || []).filter(item => item.missing > 0);
+    return [...fridgeItems, ...shelfItems];
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{bar.name} Inventory</Text>
       <Button title="View Fridges" onPress={() => navigation.navigate('FridgeList', { bar })} />
+      <Button title="View Shelves" onPress={() => navigation.navigate('ShelfList', { bar })} />
       <Button title="Show Missing Items" onPress={() => setModalVisible(true)} />
 
       <Modal

@@ -1,20 +1,26 @@
-import React, { useState } from 'react';
+// ShelfDetailScreen.js
+import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, Button, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { FridgeContext } from '../contexts/FridgeContext';
 
 const ShelfDetailScreen = ({ route, navigation }) => {
-  const { shelf, setShelves, index, shelves } = route.params;
+  const { barName, shelfIndex } = route.params;
+  const { barShelves, setBarShelves, saveBarShelves } = useContext(FridgeContext);
+  const barShelf = barShelves[barName] || [];
+  const shelf = barShelf[shelfIndex];
   const [missing, setMissing] = useState(shelf.missing);
   const [customValue, setCustomValue] = useState('');
+
+  useEffect(() => {
+    const updatedBarShelves = { ...barShelves };
+    updatedBarShelves[barName][shelfIndex] = { ...shelf, missing };
+    saveBarShelves(updatedBarShelves);
+  }, [missing]);
 
   const updateMissing = (value) => {
     const newMissing = Math.max(0, missing + value);
     setMissing(newMissing);
-    setShelves((prevShelves) => {
-      const updatedShelves = [...prevShelves];
-      updatedShelves[index] = { ...updatedShelves[index], missing: newMissing };
-      return updatedShelves;
-    });
   };
 
   const handleCustomValue = (isAdd) => {
@@ -26,33 +32,22 @@ const ShelfDetailScreen = ({ route, navigation }) => {
 
   const clearMissing = () => {
     setMissing(0);
-    setShelves((prevShelves) => {
-      const updatedShelves = [...prevShelves];
-      updatedShelves[index] = { ...updatedShelves[index], missing: 0 };
-      return updatedShelves;
-    });
   };
 
   const goToNextItem = () => {
-    if (index < shelves.length - 1) {
-      const nextIndex = index + 1;
+    if (shelfIndex < barShelf.length - 1) {
       navigation.replace('ShelfDetail', {
-        shelf: shelves[nextIndex],
-        setShelves,
-        index: nextIndex,
-        shelves,
+        barName,
+        shelfIndex: shelfIndex + 1,
       });
     }
   };
 
   const goToPreviousItem = () => {
-    if (index > 0) {
-      const prevIndex = index - 1;
+    if (shelfIndex > 0) {
       navigation.replace('ShelfDetail', {
-        shelf: shelves[prevIndex],
-        setShelves,
-        index: prevIndex,
-        shelves,
+        barName,
+        shelfIndex: shelfIndex - 1,
       });
     }
   };
@@ -93,25 +88,22 @@ const ShelfDetailScreen = ({ route, navigation }) => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.navigationContainer}>
-        <TouchableOpacity onPress={goToPreviousItem} style={styles.arrowButton} disabled={index === 0}>
-          <Icon name="arrow-back" size={30} color={index === 0 ? '#ccc' : '#000'} />
+        <TouchableOpacity onPress={goToPreviousItem} style={styles.arrowButton} disabled={shelfIndex === 0}>
+          <Icon name="arrow-back" size={30} color={shelfIndex === 0 ? '#ccc' : '#000'} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={goToNextItem} style={styles.arrowButton} disabled={index === shelves.length - 1}>
-          <Icon name="arrow-forward" size={30} color={index === shelves.length - 1 ? '#ccc' : '#000'} />
+        <TouchableOpacity onPress={goToNextItem} style={styles.arrowButton} disabled={shelfIndex === barShelf.length - 1}>
+          <Icon name="arrow-forward" size={30} color={shelfIndex === barShelf.length - 1 ? '#ccc' : '#000'} />
         </TouchableOpacity>
       </View>
       <Text style={styles.title}>{shelf.type} Details</Text>
-      <Text>Total Items: {shelf.rows * shelf.depth}</Text>
+      <Text>Total Items: {shelf.depth}</Text>
       <Text>Missing Items: {missing}</Text>
       <View style={styles.buttonImageContainer}>
         <View style={styles.buttonColumn}>
           <Button title="-1" onPress={() => updateMissing(-1)} />
           <Button title="-5" onPress={() => updateMissing(-5)} />
         </View>
-        <Image
-          source={getImageSource(shelf.type)}
-          style={styles.image}
-        />
+        <Image source={getImageSource(shelf.type)} style={styles.image} />
         <View style={styles.buttonColumn}>
           <Button title="+1" onPress={() => updateMissing(1)} />
           <Button title="+5" onPress={() => updateMissing(5)} />
