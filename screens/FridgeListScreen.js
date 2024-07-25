@@ -1,8 +1,10 @@
 import React, { useContext, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, ScrollView, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { getData } from '../storage/AsyncStorageHelper';
+import { ListItem } from 'react-native-elements';
+import CustomText from '../components/CustomText'; // Assuming CustomText is in components folder
 
 const FridgeListScreen = ({ route, navigation }) => {
   const { bar } = route.params;
@@ -25,51 +27,56 @@ const FridgeListScreen = ({ route, navigation }) => {
     }, [])
   );
 
+  const getImageSource = (type) => {
+    switch (type) {
+      case 'Spa blauw':
+        return require('../assets/spa_blauw.jpg');
+      case '0.0':
+        return require('../assets/0.0.png');
+      case 'Grimbergen':
+        return require('../assets/grimbergen.jpg');
+      case 'Radler':
+        return require('../assets/radler.png');
+      case 'Spa rood':
+        return require('../assets/sparood.jpg');
+      case 'Weizen 0.0':
+        return require('../assets/weizen.jpeg');
+      case 'Bok':
+        return require('../assets/bok.png');
+      case 'IPA':
+        return require('../assets/ipa.png');
+      default:
+        return require('../assets/placeholder.jpg'); // Default placeholder image
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Fridges in {bar.name}</Text>
+    <View style={{ flex: 1, padding: 16, backgroundColor: '#f5f5f5' }}>
+      <CustomText h4 style={{ marginBottom: 16, color: '#333' }}>Fridges in {bar.name}</CustomText>
       <ScrollView>
         {fridges.map((item, index) => (
-          <TouchableOpacity
+          <ListItem
             key={index}
-            style={styles.itemContainer}
+            bottomDivider
             onPress={() => navigation.navigate('FridgeDetail', { barName: bar.name, fridgeIndex: index })}
+            containerStyle={{ borderRadius: 10, marginVertical: 5, backgroundColor: '#fff' }}
           >
-            <Text style={styles.itemText}>{item.type}</Text>
-            <Text style={styles.missingText}>{item.missing > 0 ? `${item.missing} missing` : ''}</Text>
-          </TouchableOpacity>
+            <Image source={getImageSource(item.type)} style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10 }} />
+            <ListItem.Content>
+              <ListItem.Title style={{ fontWeight: 'bold', color: '#333' }}>{item.type}</ListItem.Title>
+            </ListItem.Content>
+            {item.missing > 0 && (
+              <ListItem.Content right>
+                <ListItem.Subtitle style={{ color: 'red', fontWeight: 'bold' }}>
+                  {`${item.missing} missing`}
+                </ListItem.Subtitle>
+              </ListItem.Content>
+            )}
+          </ListItem>
         ))}
       </ScrollView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#fff',
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  itemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  itemText: {
-    fontSize: 18,
-  },
-  missingText: {
-    fontSize: 16,
-    color: 'red',
-  },
-});
 
 export default FridgeListScreen;

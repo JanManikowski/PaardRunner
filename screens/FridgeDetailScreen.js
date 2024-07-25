@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, Button, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { ScrollView, View, Image } from 'react-native';
+import { Button, Input, Icon } from 'react-native-elements';
+import CustomText from '../components/CustomText'; // Adjust the import path as necessary
 import { FridgeContext } from '../contexts/FridgeContext';
 import { saveData, getData } from '../storage/AsyncStorageHelper';
 
@@ -91,107 +92,91 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.navigationContainer}>
-        <TouchableOpacity onPress={goToPreviousItem} style={styles.arrowButton} disabled={fridgeIndex === 0}>
-          <Icon name="arrow-back" size={30} color={fridgeIndex === 0 ? '#ccc' : '#000'} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={goToNextItem} style={styles.arrowButton} disabled={fridgeIndex === barFridge.length - 1}>
-          <Icon name="arrow-forward" size={30} color={fridgeIndex === barFridge.length - 1 ? '#ccc' : '#000'} />
-        </TouchableOpacity>
+    <View style={{ flex: 1, padding: 16, backgroundColor: '#F0F0F0' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+        <Button
+          icon={<Icon name="arrow-back" size={30} color={fridgeIndex === 0 ? '#ccc' : '#00796b'} />}
+          type="clear"
+          onPress={goToPreviousItem}
+          disabled={fridgeIndex === 0}
+        />
+        <Button
+          icon={<Icon name="arrow-forward" size={30} color={fridgeIndex === barFridge.length - 1 ? '#ccc' : '#00796b'} />}
+          type="clear"
+          onPress={goToNextItem}
+          disabled={fridgeIndex === barFridge.length - 1}
+        />
       </View>
-      <Text style={styles.title}>{fridge.type} Details</Text>
-      <Text>Total Items: {fridge.rows * fridge.depth}</Text>
-      <Text>Missing Items: {missing}</Text>
-      <View style={styles.buttonImageContainer}>
-        <View style={styles.buttonColumn}>
-          <Button title="-1" onPress={() => updateMissing(-1)} />
-          <Button title="-5" onPress={() => updateMissing(-5)} />
+      <View style={{ alignItems: 'center', marginBottom: 20 }}>
+        <CustomText h4 style={{ color: '#004d40', marginBottom: 10 }}>{fridge.type} Details</CustomText>
+        <CustomText style={{ fontSize: 16, color: '#00796b' }}>Total Items: {fridge.rows * fridge.depth}</CustomText>
+        <CustomText style={{ fontSize: 16, color: '#d32f2f' }}>Missing Items: {missing}</CustomText>
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+        <View style={{ justifyContent: 'space-between', height: 120 }}>
+          <Button
+            title="-1"
+            buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
+            onPress={() => updateMissing(-1)}
+            containerStyle={{ width: 60, marginBottom: 10 }}
+          />
+          <Button
+            title="-5"
+            buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
+            onPress={() => updateMissing(-5)}
+            containerStyle={{ width: 60 }}
+          />
         </View>
-        <Image source={getImageSource(fridge.type)} style={styles.image} />
-        <View style={styles.buttonColumn}>
-          <Button title="+1" onPress={() => updateMissing(1)} />
-          <Button title="+5" onPress={() => updateMissing(5)} />
+        <Image
+          source={getImageSource(fridge.type)}
+          style={{ width: 150, height: 150, marginHorizontal: 20, borderRadius: 10 }}
+        />
+        <View style={{ justifyContent: 'space-between', height: 120 }}>
+          <Button
+            title="+1"
+            buttonStyle={{ backgroundColor: '#4CAF50', borderRadius: 10 }}
+            onPress={() => updateMissing(1)}
+            containerStyle={{ width: 60, marginBottom: 10 }}
+          />
+          <Button
+            title="+5"
+            buttonStyle={{ backgroundColor: '#4CAF50', borderRadius: 10 }}
+            onPress={() => updateMissing(5)}
+            containerStyle={{ width: 60 }}
+          />
         </View>
       </View>
-      <TextInput
-        style={styles.input}
+      <Input
         placeholder="Custom value"
         keyboardType="numeric"
         value={customValue}
         onChangeText={setCustomValue}
+        containerStyle={{ marginBottom: 20, width: '80%', alignSelf: 'center' }}
+        inputStyle={{ textAlign: 'center', fontFamily: 'Roboto' }}
       />
-      <View style={styles.buttonContainer}>
-        <Button title="Retract Custom Value" onPress={() => handleCustomValue(false)} />
-        <Button title="Add Custom Value" onPress={() => handleCustomValue(true)} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
+        <Button
+          title="Retract Custom Value"
+          buttonStyle={{ backgroundColor: '#228B22', borderRadius: 10 }}
+          containerStyle={{ flex: 1, marginRight: 10 }}
+          onPress={() => handleCustomValue(false)}
+        />
+        <Button
+          title="Add Custom Value"
+          buttonStyle={{ backgroundColor: '#228B22', borderRadius: 10 }}
+          containerStyle={{ flex: 1, marginLeft: 10 }}
+          onPress={() => handleCustomValue(true)}
+        />
       </View>
-      <TouchableOpacity style={styles.clearButton} onPress={clearMissing}>
-        <Text style={styles.clearButtonText}>Clear Missing Items</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <Button
+        title="Clear Missing Items"
+        buttonStyle={{ backgroundColor: '#B22222', borderRadius: 10, paddingHorizontal: 20 }}
+        titleStyle={{ fontSize: 18, fontWeight: 'bold', fontFamily: 'Roboto' }}
+        onPress={clearMissing}
+        containerStyle={{ alignItems: 'center' }}
+      />
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  navigationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  arrowButton: {
-    padding: 10,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  buttonImageContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  buttonColumn: {
-    justifyContent: 'space-between',
-    height: 120,
-  },
-  image: {
-    width: 150,
-    height: 150,
-    marginHorizontal: 20,
-  },
-  input: {
-    width: '100%',
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    marginBottom: 20,
-    paddingHorizontal: 8,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  clearButton: {
-    marginTop: 20,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    backgroundColor: '#FF0000',
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  clearButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
 
 export default FridgeDetailScreen;
