@@ -1,11 +1,29 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { FridgeContext } from '../contexts/FridgeContext';
+import { getData } from '../storage/AsyncStorageHelper';
 
 const FridgeListScreen = ({ route, navigation }) => {
   const { bar } = route.params;
   const { barFridges } = useContext(FridgeContext);
-  const fridges = barFridges[bar.name] || [];
+  const [fridges, setFridges] = useState(barFridges[bar.name] || []);
+
+  const fetchFridges = async () => {
+    const updatedFridges = await Promise.all(
+      fridges.map(async (fridge, index) => {
+        const savedMissing = await getData(`fridge_${bar.name}_${index}`);
+        return { ...fridge, missing: savedMissing !== null ? savedMissing : fridge.missing };
+      })
+    );
+    setFridges(updatedFridges);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchFridges();
+    }, [])
+  );
 
   return (
     <View style={styles.container}>

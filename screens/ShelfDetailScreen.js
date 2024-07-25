@@ -1,8 +1,8 @@
-// ShelfDetailScreen.js
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, Button, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FridgeContext } from '../contexts/FridgeContext';
+import { saveData, getData } from '../storage/AsyncStorageHelper';
 
 const ShelfDetailScreen = ({ route, navigation }) => {
   const { barName, shelfIndex } = route.params;
@@ -13,6 +13,21 @@ const ShelfDetailScreen = ({ route, navigation }) => {
   const [customValue, setCustomValue] = useState('');
 
   useEffect(() => {
+    const loadData = async () => {
+      const savedMissing = await getData(`shelf_${barName}_${shelfIndex}`);
+      if (savedMissing !== null) {
+        setMissing(savedMissing);
+      }
+    };
+    loadData();
+  }, [barName, shelfIndex]);
+
+  useEffect(() => {
+    const saveMissing = async () => {
+      await saveData(`shelf_${barName}_${shelfIndex}`, missing);
+    };
+    saveMissing();
+
     const updatedBarShelves = { ...barShelves };
     updatedBarShelves[barName][shelfIndex] = { ...shelf, missing };
     saveBarShelves(updatedBarShelves);

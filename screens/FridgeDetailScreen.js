@@ -1,8 +1,8 @@
-// FridgeDetailScreen.js
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, Button, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FridgeContext } from '../contexts/FridgeContext';
+import { saveData, getData } from '../storage/AsyncStorageHelper';
 
 const FridgeDetailScreen = ({ route, navigation }) => {
   const { barName, fridgeIndex } = route.params;
@@ -13,6 +13,21 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   const [customValue, setCustomValue] = useState('');
 
   useEffect(() => {
+    const loadData = async () => {
+      const savedMissing = await getData(`fridge_${barName}_${fridgeIndex}`);
+      if (savedMissing !== null) {
+        setMissing(savedMissing);
+      }
+    };
+    loadData();
+  }, [barName, fridgeIndex]);
+
+  useEffect(() => {
+    const saveMissing = async () => {
+      await saveData(`fridge_${barName}_${fridgeIndex}`, missing);
+    };
+    saveMissing();
+
     const updatedBarFridges = { ...barFridges };
     updatedBarFridges[barName][fridgeIndex] = { ...fridge, missing };
     saveBarFridges(updatedBarFridges);

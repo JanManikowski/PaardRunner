@@ -1,12 +1,25 @@
-// ShelfListScreen.js
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { FridgeContext } from '../contexts/FridgeContext';
+import { getData } from '../storage/AsyncStorageHelper';
 
 const ShelfListScreen = ({ route, navigation }) => {
   const { bar } = route.params;
   const { barShelves } = useContext(FridgeContext);
-  const shelves = barShelves[bar.name] || [];
+  const [shelves, setShelves] = useState(barShelves[bar.name] || []);
+
+  useEffect(() => {
+    const fetchShelves = async () => {
+      const updatedShelves = await Promise.all(
+        shelves.map(async (shelf, index) => {
+          const savedMissing = await getData(`shelf_${bar.name}_${index}`);
+          return { ...shelf, missing: savedMissing !== null ? savedMissing : shelf.missing };
+        })
+      );
+      setShelves(updatedShelves);
+    };
+    fetchShelves();
+  }, []);
 
   return (
     <View style={styles.container}>
