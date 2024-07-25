@@ -1,52 +1,102 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useContext, useState, useCallback } from 'react';
+import { View, Text, Button, StyleSheet, ScrollView, Share } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { useFocusEffect } from '@react-navigation/native';
+import { FridgeContext } from '../contexts/FridgeContext';
+import { getData } from '../storage/AsyncStorageHelper';
 
-const MissingItemsScreen = ({ route, navigation }) => {
+const MissingItemsScreen = ({ route }) => {
   const { bar } = route.params;
-  const [fridges, setFridges] = useState([]);
-  const [shelves, setShelves] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { barFridges, barShelves } = useContext(FridgeContext);
+  const [missingItems, setMissingItems] = useState([]);
 
-  const fetchInventory = async () => {
+  const fetchMissingItems = async () => {
+    let items = [];
+
+    if (barFridges[bar.name]) {
+      const fridges = await Promise.all(
+        barFridges[bar.name].map(async (fridge, index) => {
+          const savedMissing = await getData(`fridge_${bar.name}_${index}`);
+          return { ...fridge, missing: savedMissing !== null ? savedMissing : fridge.missing };
+        })
+      );
+      fridges.forEach(item => {
+        if (item.missing > 0) {
+          items.push({ ...item, bar: bar.name });
+        }
+      });
+    }
+
+    if (barShelves[bar.name]) {
+      const shelves = await Promise.all(
+        barShelves[bar.name].map(async (shelf, index) => {
+          const savedMissing = await getData(`shelf_${bar.name}_${index}`);
+          return { ...shelf, missing: savedMissing !== null ? savedMissing : shelf.missing };
+        })
+      );
+      shelves.forEach(item => {
+        if (item.missing > 0) {
+          items.push({ ...item, bar: bar.name });
+        }
+      });
+    }
+
+    setMissingItems(items);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchMissingItems();
+    }, [bar.name])
+  );
+
+  const generateMissingItemsMessage = () => {
+    const header = `*${bar.name} is missing these items:*\n\n`;
+
+    // Calculate the maximum length of the item names and missing counts
+    const maxTypeLength = Math.max(...missingItems.map(item => item.type.length));
+    const maxMissingLength = Math.max(...missingItems.map(item => String(item.missing).length));
+
+    // Format the list with aligned quantities using monospaced formatting
+    const list = missingItems
+      .map(item => {
+        const paddedType = item.type.padEnd(maxTypeLength, ' ');
+        const paddedMissing = String(item.missing).padStart(maxMissingLength, ' ');
+        return `- ${paddedType} : ${paddedMissing}`;
+      })
+      .join('\n');
+
+    return `${header}\`\`\`\n${list}\n\`\`\``;
+  };
+
+  const copyToClipboard = () => {
+    const message = generateMissingItemsMessage();
+    Clipboard.setString(message);
+    alert('Copied to clipboard!');
+  };
+
+  const shareList = async () => {
+    const message = generateMissingItemsMessage();
     try {
-      const storedFridges = await AsyncStorage.getItem(`fridges_${bar.name}`);
-      const storedShelves = await AsyncStorage.getItem(`shelves_${bar.name}`);
-
-      if (storedFridges) setFridges(JSON.parse(storedFridges));
-      if (storedShelves) setShelves(JSON.parse(storedShelves));
-
-      setLoading(false);
+      await Share.share({
+        message: message,
+      });
     } catch (error) {
-      console.error('Failed to load inventory from storage', error);
-      setLoading(false);
+      alert(error.message);
     }
   };
 
-  useEffect(() => {
-    fetchInventory();
-  }, []);
-
-  const getTotalMissingItems = () => {
-    const fridgeItems = fridges.filter(item => item.missing > 0);
-    const shelfItems = shelves.filter(item => item.missing > 0);
-    return [...fridgeItems, ...shelfItems];
-  };
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Missing Items</Text>
-      {loading ? (
-        <Text>Loading...</Text>
-      ) : (
-        getTotalMissingItems().map((item, index) => (
-          <View key={index} style={styles.itemContainer}>
-            <Text style={styles.itemType}>{item.type}</Text>
-            <Text style={styles.itemMissing}>{`${item.missing} missing`}</Text>
-          </View>
-        ))
-      )}
-    </ScrollView>
+    <View style={styles.container}>
+      <Text style={styles.title}>Missing Items for {bar.name}</Text>
+      <ScrollView>
+        {missingItems.map((item, index) => (
+          <Text key={index} style={styles.itemText}>{`${item.type}: ${item.missing}`}</Text>
+        ))}
+      </ScrollView>
+      <Button title="Copy to Clipboard" onPress={copyToClipboard} />
+      <Button title="Share List" onPress={shareList} />
+    </View>
   );
 };
 
@@ -54,27 +104,19 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     backgroundColor: '#fff',
-    flexGrow: 1,
+    flex: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
   },
-  itemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+  itemText: {
+    fontSize: 16,
+    marginBottom: 10,
   },
-  itemType: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  itemMissing: {
-    fontSize: 18,
-    color: 'red',
+  button: {
+    marginBottom: 10,
   },
 });
 
