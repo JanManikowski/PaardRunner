@@ -211,6 +211,9 @@ const MissingItemsScreen = ({ route }) => {
     }
     setMissingItems(missingItems.map((itm, i) => (i === index ? { ...itm, missing: newCount } : itm)));
   };
+  
+
+
 
   return (
     <View style={{
