@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { View } from 'react-native';
+import { Button, Text } from 'react-native-elements';
 import { FridgeContext } from '../contexts/FridgeContext';
 
 const BarDetailScreen = ({ route, navigation }) => {
@@ -9,11 +10,11 @@ const BarDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     if (!barFridges[bar.name]) {
       const initialFridges = [
-        { type: 'Spa blauw', amount: 35, missing: 0 },
-        { type: '0.0', amount: 18, missing: 0 },
+        { type: 'Spa Blauw', amount: 35, missing: 0 },
+        { type: 'Grolsch 0.0', amount: 18, missing: 0 },
         { type: 'Grimbergen', amount: 18, missing: 0 },
         { type: 'Radler', amount: 12, missing: 0 },
-        { type: 'Spa rood', amount: 24, missing: 0 },
+        { type: 'Spa Rood', amount: 24, missing: 0 },
         { type: 'Weizen 0.0', amount: 12, missing: 0 },
         { type: 'Bok', amount: 6, missing: 0 },
         { type: 'IPA', amount: 12, missing: 0 },
@@ -44,29 +45,60 @@ const BarDetailScreen = ({ route, navigation }) => {
   }, [bar.name, barShelves, setBarShelves]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{bar.name} Inventory</Text>
-      <Button title="View Fridges" onPress={() => navigation.navigate('FridgeList', { bar })} />
-      <Button title="View Shelves" onPress={() => navigation.navigate('ShelfList', { bar })} />
-      <Button title="View Missing Items" onPress={() => navigation.navigate('MissingItems', { bar })} />
+    <View style={{ padding: 16, backgroundColor: '#F8F8F8', flex: 1 }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
+        {bar.name} Inventory
+      </Text>
+      <Button
+        title="View Fridges"
+        buttonStyle={{
+          padding: 15,
+          marginVertical: 10,
+          borderRadius: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 5,
+          backgroundColor: '#007BFF', // Primary color
+        }}
+        titleStyle={{ fontSize: 16 }}
+        containerStyle={{ marginBottom: 10 }}
+        onPress={() => navigation.navigate('FridgeList', { bar })}
+      />
+      <Button
+        title="View Shelves"
+        buttonStyle={{
+          padding: 15,
+          marginVertical: 10,
+          borderRadius: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 5,
+          backgroundColor: '#007BFF', // Primary color
+        }}
+        titleStyle={{ fontSize: 16 }}
+        containerStyle={{ marginBottom: 10 }}
+        onPress={() => navigation.navigate('ShelfList', { bar })}
+      />
+      <Button
+        title="View Missing Items"
+        buttonStyle={{
+          padding: 15,
+          marginVertical: 10,
+          borderRadius: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 5,
+          backgroundColor: '#F44336', // Accent color
+        }}
+        titleStyle={{ fontSize: 16 }}
+        containerStyle={{ marginBottom: 10 }}
+        onPress={() => navigation.navigate('MissingItems', { bar })}
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#fff',
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  button: {
-    marginBottom: 10,
-  },
-});
 
 export default BarDetailScreen;

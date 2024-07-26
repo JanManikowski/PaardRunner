@@ -1,7 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { ScrollView, View, Image } from 'react-native';
-import { Button, Input, Icon } from 'react-native-elements';
-import CustomText from '../components/CustomText'; // Adjust the import path as necessary
+import { Text, Button, Input, Icon } from 'react-native-elements';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { saveData, getData } from '../storage/AsyncStorageHelper';
 
@@ -70,15 +69,15 @@ const FridgeDetailScreen = ({ route, navigation }) => {
 
   const getImageSource = (type) => {
     switch (type) {
-      case 'Spa blauw':
+      case 'Spa Blauw':
         return require('../assets/spa_blauw.jpg');
-      case '0.0':
+      case 'Grolsch 0.0':
         return require('../assets/0.0.png');
       case 'Grimbergen':
         return require('../assets/grimbergen.jpg');
       case 'Radler':
         return require('../assets/radler.png');
-      case 'Spa rood':
+      case 'Spa Rood':
         return require('../assets/sparood.jpg');
       case 'Weizen 0.0':
         return require('../assets/weizen.jpeg');
@@ -108,9 +107,9 @@ const FridgeDetailScreen = ({ route, navigation }) => {
         />
       </View>
       <View style={{ alignItems: 'center', marginBottom: 20 }}>
-        <CustomText h4 style={{ color: '#004d40', marginBottom: 10 }}>{fridge.type} Details</CustomText>
-        <CustomText style={{ fontSize: 16, color: '#00796b' }}>Total Items: {fridge.rows * fridge.depth}</CustomText>
-        <CustomText style={{ fontSize: 16, color: '#d32f2f' }}>Missing Items: {missing}</CustomText>
+        <Text h4 style={{ color: '#004d40', marginBottom: 10 }}>{fridge.type}</Text>
+        <Text style={{ fontSize: 16, color: '#00796b' }}>Total Items: {fridge.rows * fridge.depth}</Text>
+        <Text style={{ fontSize: 16, color: '#d32f2f' }}>Missing Items: {missing}</Text>
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
         <View style={{ justifyContent: 'space-between', height: 120 }}>
@@ -122,14 +121,14 @@ const FridgeDetailScreen = ({ route, navigation }) => {
           />
           <Button
             title="-5"
-            buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
+            buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10}}
             onPress={() => updateMissing(-5)}
             containerStyle={{ width: 60 }}
           />
         </View>
         <Image
           source={getImageSource(fridge.type)}
-          style={{ width: 150, height: 150, marginHorizontal: 20, borderRadius: 10 }}
+          style={{ width: 150, height: 150, marginHorizontal: 20, borderRadius: 10, backgroundColor: "white" }}
         />
         <View style={{ justifyContent: 'space-between', height: 120 }}>
           <Button
@@ -152,17 +151,17 @@ const FridgeDetailScreen = ({ route, navigation }) => {
         value={customValue}
         onChangeText={setCustomValue}
         containerStyle={{ marginBottom: 20, width: '80%', alignSelf: 'center' }}
-        inputStyle={{ textAlign: 'center', fontFamily: 'Roboto' }}
+        inputStyle={{ textAlign: 'center' }}
       />
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
         <Button
-          title="Retract Custom Value"
+          title="Retract Value"
           buttonStyle={{ backgroundColor: '#228B22', borderRadius: 10 }}
           containerStyle={{ flex: 1, marginRight: 10 }}
           onPress={() => handleCustomValue(false)}
         />
         <Button
-          title="Add Custom Value"
+          title="Add Value"
           buttonStyle={{ backgroundColor: '#228B22', borderRadius: 10 }}
           containerStyle={{ flex: 1, marginLeft: 10 }}
           onPress={() => handleCustomValue(true)}
@@ -171,12 +170,15 @@ const FridgeDetailScreen = ({ route, navigation }) => {
       <Button
         title="Clear Missing Items"
         buttonStyle={{ backgroundColor: '#B22222', borderRadius: 10, paddingHorizontal: 20 }}
-        titleStyle={{ fontSize: 18, fontWeight: 'bold', fontFamily: 'Roboto' }}
+        titleStyle={{ fontSize: 18, fontWeight: 'bold' }}
         onPress={clearMissing}
         containerStyle={{ alignItems: 'center' }}
       />
     </View>
   );
+  
+  
+
 };
 
 export default FridgeDetailScreen;

@@ -1,10 +1,9 @@
 import React, { useContext, useState, useCallback } from 'react';
-import { View, ScrollView, Image } from 'react-native';
+import { View, ScrollView, Image, TouchableOpacity, Text } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { getData } from '../storage/AsyncStorageHelper';
-import { ListItem } from 'react-native-elements';
-import CustomText from '../components/CustomText'; // Assuming CustomText is in components folder
+import { ListItem, Icon } from 'react-native-elements';
 
 const FridgeListScreen = ({ route, navigation }) => {
   const { bar } = route.params;
@@ -29,15 +28,15 @@ const FridgeListScreen = ({ route, navigation }) => {
 
   const getImageSource = (type) => {
     switch (type) {
-      case 'Spa blauw':
+      case 'Spa Blauw':
         return require('../assets/spa_blauw.jpg');
-      case '0.0':
+      case 'Grolsch 0.0':
         return require('../assets/0.0.png');
       case 'Grimbergen':
         return require('../assets/grimbergen.jpg');
       case 'Radler':
         return require('../assets/radler.png');
-      case 'Spa rood':
+      case 'Spa Rood':
         return require('../assets/sparood.jpg');
       case 'Weizen 0.0':
         return require('../assets/weizen.jpeg');
@@ -52,27 +51,37 @@ const FridgeListScreen = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: '#f5f5f5' }}>
-      <CustomText h4 style={{ marginBottom: 16, color: '#333' }}>Fridges in {bar.name}</CustomText>
+      <Text h4 style={{ marginBottom: 16, color: '#333' }}>Fridges in {bar.name}</Text>
       <ScrollView>
         {fridges.map((item, index) => (
-          <ListItem
+          <TouchableOpacity
             key={index}
-            bottomDivider
             onPress={() => navigation.navigate('FridgeDetail', { barName: bar.name, fridgeIndex: index })}
-            containerStyle={{ borderRadius: 10, marginVertical: 5, backgroundColor: '#fff' }}
+            style={{
+              borderRadius: 10,
+              marginVertical: 5,
+              backgroundColor: '#fff',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 5,
+              elevation: 2,
+              padding: 10,
+              alignItems: 'center',
+              flexDirection: 'row',
+            }}
           >
             <Image source={getImageSource(item.type)} style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10 }} />
-            <ListItem.Content>
-              <ListItem.Title style={{ fontWeight: 'bold', color: '#333' }}>{item.type}</ListItem.Title>
-            </ListItem.Content>
-            {item.missing > 0 && (
-              <ListItem.Content right>
-                <ListItem.Subtitle style={{ color: 'red', fontWeight: 'bold' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: 'bold', color: '#333' }}>{item.type}</Text>
+              {item.missing > 0 && (
+                <Text style={{ color: 'red', fontWeight: 'bold' }}>
                   {`${item.missing} missing`}
-                </ListItem.Subtitle>
-              </ListItem.Content>
-            )}
-          </ListItem>
+                </Text>
+              )}
+            </View>
+            <Icon name="chevron-right" size={30} />
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>

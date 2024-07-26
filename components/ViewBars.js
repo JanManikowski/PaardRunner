@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, FlatList, TouchableOpacity } from 'react-native';
+import { Icon, Text } from 'react-native-elements';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ViewBars = ({ navigation }) => {
@@ -15,47 +16,41 @@ const ViewBars = ({ navigation }) => {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Stored Bars</Text>
+    <View style={{ flex: 1, backgroundColor: '#F8F8F8', padding: 20 }}>
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        marginBottom: 20,
+      }}>
+        <Text h4 h4Style={{ fontSize: 24, fontWeight: 'bold' }}>Stored Bars</Text>
+      </View>
       <FlatList
         data={bars}
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.barItem}
+            style={{
+              backgroundColor: '#FFF',
+              padding: 15,
+              borderRadius: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 5,
+              marginBottom: 20,
+              elevation: 2, // For Android shadow
+            }}
             onPress={() => navigation.navigate('BarDetail', { bar: item })}
           >
-            <Text style={styles.barName}>{item.name}</Text>
-            <Text>Shelves: {item.numShelves}</Text>
-            <Text>Fridges: {item.numFridges}</Text>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10 }}>{item.name}</Text>
+            <Text style={{ marginBottom: 5, fontSize: 16 }}>Shelves: {item.numShelves}</Text>
+            <Text style={{ fontSize: 16 }}>Fridges: {item.numFridges}</Text>
           </TouchableOpacity>
         )}
       />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 20,
-  },
-  barItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    width: '100%',
-  },
-  barName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
 
 export default ViewBars;
