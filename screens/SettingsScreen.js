@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, TextInput, Modal, Button } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SettingsScreen = () => {
+const SettingsScreen = ({ navigation }) => {
   const [bars, setBars] = useState([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editBar, setEditBar] = useState(null);
@@ -84,6 +84,12 @@ const SettingsScreen = () => {
           </View>
         </View>
       ))}
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => navigation.navigate('AddBar')}
+      >
+        <Text style={styles.buttonText}>Add New Bar</Text>
+      </TouchableOpacity>
 
       <Modal
         animationType="slide"
@@ -160,6 +166,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF0000',
     padding: 10,
     borderRadius: 5,
+  },
+  addButton: {
+    backgroundColor: '#28a745',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 20,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
