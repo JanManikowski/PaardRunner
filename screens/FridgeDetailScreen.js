@@ -6,7 +6,7 @@ import { saveData, getData } from '../storage/AsyncStorageHelper';
 
 const FridgeDetailScreen = ({ route, navigation }) => {
   const { barName, fridgeIndex } = route.params;
-  const { barFridges, setBarFridges, saveBarFridges } = useContext(FridgeContext);
+  const { barFridges, setBarFridges, saveBarFridges, maxAmounts } = useContext(FridgeContext);
   const barFridge = barFridges[barName] || [];
   const fridge = barFridge[fridgeIndex];
   const [missing, setMissing] = useState(fridge.missing);
@@ -34,7 +34,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   }, [missing]);
 
   const updateMissing = (value) => {
-    const newMissing = Math.max(0, missing + value);
+    const newMissing = Math.max(0, Math.min(missing + value, maxAmounts[barName][fridge.type]));
     setMissing(newMissing);
   };
 
@@ -108,8 +108,8 @@ const FridgeDetailScreen = ({ route, navigation }) => {
       </View>
       <View style={{ alignItems: 'center', marginBottom: 20 }}>
         <Text h4 style={{ color: '#004d40', marginBottom: 10 }}>{fridge.type}</Text>
-        <Text style={{ fontSize: 16, color: '#00796b' }}>Total Items: {fridge.rows * fridge.depth}</Text>
         <Text style={{ fontSize: 16, color: '#d32f2f' }}>Missing Items: {missing}</Text>
+        <Text style={{ fontSize: 16, color: '#555' }}>Max Allowed: {maxAmounts[barName][fridge.type]}</Text>
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
         <View style={{ justifyContent: 'space-between', height: 120 }}>
@@ -176,9 +176,6 @@ const FridgeDetailScreen = ({ route, navigation }) => {
       />
     </View>
   );
-  
-  
-
 };
 
 export default FridgeDetailScreen;

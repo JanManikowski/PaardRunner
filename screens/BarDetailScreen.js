@@ -1,3 +1,4 @@
+// BarDetailScreen.js
 import React, { useState, useContext, useEffect } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-elements';
