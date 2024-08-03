@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { View } from 'react-native';
-import { Button, Text } from 'react-native-elements';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from 'react-native-elements';
 import { FridgeContext } from '../contexts/FridgeContext';
 
 const BarDetailScreen = ({ route, navigation }) => {
@@ -44,59 +44,70 @@ const BarDetailScreen = ({ route, navigation }) => {
     }
   }, [bar.name, barShelves, setBarShelves]);
 
+  console.log("BarDetailScreen rendered");
+  console.log("Route params:", route.params);
+
+  if (!bar) {
+    console.error("No bar data found in route parameters");
+    return null;
+  }
+
   return (
     <View style={{ padding: 16, backgroundColor: '#F8F8F8', flex: 1 }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
         {bar.name} Inventory
       </Text>
-      <Button
-        title="View Fridges"
-        buttonStyle={{
-          padding: 15,
-          marginVertical: 10,
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#FFF',
+          padding: 20,
           borderRadius: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 5,
-          backgroundColor: '#007BFF', // Primary color
+          marginBottom: 20,
+          elevation: 2, // For Android shadow
+          alignItems: 'center',
         }}
-        titleStyle={{ fontSize: 16 }}
-        containerStyle={{ marginBottom: 10 }}
         onPress={() => navigation.navigate('FridgeList', { bar })}
-      />
-      <Button
-        title="View Shelves"
-        buttonStyle={{
-          padding: 15,
-          marginVertical: 10,
+      >
+        <Text style={{ fontSize: 18, fontWeight: '600' }}>View Fridges</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#FFF',
+          padding: 20,
           borderRadius: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 5,
-          backgroundColor: '#007BFF', // Primary color
+          marginBottom: 20,
+          elevation: 2, // For Android shadow
+          alignItems: 'center',
         }}
-        titleStyle={{ fontSize: 16 }}
-        containerStyle={{ marginBottom: 10 }}
         onPress={() => navigation.navigate('ShelfList', { bar })}
-      />
-      <Button
-        title="View Missing Items"
-        buttonStyle={{
-          padding: 15,
-          marginVertical: 10,
+      >
+        <Text style={{ fontSize: 18, fontWeight: '600' }}>View Shelves</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#FFF',
+          padding: 20,
           borderRadius: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 5,
-          backgroundColor: '#F44336', // Accent color
+          marginBottom: 20,
+          elevation: 2, // For Android shadow
+          alignItems: 'center',
         }}
-        titleStyle={{ fontSize: 16 }}
-        containerStyle={{ marginBottom: 10 }}
         onPress={() => navigation.navigate('MissingItems', { bar })}
-      />
+      >
+        <Text style={{ fontSize: 18, fontWeight: '600' }}>View Missing Items</Text>
+      </TouchableOpacity>
     </View>
   );
 };
