@@ -108,7 +108,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
       </View>
       <View style={{ alignItems: 'center', marginBottom: 20 }}>
         <Text h4 style={{ color: '#004d40', marginBottom: 10 }}>{fridge.type}</Text>
-        <Text style={{ fontSize: 16, color: '#d32f2f' }}>Missing Items: {missing}</Text>
+        <Text style={{ fontSize: 16, color: '#d32f2f', fontWeight: "bold" }}>Missing Items: {missing}</Text>
         <Text style={{ fontSize: 16, color: '#555' }}>Max Allowed: {maxAmounts[barName][fridge.type]}</Text>
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>

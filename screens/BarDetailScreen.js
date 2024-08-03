@@ -30,7 +30,7 @@ const BarDetailScreen = ({ route, navigation }) => {
         { type: '7up', amount: 4, missing: 0 },
         { type: 'Sisi', amount: 4, missing: 0 },
         { type: 'Tonic', amount: 4, missing: 0 },
-        { type: 'Sprite', amount: 4, missing: 0 },
+        { type: 'Icetea Green', amount: 4, missing: 0 },
         { type: 'Apple Juice', amount: 2, missing: 0 },
         { type: 'Orange Juice', amount: 2, missing: 0 },
         { type: 'Cassis', amount: 2, missing: 0 },

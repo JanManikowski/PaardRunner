@@ -14,7 +14,19 @@ const calculateMaxAmounts = (numFridges, numShelves) => {
     'Weizen 0.0': 2 * 6 * numFridges,
     'Bok': 1 * 6 * numFridges,
     'IPA': 2 * 6 * numFridges,
-    // Add similar calculations for shelves if needed
+    '7up': 4 * numShelves,
+    'Sisi': 4 * numShelves,
+    'Icetea Green': 4 * numShelves,
+    'Tonic': 4 * numShelves,
+    'Apple juice': 2 * numShelves,
+    'Orange juice': 2 * numShelves,
+    'Cassis': 2 * numShelves,
+    'Bitter lemon': 2 * numShelves,
+    'White wine': 4 * 2 * numShelves, // Assuming 2 rows of white wine
+    'Rose': 4 * numShelves,
+    'Sweet wine': 4 * numShelves,
+    'Ginger beer': 4 * numShelves,
+    'Ginger ale': 4, // Fixed to 4 as per description
   };
 };
 
@@ -24,7 +36,6 @@ export const FridgeProvider = ({ children }) => {
   const [maxAmounts, setMaxAmounts] = useState({});
 
   useEffect(() => {
-    // Update max amounts whenever barFridges or barShelves change
     const updateMaxAmounts = async () => {
       const storedBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
       const newMaxAmounts = {};
