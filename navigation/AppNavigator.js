@@ -1,9 +1,8 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import HomeScreen from '../screens/HomeScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import AddBar from '../screens/AddBar';
-import ViewBars from '../screens/ViewBars';
+import ViewBarsScreen from '../screens/ViewBarsScreen'; 
+import ManageBarsScreen from '../screens/ManageBarsScreen'; 
+import AddBarScreen from '../screens/AddBarScreen';
 import BarDetailScreen from '../screens/BarDetailScreen';
 import FridgeDetailScreen from '../screens/FridgeDetailScreen';
 import ShelfDetailScreen from '../screens/ShelfDetailScreen';
@@ -17,11 +16,10 @@ const Stack = createStackNavigator();
 const AppNavigator = () => {
   return (
     <FridgeProvider>
-      <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="AddBar" component={AddBar} />
-        <Stack.Screen name="ViewBars" component={ViewBars} />
+      <Stack.Navigator initialRouteName="ViewBars">
+        <Stack.Screen name="ViewBars" component={ViewBarsScreen} />
+        <Stack.Screen name="ManageBars" component={ManageBarsScreen} />
+        <Stack.Screen name="AddBar" component={AddBarScreen} />
         <Stack.Screen name="BarDetail" component={BarDetailScreen} />
         <Stack.Screen name="FridgeDetail" component={FridgeDetailScreen} />
         <Stack.Screen name="ShelfDetail" component={ShelfDetailScreen} />
@@ -32,7 +30,5 @@ const AppNavigator = () => {
     </FridgeProvider>
   );
 };
-
-
 
 export default AppNavigator;

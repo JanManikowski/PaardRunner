@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, TextInput, Modal, Button } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SettingsScreen = ({ navigation }) => {
+const ManageBarsScreen = ({ navigation }) => {
   const [bars, setBars] = useState([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editBar, setEditBar] = useState(null);
@@ -70,7 +70,7 @@ const SettingsScreen = ({ navigation }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Settings</Text>
+      <Text style={styles.title}>Manage Bars</Text>
       {bars.map((bar, index) => (
         <View key={index} style={styles.barContainer}>
           <Text style={styles.barText}>{bar.name}</Text>
@@ -220,4 +220,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SettingsScreen;
+export default ManageBarsScreen;

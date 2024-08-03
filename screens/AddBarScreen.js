@@ -3,7 +3,7 @@ import { View, TextInput, TouchableOpacity, Alert, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
 
-const AddBar = ({ navigation }) => {
+const AddBarScreen = ({ navigation }) => {
   const [barName, setBarName] = useState('');
   const [numShelves, setNumShelves] = useState('');
   const [numFridges, setNumFridges] = useState('');
@@ -144,4 +144,4 @@ const AddBar = ({ navigation }) => {
   );
 };
 
-export default AddBar;
+export default AddBarScreen;
