@@ -45,9 +45,6 @@ const BarDetailScreen = ({ route, navigation }) => {
     }
   }, [bar.name, barShelves, setBarShelves]);
 
-  console.log("BarDetailScreen rendered");
-  console.log("Route params:", route.params);
-
   if (!bar) {
     console.error("No bar data found in route parameters");
     return null;

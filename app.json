@@ -4,10 +4,10 @@
     "slug": "PaardRunner",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/ipa.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/ipa.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,12 +16,18 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/ipa.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.memonik.PaardRunner"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/ipa.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d414d91c-ab12-4d3e-b5bf-32f101526ae6"
+      }
     }
   }
 }
