@@ -18,15 +18,15 @@ const calculateMaxAmounts = (numFridges, numShelves) => {
     'Sisi': 4 * numShelves,
     'Icetea Green': 4 * numShelves,
     'Tonic': 4 * numShelves,
-    'Apple juice': 2 * numShelves,
-    'Orange juice': 2 * numShelves,
+    'Apple Juice': 2 * numShelves,
+    'Orange Juice': 2 * numShelves,
     'Cassis': 2 * numShelves,
-    'Bitter lemon': 2 * numShelves,
-    'White wine': 4 * 2 * numShelves, // Assuming 2 rows of white wine
+    'Bitter Lemon': 2 * numShelves,
+    'White Wine': 4 * 2 * numShelves, // Assuming 2 rows of white wine
     'Rose': 4 * numShelves,
-    'Sweet wine': 4 * numShelves,
-    'Ginger beer': 4 * numShelves,
-    'Ginger ale': 4, // Fixed to 4 as per description
+    'Sweet Wine': 4 * numShelves,
+    'Ginger Beer': 4 * numShelves,
+    'Ginger Ale': 4, // Fixed to 4 as per description
   };
 };
 

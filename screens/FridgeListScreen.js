@@ -29,21 +29,21 @@ const FridgeListScreen = ({ route, navigation }) => {
   const getImageSource = (type) => {
     switch (type) {
       case 'Spa Blauw':
-        return require('../assets/spa_blauw.jpg');
+        return require('../assets/fridge/spa_blauw.jpg');
       case 'Grolsch 0.0':
-        return require('../assets/0.0.png');
+        return require('../assets/fridge/0.0.png');
       case 'Grimbergen':
-        return require('../assets/grimbergen.jpg');
+        return require('../assets/fridge/grimbergen.jpg');
       case 'Radler':
-        return require('../assets/radler.png');
+        return require('../assets/fridge/radler.png');
       case 'Spa Rood':
-        return require('../assets/sparood.jpg');
+        return require('../assets/fridge/sparood.jpg');
       case 'Weizen 0.0':
-        return require('../assets/weizen.jpeg');
+        return require('../assets/fridge/weizen.jpeg');
       case 'Bok':
-        return require('../assets/bok.png');
+        return require('../assets/fridge/bok.png');
       case 'IPA':
-        return require('../assets/ipa.png');
+        return require('../assets/fridge/ipa.png');
       default:
         return require('../assets/placeholder.jpg'); // Default placeholder image
     }

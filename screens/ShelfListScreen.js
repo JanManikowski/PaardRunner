@@ -30,31 +30,31 @@ const ShelfListScreen = ({ route, navigation }) => {
   const getImageSource = (type) => {
     switch (type) {
       case '7up':
-        return require('../assets/7up.jpeg');
+        return require('../assets/shelve/7up.jpeg');
       case 'Sisi':
-        return require('../assets/sisi.jpg');
+        return require('../assets/shelve/sisi.jpg');
       case 'Tonic':
-        return require('../assets/tonic.jpg');
+        return require('../assets/shelve/tonic.jpg');
       case 'Icetea Green':
-        return require('../assets/icetea.jpeg');
-      case 'Apple juice':
-        return require('../assets/appelsap.jpeg');
-      case 'Orange juice':
-        return require('../assets/orange.png');
+        return require('../assets/shelve/icetea.jpeg');
+      case 'Apple Juice':
+        return require('../assets/shelve/appelsap.jpeg');
+      case 'Orange Juice':
+        return require('../assets/shelve/orange.png');
       case 'Cassis':
-        return require('../assets/cassis.jpg');
-      case 'Bitter lemon':
-        return require('../assets/bitterlemon.jpeg');
-      case 'White wine':
-        return require('../assets/placeholder.jpg');
+        return require('../assets/shelve/cassis.jpg');
+      case 'Bitter Lemon':
+        return require('../assets/shelve/bitterlemon.jpeg');
+      case 'White Wine':
+        return require('../assets/shelve/whitewine.png');
       case 'Rose':
-        return require('../assets/placeholder.jpg');
-      case 'Sweet wine':
-        return require('../assets/placeholder.jpg');
-      case 'Ginger beer':
-        return require('../assets/placeholder.jpg');
-      case 'Ginger ale':
-        return require('../assets/placeholder.jpg');
+        return require('../assets/shelve/rose.jpg');
+      case 'Sweet Wine':
+        return require('../assets/shelve/sweetwine.jpeg');
+      case 'Ginger Beer':
+        return require('../assets/shelve/gingerbeer.jpeg');
+      case 'Ginger Ale':
+        return require('../assets/shelve/gingerale.jpeg');
       default:
         return require('../assets/placeholder.jpg'); // Default placeholder image
     }

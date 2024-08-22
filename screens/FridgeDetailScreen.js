@@ -5,10 +5,10 @@ import { FridgeContext } from '../contexts/FridgeContext';
 import { saveData, getData } from '../storage/AsyncStorageHelper';
 
 const FridgeDetailScreen = ({ route, navigation }) => {
-  const { barName, fridgeIndex } = route.params;
+  const { barName, fridgeIndex: initialFridgeIndex } = route.params;
   const { barFridges, setBarFridges, saveBarFridges, maxAmounts } = useContext(FridgeContext);
-  const barFridge = barFridges[barName] || [];
-  const fridge = barFridge[fridgeIndex];
+  const [fridgeIndex, setFridgeIndex] = useState(initialFridgeIndex);
+  const [fridge, setFridge] = useState(barFridges[barName][initialFridgeIndex]);
   const [missing, setMissing] = useState(fridge.missing);
   const [customValue, setCustomValue] = useState('');
 
@@ -20,7 +20,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
       }
     };
     loadData();
-  }, [barName, fridgeIndex]);
+  }, [fridgeIndex]);
 
   useEffect(() => {
     const saveMissing = async () => {
@@ -50,41 +50,39 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   };
 
   const goToNextItem = () => {
-    if (fridgeIndex < barFridge.length - 1) {
-      navigation.replace('FridgeDetail', {
-        barName,
-        fridgeIndex: fridgeIndex + 1,
-      });
+    if (fridgeIndex < barFridges[barName].length - 1) {
+      const nextIndex = fridgeIndex + 1;
+      setFridgeIndex(nextIndex);
+      setFridge(barFridges[barName][nextIndex]);
     }
   };
 
   const goToPreviousItem = () => {
     if (fridgeIndex > 0) {
-      navigation.replace('FridgeDetail', {
-        barName,
-        fridgeIndex: fridgeIndex - 1,
-      });
+      const prevIndex = fridgeIndex - 1;
+      setFridgeIndex(prevIndex);
+      setFridge(barFridges[barName][prevIndex]);
     }
   };
 
   const getImageSource = (type) => {
     switch (type) {
       case 'Spa Blauw':
-        return require('../assets/spa_blauw.jpg');
+        return require('../assets/fridge/spa_blauw.jpg');
       case 'Grolsch 0.0':
-        return require('../assets/0.0.png');
+        return require('../assets/fridge/0.0.png');
       case 'Grimbergen':
-        return require('../assets/grimbergen.jpg');
+        return require('../assets/fridge/grimbergen.jpg');
       case 'Radler':
-        return require('../assets/radler.png');
+        return require('../assets/fridge/radler.png');
       case 'Spa Rood':
-        return require('../assets/sparood.jpg');
+        return require('../assets/fridge/sparood.jpg');
       case 'Weizen 0.0':
-        return require('../assets/weizen.jpeg');
+        return require('../assets/fridge/weizen.jpeg');
       case 'Bok':
-        return require('../assets/bok.png');
+        return require('../assets/fridge/bok.png');
       case 'IPA':
-        return require('../assets/ipa.png');
+        return require('../assets/fridge/ipa.png');
       default:
         return require('../assets/placeholder.jpg'); // Default placeholder image
     }
@@ -100,10 +98,10 @@ const FridgeDetailScreen = ({ route, navigation }) => {
           disabled={fridgeIndex === 0}
         />
         <Button
-          icon={<Icon name="arrow-forward" size={30} color={fridgeIndex === barFridge.length - 1 ? '#ccc' : '#00796b'} />}
+          icon={<Icon name="arrow-forward" size={30} color={fridgeIndex === barFridges[barName].length - 1 ? '#ccc' : '#00796b'} />}
           type="clear"
           onPress={goToNextItem}
-          disabled={fridgeIndex === barFridge.length - 1}
+          disabled={fridgeIndex === barFridges[barName].length - 1}
         />
       </View>
       <View style={{ alignItems: 'center', marginBottom: 20 }}>

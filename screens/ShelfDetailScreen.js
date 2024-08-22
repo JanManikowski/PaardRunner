@@ -34,10 +34,11 @@ const ShelfDetailScreen = ({ route, navigation }) => {
   }, [missing]);
 
   const updateMissing = (value) => {
-    const maxAmount = maxAmounts[barName][shelf.type] || shelf.depth; // default to shelf depth if maxAmounts not found
-    const newMissing = Math.max(0, Math.min(missing + value, maxAmount));
+    const maxAmount = maxAmounts[barName]?.[shelf.type] || shelf.depth;
+    const currentMissing = isNaN(missing) ? 0 : missing;
+    const newMissing = Math.max(0, Math.min(currentMissing + value, maxAmount));
     setMissing(newMissing);
-  };
+};
 
   const handleCustomValue = (isAdd) => {
     const value = parseInt(customValue, 10);
@@ -72,31 +73,31 @@ const ShelfDetailScreen = ({ route, navigation }) => {
   const getImageSource = (type) => {
     switch (type) {
       case '7up':
-        return require('../assets/7up.jpeg');
+        return require('../assets/shelve/7up.jpeg');
       case 'Sisi':
-        return require('../assets/sisi.jpg');
+        return require('../assets/shelve/sisi.jpg');
       case 'Tonic':
-        return require('../assets/tonic.jpg');
+        return require('../assets/shelve/tonic.jpg');
       case 'Icetea Green':
-        return require('../assets/icetea.jpg');
-      case 'Apple juice':
-        return require('../assets/appelsap.jpeg');
-      case 'Orange juice':
-        return require('../assets/orange.png');
+        return require('../assets/shelve/icetea.jpeg');
+      case 'Apple Juice':
+        return require('../assets/shelve/appelsap.jpeg');
+      case 'Orange Juice':
+        return require('../assets/shelve/orange.png');
       case 'Cassis':
-        return require('../assets/cassis.jpg');
-      case 'Bitter lemon':
-        return require('../assets/bitterlemon.jpeg');
-      case 'White wine':
-        return require('../assets/placeholder.jpg');
+        return require('../assets/shelve/cassis.jpg');
+      case 'Bitter Lemon':
+        return require('../assets/shelve/bitterlemon.jpeg');
+      case 'White Wine':
+        return require('../assets/shelve/whitewine.png');
       case 'Rose':
-        return require('../assets/placeholder.jpg');
-      case 'Sweet wine':
-        return require('../assets/placeholder.jpg');
-      case 'Ginger beer':
-        return require('../assets/placeholder.jpg');
-      case 'Ginger ale':
-        return require('../assets/placeholder.jpg');
+        return require('../assets/shelve/rose.jpg');
+      case 'Sweet Wine':
+        return require('../assets/shelve/sweetwine.jpeg');
+      case 'Ginger Beer':
+        return require('../assets/shelve/gingerbeer.jpeg');
+      case 'Ginger Ale':
+        return require('../assets/shelve/gingerale.jpeg');
       default:
         return require('../assets/placeholder.jpg'); // Default placeholder image
     }
@@ -120,7 +121,6 @@ const ShelfDetailScreen = ({ route, navigation }) => {
       </View>
       <View style={{ alignItems: 'center', marginBottom: 20 }}>
         <Text h4 style={{ color: '#004d40', marginBottom: 10 }}>{shelf.type}</Text>
-        <Text style={{ fontSize: 16, color: '#00796b' }}>Total Items: {shelf.depth}</Text>
         <Text style={{ fontSize: 16, color: '#d32f2f' }}>Missing Items: {missing}</Text>
         <Text style={{ fontSize: 16, color: '#555' }}>Max Allowed: {maxAmounts[barName][shelf.type] || shelf.depth}</Text>
       </View>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, TextInput, Modal, Button } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, Modal, Button, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ManageBarsScreen = ({ navigation }) => {
+const ManageBarsScreen = ({ navigation, route }) => {
   const [bars, setBars] = useState([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editBar, setEditBar] = useState(null);
@@ -12,7 +12,7 @@ const ManageBarsScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchBars();
-  }, []);
+  }, [route.params?.refresh]); // Listen for refresh flag
 
   const fetchBars = async () => {
     try {
@@ -40,6 +40,8 @@ const ManageBarsScreen = ({ navigation }) => {
             const filteredBars = bars.filter(bar => bar.name !== barName);
             setBars(filteredBars);
             await AsyncStorage.setItem('bars', JSON.stringify(filteredBars));
+            // Refresh ViewBarsScreen
+            navigation.navigate('ViewBars', { refresh: true });
           },
           style: 'destructive',
         },
@@ -66,29 +68,28 @@ const ManageBarsScreen = ({ navigation }) => {
     setBars(updatedBars);
     await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
     setEditModalVisible(false);
+    // Refresh ViewBarsScreen
+    navigation.navigate('ViewBars', { refresh: true });
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Manage Bars</Text>
+    <ScrollView contentContainerStyle={{ padding: 16, backgroundColor: '#fff', flexGrow: 1 }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>Manage Bars</Text>
       {bars.map((bar, index) => (
-        <View key={index} style={styles.barContainer}>
-          <Text style={styles.barText}>{bar.name}</Text>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.editButton} onPress={() => editBarDetails(bar)}>
-              <Text style={styles.buttonText}>Edit</Text>
+        <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
+          <Text style={{ fontSize: 18 }}>{bar.name}</Text>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity style={{ backgroundColor: '#007BFF', padding: 10, marginRight: 10, borderRadius: 5 }} onPress={() => editBarDetails(bar)}>
+              <Text style={{ color: '#fff', fontSize: 14 }}>Edit</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteButton} onPress={() => deleteBar(bar.name)}>
-              <Text style={styles.buttonText}>Delete</Text>
+            <TouchableOpacity style={{ backgroundColor: '#FF0000', padding: 10, borderRadius: 5 }} onPress={() => deleteBar(bar.name)}>
+              <Text style={{ color: '#fff', fontSize: 14 }}>Delete</Text>
             </TouchableOpacity>
           </View>
         </View>
       ))}
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => navigation.navigate('AddBar')}
-      >
-        <Text style={styles.buttonText}>Add New Bar</Text>
+      <TouchableOpacity style={{ backgroundColor: '#28a745', padding: 10, borderRadius: 5, marginTop: 20, alignItems: 'center' }} onPress={() => navigation.navigate('AddBar')}>
+        <Text style={{ color: '#fff', fontSize: 14 }}>Add New Bar</Text>
       </TouchableOpacity>
 
       <Modal
@@ -97,30 +98,47 @@ const ManageBarsScreen = ({ navigation }) => {
         visible={editModalVisible}
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Edit Bar</Text>
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        }}>
+          <View style={{
+            margin: 20,
+            backgroundColor: 'white',
+            borderRadius: 10,
+            padding: 35,
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 5,
+            width: '80%',
+          }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 15 }}>Edit Bar</Text>
             <TextInput
-              style={styles.input}
+              style={{ width: '100%', height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, paddingHorizontal: 8 }}
               placeholder="Name"
               value={editName}
               onChangeText={setEditName}
             />
             <TextInput
-              style={styles.input}
+              style={{ width: '100%', height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, paddingHorizontal: 8 }}
               placeholder="Fridges"
               value={editFridges}
               keyboardType="numeric"
               onChangeText={setEditFridges}
             />
             <TextInput
-              style={styles.input}
+              style={{ width: '100%', height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, paddingHorizontal: 8 }}
               placeholder="Shelves"
               value={editShelves}
               keyboardType="numeric"
               onChangeText={setEditShelves}
             />
-            <View style={styles.modalButtonContainer}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
               <Button title="Save" onPress={saveBarDetails} />
               <Button title="Cancel" onPress={() => setEditModalVisible(false)} />
             </View>
@@ -130,94 +148,5 @@ const ManageBarsScreen = ({ navigation }) => {
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#fff',
-    flexGrow: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  barContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  barText: {
-    fontSize: 18,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-  },
-  editButton: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    marginRight: 10,
-    borderRadius: 5,
-  },
-  deleteButton: {
-    backgroundColor: '#FF0000',
-    padding: 10,
-    borderRadius: 5,
-  },
-  addButton: {
-    backgroundColor: '#28a745',
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  input: {
-    width: '100%',
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    marginBottom: 10,
-    paddingHorizontal: 8,
-  },
-  modalButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-});
 
 export default ManageBarsScreen;

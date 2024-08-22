@@ -20,10 +20,13 @@ const AddBarScreen = ({ navigation }) => {
       bars.push({ name: barName, numShelves: parseInt(numShelves), numFridges: parseInt(numFridges), fridges: [], shelves: [] });
       await AsyncStorage.setItem('bars', JSON.stringify(bars));
       Alert.alert('Success', 'Bar added successfully');
+
       setBarName('');
       setNumShelves('');
       setNumFridges('');
-      navigation.navigate('Home');
+
+      // Navigate back to ManageBars and pass the refresh flag
+      navigation.navigate('ViewBars', { refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to add bar');
       console.error(error);
