@@ -34,6 +34,7 @@ export const FridgeProvider = ({ children }) => {
   const [barFridges, setBarFridges] = useState({});
   const [barShelves, setBarShelves] = useState({});
   const [maxAmounts, setMaxAmounts] = useState({});
+  const [barColors, setBarColors] = useState({}); 
 
   useEffect(() => {
     const updateMaxAmounts = async () => {
@@ -44,7 +45,11 @@ export const FridgeProvider = ({ children }) => {
       });
       setMaxAmounts(newMaxAmounts);
     };
-
+    const fetchColors = async () => {
+      const storedColors = JSON.parse(await AsyncStorage.getItem('barColors')) || {};
+      setBarColors(storedColors);
+    };
+    fetchColors()
     updateMaxAmounts();
   }, [barFridges, barShelves]);
 
@@ -66,8 +71,17 @@ export const FridgeProvider = ({ children }) => {
     }
   };
 
+  const saveBarColors = async (colors) => { // Add this function
+    try {
+      await AsyncStorage.setItem('barColors', JSON.stringify(colors));
+      setBarColors(colors);
+    } catch (error) {
+      console.error('Error saving colors:', error);
+    }
+  };
+
   return (
-    <FridgeContext.Provider value={{ barFridges, setBarFridges, saveBarFridges, barShelves, setBarShelves, saveBarShelves, maxAmounts }}>
+    <FridgeContext.Provider value={{ barFridges, setBarFridges, saveBarFridges, barShelves, setBarShelves, saveBarShelves, maxAmounts, barColors, setBarColors, saveBarColors }}>
       {children}
     </FridgeContext.Provider>
   );
