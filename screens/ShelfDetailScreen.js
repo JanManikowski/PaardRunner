@@ -5,10 +5,10 @@ import { FridgeContext } from '../contexts/FridgeContext';
 import { saveData, getData } from '../storage/AsyncStorageHelper';
 
 const ShelfDetailScreen = ({ route, navigation }) => {
-  const { barName, shelfIndex } = route.params;
+  const { barName, shelfIndex: initialShelfIndex } = route.params;
   const { barShelves, setBarShelves, saveBarShelves, maxAmounts } = useContext(FridgeContext);
-  const barShelf = barShelves[barName] || [];
-  const shelf = barShelf[shelfIndex];
+  const [shelfIndex, setShelfIndex] = useState(initialShelfIndex);
+  const [shelf, setShelf] = useState(barShelves[barName][initialShelfIndex]);
   const [missing, setMissing] = useState(shelf.missing);
   const [customValue, setCustomValue] = useState('');
 
@@ -20,7 +20,7 @@ const ShelfDetailScreen = ({ route, navigation }) => {
       }
     };
     loadData();
-  }, [barName, shelfIndex]);
+  }, [shelfIndex, barName]);
 
   useEffect(() => {
     const saveMissing = async () => {
@@ -35,10 +35,9 @@ const ShelfDetailScreen = ({ route, navigation }) => {
 
   const updateMissing = (value) => {
     const maxAmount = maxAmounts[barName]?.[shelf.type] || shelf.depth;
-    const currentMissing = isNaN(missing) ? 0 : missing;
-    const newMissing = Math.max(0, Math.min(currentMissing + value, maxAmount));
+    const newMissing = Math.max(0, Math.min(missing + value, maxAmount));
     setMissing(newMissing);
-};
+  };
 
   const handleCustomValue = (isAdd) => {
     const value = parseInt(customValue, 10);
@@ -53,22 +52,21 @@ const ShelfDetailScreen = ({ route, navigation }) => {
   };
 
   const goToNextItem = () => {
-    if (shelfIndex < barShelf.length - 1) {
-      navigation.replace('ShelfDetail', {
-        barName,
-        shelfIndex: shelfIndex + 1,
-      });
+    if (shelfIndex < barShelves[barName].length - 1) {
+      setShelfIndex(shelfIndex + 1);
     }
   };
 
   const goToPreviousItem = () => {
     if (shelfIndex > 0) {
-      navigation.replace('ShelfDetail', {
-        barName,
-        shelfIndex: shelfIndex - 1,
-      });
+      setShelfIndex(shelfIndex - 1);
     }
   };
+
+  useEffect(() => {
+    setShelf(barShelves[barName][shelfIndex]);
+    setMissing(barShelves[barName][shelfIndex].missing);
+  }, [shelfIndex]);
 
   const getImageSource = (type) => {
     switch (type) {
@@ -105,6 +103,7 @@ const ShelfDetailScreen = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: '#F0F0F0' }}>
+      {/* Navigation Arrows */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
         <Button
           icon={<Icon name="arrow-back" size={30} color={shelfIndex === 0 ? '#ccc' : '#00796b'} />}
@@ -113,17 +112,21 @@ const ShelfDetailScreen = ({ route, navigation }) => {
           disabled={shelfIndex === 0}
         />
         <Button
-          icon={<Icon name="arrow-forward" size={30} color={shelfIndex === barShelf.length - 1 ? '#ccc' : '#00796b'} />}
+          icon={<Icon name="arrow-forward" size={30} color={shelfIndex === barShelves[barName].length - 1 ? '#ccc' : '#00796b'} />}
           type="clear"
           onPress={goToNextItem}
-          disabled={shelfIndex === barShelf.length - 1}
+          disabled={shelfIndex === barShelves[barName].length - 1}
         />
       </View>
+
+      {/* Shelf Details */}
       <View style={{ alignItems: 'center', marginBottom: 20 }}>
         <Text h4 style={{ color: '#004d40', marginBottom: 10 }}>{shelf.type}</Text>
         <Text style={{ fontSize: 16, color: '#d32f2f' }}>Missing Items: {missing}</Text>
-        <Text style={{ fontSize: 16, color: '#555' }}>Max Allowed: {maxAmounts[barName][shelf.type] || shelf.depth}</Text>
+        <Text style={{ fontSize: 16, color: '#555' }}>Max Allowed: {maxAmounts[barName]?.[shelf.type] || shelf.depth}</Text>
       </View>
+
+      {/* Update Buttons */}
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
         <View style={{ justifyContent: 'space-between', height: 120 }}>
           <Button
@@ -158,6 +161,8 @@ const ShelfDetailScreen = ({ route, navigation }) => {
           />
         </View>
       </View>
+
+      {/* Custom Value Input */}
       <Input
         placeholder="Custom value"
         keyboardType="numeric"
@@ -166,6 +171,8 @@ const ShelfDetailScreen = ({ route, navigation }) => {
         containerStyle={{ marginBottom: 20, width: '80%', alignSelf: 'center' }}
         inputStyle={{ textAlign: 'center' }}
       />
+
+      {/* Additional Controls */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
         <Button
           title="Retract Value"

@@ -167,13 +167,29 @@ const MissingItemsScreen = ({ route }) => {
         {
           text: "Remove All",
           onPress: async () => {
+            // Update both fridges and shelves
+            let updatedFridges = [...barFridges[bar.name]];
+            let updatedShelves = [...barShelves[bar.name]];
+  
             for (let item of missingItems) {
               if (item.shelfIndex !== undefined) {
                 await removeData(`shelf_${bar.name}_${item.shelfIndex}`);
+                updatedShelves[item.shelfIndex].missing = 0;
               } else {
                 await removeData(`fridge_${bar.name}_${item.fridgeIndex}`);
+                updatedFridges[item.fridgeIndex].missing = 0;
               }
             }
+  
+            // Update context with the cleared data
+            setBarFridges(prev => ({ ...prev, [bar.name]: updatedFridges }));
+            setBarShelves(prev => ({ ...prev, [bar.name]: updatedShelves }));
+  
+            // Save the updated data to AsyncStorage
+            saveBarFridges(updatedFridges);
+            saveBarShelves(updatedShelves);
+  
+            // Clear the missing items from the current state
             setMissingItems([]);
           },
           style: "destructive"
@@ -181,6 +197,7 @@ const MissingItemsScreen = ({ route }) => {
       ]
     );
   };
+  
 
   const handleInputChange = (index, value) => {
     setInputValues(prev => ({ ...prev, [index]: value }));

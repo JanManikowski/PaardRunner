@@ -13,16 +13,24 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   const [customValue, setCustomValue] = useState('');
 
   useEffect(() => {
+    // Fetch the correct fridge and missing data on fridgeIndex change
     const loadData = async () => {
+      const currentFridge = barFridges[barName][fridgeIndex];
       const savedMissing = await getData(`fridge_${barName}_${fridgeIndex}`);
+      
+      setFridge(currentFridge); // Update the fridge to the current one
       if (savedMissing !== null) {
         setMissing(savedMissing);
+      } else {
+        setMissing(currentFridge.missing);
       }
     };
+
     loadData();
-  }, [fridgeIndex]);
+  }, [fridgeIndex, barFridges, barName]);
 
   useEffect(() => {
+    // Save the missing data whenever it changes
     const saveMissing = async () => {
       await saveData(`fridge_${barName}_${fridgeIndex}`, missing);
     };
@@ -34,8 +42,10 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   }, [missing]);
 
   const updateMissing = (value) => {
-    const newMissing = Math.max(0, Math.min(missing + value, maxAmounts[barName][fridge.type]));
-    setMissing(newMissing);
+    setMissing(prevMissing => {
+      const newMissing = Math.max(0, Math.min(prevMissing + value, maxAmounts[barName][fridge.type]));
+      return newMissing;
+    });
   };
 
   const handleCustomValue = (isAdd) => {
@@ -51,17 +61,13 @@ const FridgeDetailScreen = ({ route, navigation }) => {
 
   const goToNextItem = () => {
     if (fridgeIndex < barFridges[barName].length - 1) {
-      const nextIndex = fridgeIndex + 1;
-      setFridgeIndex(nextIndex);
-      setFridge(barFridges[barName][nextIndex]);
+      setFridgeIndex(fridgeIndex + 1);
     }
   };
 
   const goToPreviousItem = () => {
     if (fridgeIndex > 0) {
-      const prevIndex = fridgeIndex - 1;
-      setFridgeIndex(prevIndex);
-      setFridge(barFridges[barName][prevIndex]);
+      setFridgeIndex(fridgeIndex - 1);
     }
   };
 
@@ -90,6 +96,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: '#F0F0F0' }}>
+      {/* Arrow Buttons */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
         <Button
           icon={<Icon name="arrow-back" size={30} color={fridgeIndex === 0 ? '#ccc' : '#00796b'} />}
@@ -104,11 +111,15 @@ const FridgeDetailScreen = ({ route, navigation }) => {
           disabled={fridgeIndex === barFridges[barName].length - 1}
         />
       </View>
+
+      {/* Fridge Details */}
       <View style={{ alignItems: 'center', marginBottom: 20 }}>
         <Text h4 style={{ color: '#004d40', marginBottom: 10 }}>{fridge.type}</Text>
         <Text style={{ fontSize: 16, color: '#d32f2f', fontWeight: "bold" }}>Missing Items: {missing}</Text>
         <Text style={{ fontSize: 16, color: '#555' }}>Max Allowed: {maxAmounts[barName][fridge.type]}</Text>
       </View>
+
+      {/* Update Buttons */}
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
         <View style={{ justifyContent: 'space-between', height: 120 }}>
           <Button
@@ -119,7 +130,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
           />
           <Button
             title="-5"
-            buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10}}
+            buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
             onPress={() => updateMissing(-5)}
             containerStyle={{ width: 60 }}
           />
@@ -143,6 +154,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
           />
         </View>
       </View>
+
       <Input
         placeholder="Custom value"
         keyboardType="numeric"
@@ -151,6 +163,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
         containerStyle={{ marginBottom: 20, width: '80%', alignSelf: 'center' }}
         inputStyle={{ textAlign: 'center' }}
       />
+
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
         <Button
           title="Retract Value"
@@ -165,6 +178,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
           onPress={() => handleCustomValue(true)}
         />
       </View>
+
       <Button
         title="Clear Missing Items"
         buttonStyle={{ backgroundColor: '#B22222', borderRadius: 10, paddingHorizontal: 20 }}
