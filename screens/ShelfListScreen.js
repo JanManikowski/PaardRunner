@@ -1,6 +1,6 @@
 // ShelfListScreen.js
 import React, { useContext, useEffect, useState, useCallback } from 'react';
-import { View, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, ScrollView, Image, TouchableOpacity, Button } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { getData } from '../storage/AsyncStorageHelper';
@@ -33,10 +33,10 @@ const ShelfListScreen = ({ route, navigation }) => {
         return require('../assets/shelve/7up.jpeg');
       case 'Sisi':
         return require('../assets/shelve/sisi.jpg');
-      case 'Tonic':
-        return require('../assets/shelve/tonic.jpg');
       case 'Icetea Green':
         return require('../assets/shelve/icetea.jpeg');
+      case 'Tonic':
+        return require('../assets/shelve/tonic.jpg');
       case 'Apple Juice':
         return require('../assets/shelve/appelsap.jpeg');
       case 'Orange Juice':
@@ -62,7 +62,15 @@ const ShelfListScreen = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: '#f5f5f5' }}>
-      <Text h4 style={{ marginBottom: 16, color: '#333' }}>Shelves in {bar.name}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <Text h4 style={{ color: '#333' }}>Fridges in {bar.name}</Text>
+      <Button
+        title='Go to Fridges'
+        icon={<Icon name="list" color="white" />}
+        buttonStyle={{ backgroundColor: '#00796b', borderRadius: 10 }}
+        onPress={() => navigation.navigate('FridgeList', { bar: { name: bar.name } })}
+      />
+    </View>
       <ScrollView>
         {shelves.map((item, index) => (
           <TouchableOpacity

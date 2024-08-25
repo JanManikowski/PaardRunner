@@ -1,5 +1,5 @@
 import React, { useContext, useState, useCallback } from 'react';
-import { View, ScrollView, Image, TouchableOpacity, Text } from 'react-native';
+import { View, ScrollView, Image, TouchableOpacity, Text, Button } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { getData } from '../storage/AsyncStorageHelper';
@@ -51,7 +51,15 @@ const FridgeListScreen = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: '#f5f5f5' }}>
-      <Text h4 style={{ marginBottom: 16, color: '#333' }}>Fridges in {bar.name}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <Text h4 style={{ color: '#333' }}>Fridges in {bar.name}</Text>
+      <Button
+        title='Go to Shelves'
+        icon={<Icon name="list" color="white" />}
+        buttonStyle={{ backgroundColor: '#00796b', borderRadius: 10 }}
+        onPress={() => navigation.navigate('ShelfList', { bar: { name: bar.name } })}
+      />
+    </View>
       <ScrollView>
         {fridges.map((item, index) => (
           <TouchableOpacity

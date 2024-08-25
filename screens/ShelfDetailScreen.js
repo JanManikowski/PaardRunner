@@ -194,6 +194,13 @@ const ShelfDetailScreen = ({ route, navigation }) => {
         onPress={clearMissing}
         containerStyle={{ alignItems: 'center' }}
       />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginTop: 20 }}>
+        <Button
+          title="Go to Fridges"
+          buttonStyle={{ backgroundColor: '#00796b', borderRadius: 10 }}
+          onPress={() => navigation.navigate('FridgeList', { bar: { name: barName } })}
+        />
+    </View>
     </View>
   );
 };
