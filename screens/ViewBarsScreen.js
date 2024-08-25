@@ -5,6 +5,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import WheelColorPicker from 'react-native-wheel-color-picker';
 
+{/* TODO ManageBars button needs to be closed when in colorpicker */}
+      // TODO make sure the colorpicker looks at least acceptable
+
 const ViewBarsScreen = ({ navigation }) => {
   const [bars, setBars] = useState([]);
   const [selectedBar, setSelectedBar] = useState(null);
