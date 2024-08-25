@@ -3,6 +3,7 @@ import { ScrollView, View, Image } from 'react-native';
 import { Text, Button, Input, Icon } from 'react-native-elements';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { saveData, getData } from '../storage/AsyncStorageHelper';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const FridgeDetailScreen = ({ route, navigation }) => {
   const { barName, fridgeIndex: initialFridgeIndex } = route.params;
@@ -11,6 +12,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   const [fridge, setFridge] = useState(barFridges[barName][initialFridgeIndex]);
   const [missing, setMissing] = useState(fridge.missing);
   const [customValue, setCustomValue] = useState('');
+  const { theme, toggleTheme } = useContext(ThemeContext);
 
   useEffect(() => {
     // Fetch the correct fridge and missing data on fridgeIndex change
@@ -95,7 +97,7 @@ const FridgeDetailScreen = ({ route, navigation }) => {
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: '#F0F0F0' }}>
+    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       {/* Arrow Buttons */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
         <Button

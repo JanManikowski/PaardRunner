@@ -1,16 +1,21 @@
 import React from 'react';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider, ThemeContext } from './contexts/ThemeContext';
+import { Provider as PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import AppNavigator from './navigation/AppNavigator';
-
-//TODO make the fucking darktheme
 
 export default function App() {
   return (
     <ThemeProvider>
-      <NavigationContainer>
-        <AppNavigator />
-      </NavigationContainer>
+      <ThemeContext.Consumer>
+        {({ theme }) => (
+          <PaperProvider theme={theme}>
+            <NavigationContainer theme={theme}>
+              <AppNavigator />
+            </NavigationContainer>
+          </PaperProvider>
+        )}
+      </ThemeContext.Consumer>
     </ThemeProvider>
   );
 }

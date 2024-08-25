@@ -3,10 +3,12 @@ import React, { useState, useContext, useEffect } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-elements';
 import { FridgeContext } from '../contexts/FridgeContext';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const BarDetailScreen = ({ route, navigation }) => {
   const { bar } = route.params;
   const { barFridges, setBarFridges, barShelves, setBarShelves } = useContext(FridgeContext);
+  const { theme, toggleTheme } = useContext(ThemeContext);
 
   useEffect(() => {
     if (!barFridges[bar.name]) {
@@ -51,8 +53,8 @@ const BarDetailScreen = ({ route, navigation }) => {
   }
 
   return (
-    <View style={{ padding: 16, backgroundColor: '#F8F8F8', flex: 1 }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
+    <View style={{ padding: 16, backgroundColor: theme.colors.background, flex: 1 }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color:theme.colors.text }}>
         {bar.name} Inventory
       </Text>
       <TouchableOpacity
@@ -67,10 +69,11 @@ const BarDetailScreen = ({ route, navigation }) => {
           marginBottom: 20,
           elevation: 2, // For Android shadow
           alignItems: 'center',
+          backgroundColor: theme.colors.surfaceVariant,
         }}
         onPress={() => navigation.navigate('FridgeList', { bar })}
       >
-        <Text style={{ fontSize: 18, fontWeight: '600' }}>View Fridges</Text>
+        <Text style={{ fontSize: 18, fontWeight: '600', color:theme.colors.text  }}>View Fridges</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={{
@@ -84,10 +87,11 @@ const BarDetailScreen = ({ route, navigation }) => {
           marginBottom: 20,
           elevation: 2, // For Android shadow
           alignItems: 'center',
+          backgroundColor: theme.colors.surfaceVariant,
         }}
         onPress={() => navigation.navigate('ShelfList', { bar })}
       >
-        <Text style={{ fontSize: 18, fontWeight: '600' }}>View Shelves</Text>
+        <Text style={{ fontSize: 18, fontWeight: '600', color:theme.colors.text }}>View Shelves</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={{
@@ -101,10 +105,11 @@ const BarDetailScreen = ({ route, navigation }) => {
           marginBottom: 20,
           elevation: 2, // For Android shadow
           alignItems: 'center',
+          backgroundColor: theme.colors.surfaceVariant,
         }}
         onPress={() => navigation.navigate('MissingItems', { bar })}
       >
-        <Text style={{ fontSize: 18, fontWeight: '600' }}>View Missing Items</Text>
+        <Text style={{ fontSize: 18, fontWeight: '600', color:theme.colors.text }}>View Missing Items</Text>
       </TouchableOpacity>
     </View>
   );
