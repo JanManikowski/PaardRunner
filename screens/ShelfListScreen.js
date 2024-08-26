@@ -1,9 +1,10 @@
-import React, { useContext, useEffect, useState, useCallback } from 'react';
+import React, { useContext, useState, useCallback, useLayoutEffect } from 'react';
 import { View, ScrollView, Image, TouchableOpacity, Button } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { Text, Icon } from 'react-native-elements';
 import { ThemeContext } from '../contexts/ThemeContext';
+import { getData } from '../storage/AsyncStorageHelper';
 
 const ShelfListScreen = ({ route, navigation }) => {
   const { bar } = route.params;
@@ -60,6 +61,19 @@ const ShelfListScreen = ({ route, navigation }) => {
     }
   };
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('BarDetail', { bar })}
+          style={{ marginLeft: 10 }}
+        >
+          <Icon name="arrow-back" size={25} color={theme.colors.onSurface} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, bar, theme.colors.onSurface]);
+
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -67,7 +81,7 @@ const ShelfListScreen = ({ route, navigation }) => {
           Shelves in {bar.name}
         </Text>
         <Button
-          title='Go to Fridges'
+          title="Go to Fridges"
           icon={<Icon name="list" color={theme.colors.onPrimary} />}
           buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 10 }}
           onPress={() => navigation.navigate('FridgeList', { bar: { name: bar.name } })}

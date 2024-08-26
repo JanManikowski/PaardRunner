@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback } from 'react';
+import React, { useContext, useState, useCallback, useLayoutEffect } from 'react';
 import { View, ScrollView, Image, TouchableOpacity, Text, Button } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FridgeContext } from '../contexts/FridgeContext';
@@ -51,6 +51,19 @@ const FridgeListScreen = ({ route, navigation }) => {
     }
   };
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('BarDetail', { bar })}
+          style={{ marginLeft: 10 }}
+        >
+          <Icon name="arrow-back" size={25} color={theme.colors.onSurface} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, bar, theme.colors.onSurface]);
+
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -58,7 +71,7 @@ const FridgeListScreen = ({ route, navigation }) => {
           Fridges in {bar.name}
         </Text>
         <Button
-          title='Go to Shelves'
+          title="Go to Shelves"
           icon={<Icon name="list" color={theme.colors.onPrimary} />}
           buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 10 }}
           onPress={() => navigation.navigate('ShelfList', { bar: { name: bar.name } })}
@@ -66,7 +79,7 @@ const FridgeListScreen = ({ route, navigation }) => {
       </View>
 
       <Button
-        title='Open a Case'
+        title="Open a Case"
         onPress={() => navigation.navigate('CaseOpening')}
         buttonStyle={{
           backgroundColor: theme.colors.primary,

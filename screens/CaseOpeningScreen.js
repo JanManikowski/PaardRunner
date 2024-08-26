@@ -4,22 +4,21 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from '
 import { Audio } from 'expo-av';
 
 const { width } = Dimensions.get('window');
-const ITEM_WIDTH = width * 0.4;
-const SPACING = 15;
+const ITEM_WIDTH = width * 0.2;
+const SPACING = 0;
 const CENTER_POSITION = (width - ITEM_WIDTH) / 2;
 
 const availableSkins = [
   { name: 'Classic', image: require('../assets/skins/classic.jpg') },
+  { name: 'Modern', image: require('../assets/skins/modern.jpg') },
   { name: 'Retro', image: require('../assets/skins/retro.jpg') },
-//   { name: 'Modern', image: require('../assets/skins/modern.jpg') },
   { name: 'Neon', image: require('../assets/skins/neon.jpg') },
   { name: 'Cyber', image: require('../assets/skins/cyber.png') },
 ];
 
-// Generate a large number of images to ensure we never run out
 const generateSkinReel = (skins) => {
   const reel = [];
-  const totalImages = 300; // Generating a large number of images
+  const totalImages = 300;
   for (let i = 0; i < totalImages; i++) {
     reel.push(skins[i % skins.length]);
   }
@@ -31,13 +30,9 @@ const CaseOpeningScreen = ({ navigation }) => {
   const [isOpening, setIsOpening] = useState(false);
   const scrollX = useSharedValue(0);
   const [targetOffset, setTargetOffset] = useState(0);
-  const [openingDuration, setOpeningDuration] = useState(6); // Set the duration in seconds
-
+  const [openingDuration, setOpeningDuration] = useState(6000); // 6000ms = 6 seconds
   const randomScrollDistance = 5000 + Math.floor(Math.random() * 2000);
-
-  // Generate the reel skins with a massive number of images
   const reelSkins = generateSkinReel(availableSkins);
-
   const [sound, setSound] = useState();
 
   async function playSound() {
@@ -60,44 +55,27 @@ const CaseOpeningScreen = ({ navigation }) => {
     setIsOpening(true);
     playSound();
 
-    const totalDuration = openingDuration * 1000; // Convert seconds to milliseconds
+    const totalDuration = openingDuration;
 
-    // Calculate the target offset to land at a random item
     const randomIndex = Math.floor(Math.random() * availableSkins.length);
     const initialOffset = randomScrollDistance + randomIndex * (ITEM_WIDTH + SPACING) - CENTER_POSITION;
 
     setTargetOffset(initialOffset);
 
+    scrollX.value = withTiming(initialOffset, {
+      duration: totalDuration,
+      easing: Easing.out(Easing.cubic),
+    });
+
     setTimeout(() => {
-      scrollX.value = withTiming(initialOffset, {
-        duration: totalDuration,
-        easing: Easing.out(Easing.cubic),
-      });
+      const adjustedScrollX = initialOffset + CENTER_POSITION;
+      const finalIndex = Math.round(adjustedScrollX / (ITEM_WIDTH + SPACING)) % availableSkins.length;
 
-      setTimeout(() => {
-        // Calculate the final position of the closest item to the center
-        const adjustedScrollX = scrollX.value + CENTER_POSITION;
-        const finalIndex = Math.round(adjustedScrollX / (ITEM_WIDTH + SPACING)) % reelSkins.length;
+      const skinAtCenter = reelSkins[finalIndex];
+      setSelectedSkin(skinAtCenter);
 
-        // Calculate the exact position for the finalOffset, ensuring it's centered
-        const finalOffset = finalIndex * (ITEM_WIDTH + SPACING) - (ITEM_WIDTH / 2) + CENTER_POSITION  + ITEM_WIDTH;
-
-        // Secondary animation to center the closest skin
-        scrollX.value = withTiming(finalOffset, {
-          duration: 1000,
-          easing: Easing.out(Easing.cubic),
-        });
-
-        setTimeout(() => {
-          const skinAtCenter = reelSkins[finalIndex];
-          setSelectedSkin(skinAtCenter);
-
-          // Log the details of the image that touches the white line (center position)
-          console.log('Skin touching the white line:', skinAtCenter.name, skinAtCenter.image);
-        }, 1000); // Wait for the centering animation to complete before showing the result
-
-      }, totalDuration);
-    }, 2500); // 2.5-second delay before starting the animation
+      console.log('Skin touching the white line:', skinAtCenter.name);
+    }, totalDuration + 1000); // +1000ms to account for timing adjustment
   };
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -118,9 +96,7 @@ const CaseOpeningScreen = ({ navigation }) => {
         </TouchableOpacity>
       ) : (
         <>
-          {/* White Line Indicator */}
           <View style={styles.whiteLine} />
-
           <View style={styles.reelContainer}>
             <Animated.View style={[styles.animatedReel, animatedStyle]}>
               {reelSkins.map((item, index) => (
@@ -128,9 +104,6 @@ const CaseOpeningScreen = ({ navigation }) => {
                   key={index}
                   style={[
                     styles.skinItem,
-                    {
-                      borderColor: scrollX.value === targetOffset ? 'rgba(255, 215, 0, 0.5)' : 'transparent',
-                    },
                   ]}
                 >
                   <Image source={item.image} style={styles.skinImage} resizeMode="contain" />
@@ -189,7 +162,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   reelContainer: {
-    height: ITEM_WIDTH * 1.5, // Reduced height to better fit the items
+    height: ITEM_WIDTH * 1.25,
     overflow: 'hidden',
     borderRadius: 10,
     backgroundColor: '#1A1A1A',
@@ -200,17 +173,16 @@ const styles = StyleSheet.create({
   },
   skinItem: {
     width: ITEM_WIDTH,
-    height: ITEM_WIDTH * 1.25,
+    height: ITEM_WIDTH * 1.1,
     marginHorizontal: SPACING / 2,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#2A2A2A',
     borderRadius: 10,
-    borderWidth: 2,
   },
   skinImage: {
-    width: '100%',
-    height: '80%',
+    width: '90%',
+    height: '70%',
     borderRadius: 10,
   },
   skinText: {

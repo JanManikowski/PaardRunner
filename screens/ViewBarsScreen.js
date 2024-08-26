@@ -132,44 +132,49 @@ const ViewBarsScreen = ({ navigation, route }) => {
               setBars(data);
               await AsyncStorage.setItem('bars', JSON.stringify(data));
             }}
-            renderItem={({ item, drag, index }) => (
-              <TouchableOpacity
-                style={{
-                  backgroundColor: item.color || theme.colors.surfaceVariant, // Bar box color
-                  padding: 15,
-                  borderRadius: 8,
-                  shadowColor: theme.colors.shadow,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 5,
-                  marginBottom: index === bars.length - 1 ? 0 : 20,
-                  elevation: 2,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-                onLongPress={drag}
-                onPress={() => navigation.navigate('BarDetail', { bar: item })}
-              >
-                <View>
-                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: textColor }}>
-                    {item.name}
-                  </Text>
-                  <Text style={{ marginBottom: 5, fontSize: 16, color: textColor }}>
-                    Shelves: {item.numShelves}
-                  </Text>
-                  <Text style={{ fontSize: 16, color: textColor }}>Fridges: {item.numFridges}</Text>
-                </View>
-                <Button
-                  icon={<Icon name="palette" color="white" />}
-                  buttonStyle={{
-                    backgroundColor: item.color || 'transparent', // Match the box color or set to transparent
-                    borderRadius: 10,
+            renderItem={({ item, drag, index }) => {
+              const itemTextColor = getContrastingTextColor(item.color || theme.colors.surfaceVariant);
+            
+              return (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: item.color || theme.colors.surfaceVariant, // Bar box color
+                    padding: 15,
+                    borderRadius: 8,
+                    shadowColor: theme.colors.shadow,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 5,
+                    marginBottom: index === bars.length - 1 ? 0 : 20,
+                    elevation: 2,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                   }}
-                  onPress={() => handleBarPress(item)}
-                />
-              </TouchableOpacity>
-            )}
+                  onLongPress={drag}
+                  onPress={() => navigation.navigate('BarDetail', { bar: item })}
+                >
+                  <View>
+                    <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: itemTextColor }}>
+                      {item.name}
+                    </Text>
+                    <Text style={{ marginBottom: 5, fontSize: 16, color: itemTextColor }}>
+                      Shelves: {item.numShelves}
+                    </Text>
+                    <Text style={{ fontSize: 16, color: itemTextColor }}>Fridges: {item.numFridges}</Text>
+                  </View>
+                  <Button
+                    icon={<Icon name="palette" color="white" />}
+                    buttonStyle={{
+                      backgroundColor: item.color || 'transparent', // Match the box color or set to transparent
+                      borderRadius: 10,
+                    }}
+                    onPress={() => handleBarPress(item)}
+                  />
+                </TouchableOpacity>
+              );
+            }}
+            
             
             contentContainerStyle={{ paddingBottom: 80 }}
           />

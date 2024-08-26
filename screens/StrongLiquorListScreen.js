@@ -84,6 +84,7 @@ const StrongLiquorListScreen = () => {
         {strongLiquor.map((item, index) => (
           <TouchableOpacity
             key={index}
+            onPress={() => updateCount(item, 1)}
             onLongPress={() => resetCount(item)}
             style={[styles.itemContainer, { backgroundColor: theme.colors.surfaceVariant, shadowColor: theme.colors.shadow }]}
           >

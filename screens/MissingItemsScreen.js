@@ -314,6 +314,7 @@ const MissingItemsScreen = ({ route }) => {
       padding: 16,
       backgroundColor: theme.colors.background,
       flex: 1,
+      paddingBottom: -10
     }}>
       <Text style={{
         fontSize: 24,
