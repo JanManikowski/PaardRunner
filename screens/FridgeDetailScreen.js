@@ -113,16 +113,16 @@ const FridgeDetailScreen = ({ route, navigation }) => {
           disabled={fridgeIndex === barFridges[barName].length - 1}
         />
       </View>
-
-      {/* Fridge Details */}
-      <View style={{ alignItems: 'center', marginBottom: 20 }}>
-        <Text h4 style={{ color: '#004d40', marginBottom: 10 }}>{fridge.type}</Text>
+      <View style={{backgroundColor: theme.colors.surfaceVariant, borderRadius:10, marginBottom:25}}>
+{/* Fridge Details */}
+<View style={{ alignItems: 'center', marginBottom: 20 }}>
+        <Text h4 style={{ color: theme.colors.primary, marginBottom: 10 }}>{fridge.type}</Text>
         <Text style={{ fontSize: 16, color: '#d32f2f', fontWeight: "bold" }}>Missing Items: {missing}</Text>
-        <Text style={{ fontSize: 16, color: '#555' }}>Max Allowed: {maxAmounts[barName][fridge.type]}</Text>
+        <Text style={{ color:theme.colors.text,fontSize: 16 }}>Max Allowed: {maxAmounts[barName][fridge.type]}</Text>
       </View>
 
       {/* Update Buttons */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+      <View style={{ backgroundColor: theme.colors.surfaceVariant,flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
         <View style={{ justifyContent: 'space-between', height: 120 }}>
           <Button
             title="-1"
@@ -166,6 +166,8 @@ const FridgeDetailScreen = ({ route, navigation }) => {
         inputStyle={{ textAlign: 'center' }}
       />
 
+      </View>
+      
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
         <Button
           title="Retract Value"

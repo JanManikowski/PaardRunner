@@ -93,6 +93,21 @@ const BarDetailScreen = ({ route, navigation }) => {
       >
         <Text style={{ fontSize: 18, fontWeight: '600', color:theme.colors.text }}>View Shelves</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+  style={{
+    backgroundColor: theme.colors.surfaceVariant,
+    padding: 20,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  }}
+  onPress={() => navigation.navigate('StrongLiquorList')}
+>
+  <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>View Strong Liquor</Text>
+</TouchableOpacity>
+
+
       <TouchableOpacity
         style={{
           backgroundColor: '#FFF',

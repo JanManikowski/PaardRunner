@@ -4,8 +4,8 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from '
 import { Audio } from 'expo-av';
 
 const { width } = Dimensions.get('window');
-const ITEM_WIDTH = width * 1;
-const SPACING = 0;
+const ITEM_WIDTH = width * 0.4;
+const SPACING = 15;
 const CENTER_POSITION = (width - ITEM_WIDTH) / 2;
 
 const availableSkins = [

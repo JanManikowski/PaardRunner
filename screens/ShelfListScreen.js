@@ -1,14 +1,14 @@
-// ShelfListScreen.js
 import React, { useContext, useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, Image, TouchableOpacity, Button } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { FridgeContext } from '../contexts/FridgeContext';
-import { getData } from '../storage/AsyncStorageHelper';
 import { Text, Icon } from 'react-native-elements';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const ShelfListScreen = ({ route, navigation }) => {
   const { bar } = route.params;
   const { barShelves } = useContext(FridgeContext);
+  const { theme } = useContext(ThemeContext);
   const [shelves, setShelves] = useState(barShelves[bar.name] || []);
 
   const fetchShelves = async () => {
@@ -61,16 +61,19 @@ const ShelfListScreen = ({ route, navigation }) => {
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: '#f5f5f5' }}>
+    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-      <Text h4 style={{ color: '#333' }}>Fridges in {bar.name}</Text>
-      <Button
-        title='Go to Fridges'
-        icon={<Icon name="list" color="white" />}
-        buttonStyle={{ backgroundColor: '#00796b', borderRadius: 10 }}
-        onPress={() => navigation.navigate('FridgeList', { bar: { name: bar.name } })}
-      />
-    </View>
+        <Text style={{ color: theme.colors.onBackground, fontSize: 24, fontWeight: 'bold' }}>
+          Shelves in {bar.name}
+        </Text>
+        <Button
+          title='Go to Fridges'
+          icon={<Icon name="list" color={theme.colors.onPrimary} />}
+          buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 10 }}
+          onPress={() => navigation.navigate('FridgeList', { bar: { name: bar.name } })}
+        />
+      </View>
+
       <ScrollView>
         {shelves.map((item, index) => (
           <TouchableOpacity
@@ -79,8 +82,8 @@ const ShelfListScreen = ({ route, navigation }) => {
             style={{
               borderRadius: 10,
               marginVertical: 5,
-              backgroundColor: '#fff',
-              shadowColor: '#000',
+              backgroundColor: theme.colors.surfaceVariant,
+              shadowColor: theme.colors.shadow,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.1,
               shadowRadius: 5,
@@ -90,16 +93,16 @@ const ShelfListScreen = ({ route, navigation }) => {
               flexDirection: 'row',
             }}
           >
-            <Image source={getImageSource(item.type)} style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10 }} />
+            <Image source={getImageSource(item.type)} style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10, backgroundColor: 'white' }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: 'bold', color: '#333' }}>{item.type}</Text>
+              <Text style={{ fontWeight: 'bold', color: theme.colors.text }}>{item.type}</Text>
               {item.missing > 0 && (
-                <Text style={{ color: 'red', fontWeight: 'bold' }}>
+                <Text style={{ color: theme.colors.error, fontWeight: 'bold' }}>
                   {`${item.missing} missing`}
                 </Text>
               )}
             </View>
-            <Icon name="chevron-right" size={30} />
+            <Icon name="chevron-right" size={30} color={theme.colors.onSurface} />
           </TouchableOpacity>
         ))}
       </ScrollView>

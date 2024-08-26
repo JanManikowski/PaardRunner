@@ -3,10 +3,12 @@ import { ScrollView, View, Image } from 'react-native';
 import { Text, Button, Input, Icon } from 'react-native-elements';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { saveData, getData } from '../storage/AsyncStorageHelper';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const ShelfDetailScreen = ({ route, navigation }) => {
   const { barName, shelfIndex: initialShelfIndex } = route.params;
   const { barShelves, setBarShelves, saveBarShelves, maxAmounts } = useContext(FridgeContext);
+  const { theme } = useContext(ThemeContext);
   const [shelfIndex, setShelfIndex] = useState(initialShelfIndex);
   const [shelf, setShelf] = useState(barShelves[barName][initialShelfIndex]);
   const [missing, setMissing] = useState(shelf.missing);
@@ -74,10 +76,10 @@ const ShelfDetailScreen = ({ route, navigation }) => {
         return require('../assets/shelve/7up.jpeg');
       case 'Sisi':
         return require('../assets/shelve/sisi.jpg');
-      case 'Tonic':
-        return require('../assets/shelve/tonic.jpg');
       case 'Icetea Green':
         return require('../assets/shelve/icetea.jpeg');
+      case 'Tonic':
+        return require('../assets/shelve/tonic.jpg');
       case 'Apple Juice':
         return require('../assets/shelve/appelsap.jpeg');
       case 'Orange Juice':
@@ -102,32 +104,32 @@ const ShelfDetailScreen = ({ route, navigation }) => {
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: '#F0F0F0' }}>
-      {/* Navigation Arrows */}
+    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
+      {/* Arrow Buttons */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
         <Button
-          icon={<Icon name="arrow-back" size={30} color={shelfIndex === 0 ? '#ccc' : '#00796b'} />}
+          icon={<Icon name="arrow-back" size={30} color={shelfIndex === 0 ? theme.colors.onSurfaceDisabled : theme.colors.primary} />}
           type="clear"
           onPress={goToPreviousItem}
           disabled={shelfIndex === 0}
         />
         <Button
-          icon={<Icon name="arrow-forward" size={30} color={shelfIndex === barShelves[barName].length - 1 ? '#ccc' : '#00796b'} />}
+          icon={<Icon name="arrow-forward" size={30} color={shelfIndex === barShelves[barName].length - 1 ? theme.colors.onSurfaceDisabled : theme.colors.primary} />}
           type="clear"
           onPress={goToNextItem}
           disabled={shelfIndex === barShelves[barName].length - 1}
         />
       </View>
+      <View style={{backgroundColor: theme.colors.surfaceVariant, borderRadius:10, marginBottom:25}}>
+        {/* Shelf Details */}
+        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+          <Text h4 style={{ color: theme.colors.primary, marginBottom: 10 }}>{shelf.type}</Text>
+          <Text style={{ fontSize: 16, color: theme.colors.error, fontWeight: "bold" }}>Missing Items: {missing}</Text>
+          <Text style={{ color:theme.colors.text, fontSize: 16 }}>Max Allowed: {maxAmounts[barName]?.[shelf.type] || shelf.depth}</Text>
+        </View>
 
-      {/* Shelf Details */}
-      <View style={{ alignItems: 'center', marginBottom: 20 }}>
-        <Text h4 style={{ color: '#004d40', marginBottom: 10 }}>{shelf.type}</Text>
-        <Text style={{ fontSize: 16, color: '#d32f2f' }}>Missing Items: {missing}</Text>
-        <Text style={{ fontSize: 16, color: '#555' }}>Max Allowed: {maxAmounts[barName]?.[shelf.type] || shelf.depth}</Text>
-      </View>
-
-      {/* Update Buttons */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+        {/* Update Buttons */}
+      <View style={{ backgroundColor: theme.colors.surfaceVariant,flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
         <View style={{ justifyContent: 'space-between', height: 120 }}>
           <Button
             title="-1"
@@ -162,7 +164,6 @@ const ShelfDetailScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* Custom Value Input */}
       <Input
         placeholder="Custom value"
         keyboardType="numeric"
@@ -172,7 +173,8 @@ const ShelfDetailScreen = ({ route, navigation }) => {
         inputStyle={{ textAlign: 'center' }}
       />
 
-      {/* Additional Controls */}
+      </View>
+      
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
         <Button
           title="Retract Value"
@@ -187,6 +189,7 @@ const ShelfDetailScreen = ({ route, navigation }) => {
           onPress={() => handleCustomValue(true)}
         />
       </View>
+
       <Button
         title="Clear Missing Items"
         buttonStyle={{ backgroundColor: '#B22222', borderRadius: 10, paddingHorizontal: 20 }}
@@ -197,11 +200,11 @@ const ShelfDetailScreen = ({ route, navigation }) => {
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginTop: 20 }}>
         <Button
           title="Go to Fridges"
-          buttonStyle={{ backgroundColor: '#00796b', borderRadius: 10 }}
+          buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 10 }}
           onPress={() => navigation.navigate('FridgeList', { bar: { name: barName } })}
         />
     </View>
-    </View>
+  </View>
   );
 };
 

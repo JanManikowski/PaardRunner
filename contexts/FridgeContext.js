@@ -26,7 +26,7 @@ const calculateMaxAmounts = (numFridges, numShelves) => {
     'Rose': 4 * numShelves,
     'Sweet Wine': 4 * numShelves,
     'Ginger Beer': 4 * numShelves,
-    'Ginger Ale': 4, // Fixed to 4 as per description
+    'Ginger Ale': 4 * numShelves, 
   };
 };
 
@@ -34,7 +34,12 @@ export const FridgeProvider = ({ children }) => {
   const [barFridges, setBarFridges] = useState({});
   const [barShelves, setBarShelves] = useState({});
   const [maxAmounts, setMaxAmounts] = useState({});
-  const [barColors, setBarColors] = useState({}); 
+  const [barColors, setBarColors] = useState({});
+
+  const [strongLiquor, setStrongLiquor] = useState([
+    'Jack Daniels', 'Jameson', 'Southern Comfort', 'Vodka', 'Red Vodka',
+    'Rum', 'Brown Rum', 'Bacardi Lemon', 'Bacardi Razz', 'Malibu', 'Gin'
+  ]);
 
   useEffect(() => {
     const updateMaxAmounts = async () => {
@@ -49,7 +54,7 @@ export const FridgeProvider = ({ children }) => {
       const storedColors = JSON.parse(await AsyncStorage.getItem('barColors')) || {};
       setBarColors(storedColors);
     };
-    fetchColors()
+    fetchColors();
     updateMaxAmounts();
   }, [barFridges, barShelves]);
 
@@ -71,7 +76,7 @@ export const FridgeProvider = ({ children }) => {
     }
   };
 
-  const saveBarColors = async (colors) => { // Add this function
+  const saveBarColors = async (colors) => {
     try {
       await AsyncStorage.setItem('barColors', JSON.stringify(colors));
       setBarColors(colors);
@@ -80,8 +85,21 @@ export const FridgeProvider = ({ children }) => {
     }
   };
 
+  const addLiquor = (liquor) => {
+    setStrongLiquor([...strongLiquor, liquor]);
+  };
+
+  const removeLiquor = (liquor) => {
+    setStrongLiquor(strongLiquor.filter(item => item !== liquor));
+  };
+
   return (
-    <FridgeContext.Provider value={{ barFridges, setBarFridges, saveBarFridges, barShelves, setBarShelves, saveBarShelves, maxAmounts, barColors, setBarColors, saveBarColors }}>
+    <FridgeContext.Provider value={{
+      barFridges, setBarFridges, saveBarFridges,
+      barShelves, setBarShelves, saveBarShelves,
+      maxAmounts, barColors, setBarColors, saveBarColors,
+      strongLiquor, addLiquor, removeLiquor
+    }}>
       {children}
     </FridgeContext.Provider>
   );

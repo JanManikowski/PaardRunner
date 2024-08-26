@@ -11,6 +11,7 @@ import ShelfListScreen from '../screens/ShelfListScreen';
 import MissingItemsScreen from '../screens/MissingItemsScreen';
 import { FridgeProvider } from '../contexts/FridgeContext';
 import CaseOpeningScreen from '../screens/CaseOpeningScreen';
+import StrongLiquorListScreen from '../screens/StrongLiquorListScreen';
 
 const Stack = createStackNavigator();
 
@@ -28,6 +29,7 @@ const AppNavigator = () => {
         <Stack.Screen name="ShelfList" component={ShelfListScreen} />
         <Stack.Screen name="MissingItems" component={MissingItemsScreen} />
         <Stack.Screen name="CaseOpening" component={CaseOpeningScreen} />
+        <Stack.Screen name="StrongLiquorList" component={StrongLiquorListScreen} />
       </Stack.Navigator>
     </FridgeProvider>
   );
