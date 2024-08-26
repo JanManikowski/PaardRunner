@@ -10,8 +10,8 @@ const CENTER_POSITION = (width - ITEM_WIDTH) / 2;
 
 const availableSkins = [
   { name: 'Classic', image: require('../assets/skins/classic.jpg') },
-  { name: 'Modern', image: require('../assets/skins/modern.jpg') },
   { name: 'Retro', image: require('../assets/skins/retro.jpg') },
+//   { name: 'Modern', image: require('../assets/skins/modern.jpg') },
   { name: 'Neon', image: require('../assets/skins/neon.jpg') },
   { name: 'Cyber', image: require('../assets/skins/cyber.png') },
 ];
