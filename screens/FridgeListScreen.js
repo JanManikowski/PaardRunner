@@ -64,6 +64,18 @@ const FridgeListScreen = ({ route, navigation }) => {
           onPress={() => navigation.navigate('ShelfList', { bar: { name: bar.name } })}
         />
       </View>
+
+      <Button
+        title='Open a Case'
+        onPress={() => navigation.navigate('CaseOpening')}
+        buttonStyle={{
+          backgroundColor: theme.colors.primary,
+          borderRadius: 10,
+          marginBottom: 16,
+          padding: 10,
+        }}
+      />
+
       <ScrollView>
         {fridges.map((item, index) => (
           <TouchableOpacity

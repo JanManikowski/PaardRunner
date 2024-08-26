@@ -17,16 +17,17 @@ const AddBarScreen = ({ navigation }) => {
 
     try {
       const bars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
-      bars.push({ name: barName, numShelves: parseInt(numShelves), numFridges: parseInt(numFridges), fridges: [], shelves: [] });
-      await AsyncStorage.setItem('bars', JSON.stringify(bars));
+      const newBar = { name: barName, numShelves: parseInt(numShelves), numFridges: parseInt(numFridges), fridges: [], shelves: [] };
+      const updatedBars = [...bars, newBar];
+      await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
       Alert.alert('Success', 'Bar added successfully');
 
       setBarName('');
       setNumShelves('');
       setNumFridges('');
 
-      // Navigate back to ManageBars and pass the refresh flag
-      navigation.navigate('ViewBars', { refresh: true });
+      // Navigate back to ViewBars and pass the updated bars
+      navigation.navigate('ViewBars', { updatedBars });
     } catch (error) {
       Alert.alert('Error', 'Failed to add bar');
       console.error(error);

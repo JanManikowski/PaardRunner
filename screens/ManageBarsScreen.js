@@ -11,8 +11,12 @@ const ManageBarsScreen = ({ navigation, route }) => {
   const [editShelves, setEditShelves] = useState('');
 
   useEffect(() => {
-    fetchBars();
-  }, [route.params?.refresh]); // Listen for refresh flag
+    if (route.params?.updatedBars) {
+      setBars(route.params.updatedBars);
+    } else {
+      fetchBars();
+    }
+  }, [route.params?.updatedBars]);
 
   const fetchBars = async () => {
     try {
@@ -40,8 +44,8 @@ const ManageBarsScreen = ({ navigation, route }) => {
             const filteredBars = bars.filter(bar => bar.name !== barName);
             setBars(filteredBars);
             await AsyncStorage.setItem('bars', JSON.stringify(filteredBars));
-            // Refresh ViewBarsScreen
-            navigation.navigate('ViewBars', { refresh: true });
+            // Navigate back to ViewBarsScreen with updated bars
+            navigation.navigate('ViewBars', { updatedBars: filteredBars });
           },
           style: 'destructive',
         },
@@ -49,6 +53,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
       { cancelable: false }
     );
   };
+  
 
   const editBarDetails = (bar) => {
     setEditBar(bar);

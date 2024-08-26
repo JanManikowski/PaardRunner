@@ -26,7 +26,9 @@ const ViewBarsScreen = ({ navigation, route }) => {
 
   const handleColorChange = async () => {
     const updatedBars = bars.map(bar =>
-      bar.name === selectedBar.name ? { ...bar, color: pickedColor } : bar
+      bar.name === selectedBar.name
+        ? { ...bar, color: pickedColor, textColor: getContrastingTextColor(pickedColor) }
+        : bar
     );
     setBars(updatedBars);
     await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
@@ -37,6 +39,8 @@ const ViewBarsScreen = ({ navigation, route }) => {
       useNativeDriver: false,
     }).start(() => setSelectedBar(null));
   };
+  
+
 
   const handleBarPress = (bar) => {
     setSelectedBar(bar);
@@ -131,7 +135,7 @@ const ViewBarsScreen = ({ navigation, route }) => {
             renderItem={({ item, drag, index }) => (
               <TouchableOpacity
                 style={{
-                  backgroundColor: item.color || theme.colors.surfaceVariant,
+                  backgroundColor: item.color || theme.colors.surfaceVariant, // Bar box color
                   padding: 15,
                   borderRadius: 8,
                   shadowColor: theme.colors.shadow,
@@ -159,13 +163,14 @@ const ViewBarsScreen = ({ navigation, route }) => {
                 <Button
                   icon={<Icon name="palette" color="white" />}
                   buttonStyle={{
-                    backgroundColor: item.color || theme.colors.primary,
+                    backgroundColor: item.color || 'transparent', // Match the box color or set to transparent
                     borderRadius: 10,
                   }}
                   onPress={() => handleBarPress(item)}
                 />
               </TouchableOpacity>
             )}
+            
             contentContainerStyle={{ paddingBottom: 80 }}
           />
         </View>
@@ -230,6 +235,7 @@ const ViewBarsScreen = ({ navigation, route }) => {
           />
         </View>
       )}
+
     </View>
   );
 };
