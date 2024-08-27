@@ -45,7 +45,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
             setBars(filteredBars);
             await AsyncStorage.setItem('bars', JSON.stringify(filteredBars));
             // Navigate back to ViewBarsScreen with updated bars
-            navigation.navigate('ViewBars', { updatedBars: filteredBars });
+            navigation.navigate('ViewBars', { refresh: true });
           },
           style: 'destructive',
         },
@@ -53,6 +53,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
       { cancelable: false }
     );
   };
+  
   
 
   const editBarDetails = (bar) => {

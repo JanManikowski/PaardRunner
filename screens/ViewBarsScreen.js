@@ -15,14 +15,22 @@ const ViewBarsScreen = ({ navigation, route }) => {
   const [animatedValue] = useState(new Animated.Value(0));
   const { theme, toggleTheme } = useContext(ThemeContext);
 
-  useEffect(() => {
-    const fetchBars = async () => {
-      const storedBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
-      setBars(storedBars);
-    };
+  // ViewBarsScreen.js
+useEffect(() => {
+  const fetchBars = async () => {
+    const storedBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
+    storedBars.forEach(bar => console.log('Loaded bar name:', bar.name)); // Debugging line to print each bar name
+    setBars(storedBars);
+  };
+  fetchBars();
 
+  if (route.params?.refresh) {
     fetchBars();
-  }, [route.params?.refresh]);
+    // Reset refresh parameter
+    navigation.setParams({ refresh: false });
+  }
+}, [route.params?.refresh]); // Adding refresh as a dependency to re-fetch bars when updated
+
 
   const handleColorChange = async () => {
     const updatedBars = bars.map(bar =>

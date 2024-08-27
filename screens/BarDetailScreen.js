@@ -1,14 +1,16 @@
 // BarDetailScreen.js
 import React, { useState, useContext, useEffect } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, TextInput, Alert, Modal, Button } from 'react-native';
 import { Text } from 'react-native-elements';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 
 const BarDetailScreen = ({ route, navigation }) => {
   const { bar } = route.params;
-  const { barFridges, setBarFridges, barShelves, setBarShelves } = useContext(FridgeContext);
+  const { barFridges, setBarFridges, barShelves, setBarShelves, addCustomMissingItem } = useContext(FridgeContext);
   const { theme, toggleTheme } = useContext(ThemeContext);
+  const [customItem, setCustomItem] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     if (!barFridges[bar.name]) {
@@ -51,6 +53,17 @@ const BarDetailScreen = ({ route, navigation }) => {
     console.error("No bar data found in route parameters");
     return null;
   }
+
+  const handleAddCustomItem = () => {
+    if (customItem.trim()) {
+      addCustomMissingItem(bar.name, customItem);
+      Alert.alert('Success', `${customItem} added to missing items.`);
+      setCustomItem(''); // Clear the input after adding
+      setModalVisible(false); // Close the modal
+    } else {
+      Alert.alert('Error', 'Please enter a valid item name.');
+    }
+  };
 
   return (
     <View style={{ padding: 16, backgroundColor: theme.colors.background, flex: 1 }}>
@@ -95,18 +108,80 @@ const BarDetailScreen = ({ route, navigation }) => {
       </TouchableOpacity>
 
       <TouchableOpacity
-  style={{
-    backgroundColor: theme.colors.surfaceVariant,
-    padding: 20,
-    borderRadius: 8,
-    marginBottom: 20,
-    alignItems: 'center',
-  }}
-  onPress={() => navigation.navigate('StrongLiquorList')}
->
-  <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>View Strong Liquor</Text>
-</TouchableOpacity>
+        style={{
+          backgroundColor: theme.colors.surfaceVariant,
+          padding: 20,
+          borderRadius: 8,
+          marginBottom: 20,
+          alignItems: 'center',
+        }}
+        onPress={() => navigation.navigate('StrongLiquorList')}
+      >
+        <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>View Strong Liquor</Text>
+      </TouchableOpacity>
 
+      {/* Button to open the modal */}
+      <TouchableOpacity
+        style={{
+          backgroundColor: theme.colors.surfaceVariant,
+          padding: 20,
+          borderRadius: 8,
+          marginBottom: 20,
+          alignItems: 'center',
+        }}
+        onPress={() => setModalVisible(true)} // Open the modal
+      >
+        <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
+          Add Custom Missing Item
+        </Text>
+      </TouchableOpacity>
+
+      {/* Modal for adding a custom item */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        }}>
+          <View style={{
+            width: 300,
+            padding: 20,
+            backgroundColor: '#FFF',
+            borderRadius: 10,
+            alignItems: 'center',
+          }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20 }}>
+              Add Custom Item
+            </Text>
+            <TextInput
+              style={{
+                width: '100%',
+                padding: 10,
+                borderColor: '#CCC',
+                borderWidth: 1,
+                borderRadius: 5,
+                marginBottom: 20,
+              }}
+              placeholder="Enter item name"
+              value={customItem}
+              onChangeText={setCustomItem}
+            />
+            <Button title="Add Item" onPress={handleAddCustomItem} />
+            <Button
+              title="Cancel"
+              color="red"
+              onPress={() => setModalVisible(false)}
+              style={{ marginTop: 10 }}
+            />
+          </View>
+        </View>
+      </Modal>
 
       <TouchableOpacity
         style={{
@@ -126,6 +201,8 @@ const BarDetailScreen = ({ route, navigation }) => {
       >
         <Text style={{ fontSize: 18, fontWeight: '600', color:theme.colors.text }}>View Missing Items</Text>
       </TouchableOpacity>
+
+      
     </View>
   );
 };

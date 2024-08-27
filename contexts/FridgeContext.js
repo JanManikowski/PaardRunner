@@ -35,6 +35,8 @@ export const FridgeProvider = ({ children }) => {
   const [barShelves, setBarShelves] = useState({});
   const [maxAmounts, setMaxAmounts] = useState({});
   const [barColors, setBarColors] = useState({});
+  const [customItems, setCustomItems] = useState({});
+
 
   const [strongLiquor, setStrongLiquor] = useState([
     'Jack Daniels', 'Jameson', 'Southern Comfort', 'Vodka', 'Red Vodka',
@@ -93,14 +95,33 @@ export const FridgeProvider = ({ children }) => {
     setStrongLiquor(strongLiquor.filter(item => item !== liquor));
   };
 
+  const addCustomMissingItem = async (barName, item) => {
+    try {
+      const storedCustomItems = JSON.parse(await AsyncStorage.getItem('customItems')) || {};
+      const barCustomItems = storedCustomItems[barName] || [];
+      
+      const updatedCustomItems = [...barCustomItems, { type: item, missing: 1 }];
+      storedCustomItems[barName] = updatedCustomItems;
+      
+      await AsyncStorage.setItem('customItems', JSON.stringify(storedCustomItems));
+      setCustomItems(storedCustomItems);
+    } catch (error) {
+      console.error('Error adding custom missing item:', error);
+    }
+  };
+  
+  
+
   return (
     <FridgeContext.Provider value={{
       barFridges, setBarFridges, saveBarFridges,
       barShelves, setBarShelves, saveBarShelves,
       maxAmounts, barColors, setBarColors, saveBarColors,
-      strongLiquor, addLiquor, removeLiquor
+      strongLiquor, addLiquor, removeLiquor,
+      customItems, setCustomItems, addCustomMissingItem
     }}>
       {children}
     </FridgeContext.Provider>
+    
   );
 };

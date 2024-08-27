@@ -9,16 +9,17 @@ import { ThemeContext } from '../contexts/ThemeContext';
 
 const MissingItemsScreen = ({ route }) => {
   const { bar } = route.params;
-  const { barFridges, setBarFridges, barShelves, setBarShelves, saveBarFridges, saveBarShelves, strongLiquor } = useContext(FridgeContext);
+  const { barFridges, setBarFridges, barShelves, setBarShelves, saveBarFridges, saveBarShelves, strongLiquor, addCustomMissingItem } = useContext(FridgeContext);
   const [missingItems, setMissingItems] = useState({
     fridgeItems: [],
     shelfItems: [],
-    liquorItems: []
+    liquorItems: [],
+    customItems: [] // New category for custom items
   });
   const [inputValues, setInputValues] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const navigation = useNavigation();
-  const { theme, toggleTheme } = useContext(ThemeContext);
+  const { theme } = useContext(ThemeContext);
 
   useEffect(() => {
     const backAction = () => {
@@ -59,7 +60,8 @@ const MissingItemsScreen = ({ route }) => {
     let fridgeItems = [];
     let shelfItems = [];
     let liquorItems = [];
-
+    let customItems = [];
+  
     // Fetch missing items from fridges
     if (barFridges[bar.name]) {
       const fridges = await Promise.all(
@@ -74,7 +76,7 @@ const MissingItemsScreen = ({ route }) => {
         }
       });
     }
-
+  
     // Fetch missing items from shelves
     if (barShelves[bar.name]) {
       const shelves = await Promise.all(
@@ -89,7 +91,7 @@ const MissingItemsScreen = ({ route }) => {
         }
       });
     }
-
+  
     // Fetch missing strong liquor items
     const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
     const liquorCounts = storedLiquorCounts ? JSON.parse(storedLiquorCounts) : {};
@@ -98,9 +100,14 @@ const MissingItemsScreen = ({ route }) => {
         liquorItems.push({ type: liquor, missing: liquorCounts[liquor] });
       }
     });
-
-    setMissingItems({ fridgeItems, shelfItems, liquorItems });
+  
+    // Fetch custom missing items independently
+    const storedCustomItems = JSON.parse(await AsyncStorage.getItem('customItems')) || {};
+    customItems = storedCustomItems[bar.name] || [];
+  
+    setMissingItems({ fridgeItems, shelfItems, liquorItems, customItems });
   };
+  
 
   useFocusEffect(
     useCallback(() => {
@@ -109,8 +116,8 @@ const MissingItemsScreen = ({ route }) => {
   );
 
   const generateMissingItemsMessage = () => {
-    const header = `*${bar.name}is missing these items:*\n\n`;
-  
+    const header = `*${bar.name} is missing these items:*\n\n`;
+
     const generateCategoryList = (items, category) => {
       if (items.length === 0) return '';
       
@@ -120,14 +127,14 @@ const MissingItemsScreen = ({ route }) => {
       
       return `*${category}:*\n\`\`\`\n${list}\n\`\`\`\n`;
     };
-  
+
     const fridgeList = generateCategoryList(missingItems.fridgeItems, 'Fridge Items');
     const shelfList = generateCategoryList(missingItems.shelfItems, 'Shelf Items');
     const liquorList = generateCategoryList(missingItems.liquorItems, 'Strong Liquor Items');
-  
-    return `${header}${fridgeList}${shelfList}${liquorList}`;
+    const customList = generateCategoryList(missingItems.customItems, 'Custom Items'); // New custom items list
+
+    return `${header}${fridgeList}${shelfList}${liquorList}${customList}`;
   };
-  
 
   const copyToClipboard = () => {
     const message = generateMissingItemsMessage();
@@ -158,7 +165,16 @@ const MissingItemsScreen = ({ route }) => {
         {
           text: "Remove",
           onPress: async () => {
-            if (item.shelfIndex !== undefined) {
+            if (category === 'customItems') {
+              const storedCustomItems = JSON.parse(await AsyncStorage.getItem('customItems')) || {};
+              storedCustomItems[bar.name] = storedCustomItems[bar.name].filter((_, i) => i !== index);
+              await AsyncStorage.setItem('customItems', JSON.stringify(storedCustomItems));
+              setMissingItems(prev => ({
+                ...prev,
+                customItems: prev.customItems.filter((_, i) => i !== index)
+              }));
+              setCustomItems(storedCustomItems);
+            } else if (item.shelfIndex !== undefined) {
               await removeData(`shelf_${bar.name}_${item.shelfIndex}`);
               const updatedShelves = [...missingItems.shelfItems];
               updatedShelves.splice(index, 1);
@@ -171,7 +187,6 @@ const MissingItemsScreen = ({ route }) => {
               setMissingItems({ ...missingItems, fridgeItems: updatedFridges });
               saveBarFridges(updatedFridges);
             } else {
-              // Handle removing liquor counts
               const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
               const liquorCounts = storedLiquorCounts ? JSON.parse(storedLiquorCounts) : {};
               liquorCounts[item.type] = 0;
@@ -186,6 +201,7 @@ const MissingItemsScreen = ({ route }) => {
       ]
     );
   };
+  
 
   const removeAllItems = () => {
     Alert.alert(
@@ -199,70 +215,32 @@ const MissingItemsScreen = ({ route }) => {
         {
           text: "Remove All",
           onPress: async () => {
-            // Update both fridges, shelves, and liquor
+            // Update fridges, shelves, liquor, and custom items
             let updatedFridges = [...missingItems.fridgeItems];
             let updatedShelves = [...missingItems.shelfItems];
             let updatedLiquors = [...missingItems.liquorItems];
-  
-            for (let item of [...updatedFridges, ...updatedShelves, ...updatedLiquors]) {
+            let updatedCustoms = [...missingItems.customItems];
+
+            for (let item of [...updatedFridges, ...updatedShelves, ...updatedLiquors, ...updatedCustoms]) {
               if (item.shelfIndex !== undefined) {
                 await removeData(`shelf_${bar.name}_${item.shelfIndex}`);
               } else if (item.fridgeIndex !== undefined) {
                 await removeData(`fridge_${bar.name}_${item.fridgeIndex}`);
+              } else if (item.customIndex !== undefined) {
+                const storedFridges = JSON.parse(await AsyncStorage.getItem('barFridges')) || {};
+                storedFridges[bar.name] = storedFridges[bar.name].filter((_, i) => i !== item.customIndex);
+                await AsyncStorage.setItem('barFridges', JSON.stringify(storedFridges));
+                setBarFridges(storedFridges);
               } else {
-                // Handle removing liquor counts
                 const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
                 const liquorCounts = storedLiquorCounts ? JSON.parse(storedLiquorCounts) : {};
                 liquorCounts[item.type] = 0;
                 await AsyncStorage.setItem('liquorCounts', JSON.stringify(liquorCounts));
               }
             }
-  
-            // Update context with the cleared data
-            setMissingItems({ fridgeItems: [], shelfItems: [], liquorItems: [] });
-          },
-          style: "destructive"
-        }
-      ]
-    );
-  };
 
-  const removeCategoryItems = (category, categoryTitle) => {
-    Alert.alert(
-      `Remove All ${categoryTitle}`,
-      `Are you sure you want to remove all ${categoryTitle.toLowerCase()}?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Remove All",
-          onPress: async () => {
-            if (category === 'fridgeItems') {
-              const updatedFridges = [];
-              for (const item of missingItems.fridgeItems) {
-                await removeData(`fridge_${bar.name}_${item.fridgeIndex}`);
-              }
-              setMissingItems(prev => ({ ...prev, fridgeItems: updatedFridges }));
-              saveBarFridges(updatedFridges);
-            } else if (category === 'shelfItems') {
-              const updatedShelves = [];
-              for (const item of missingItems.shelfItems) {
-                await removeData(`shelf_${bar.name}_${item.shelfIndex}`);
-              }
-              setMissingItems(prev => ({ ...prev, shelfItems: updatedShelves }));
-              saveBarShelves(updatedShelves);
-            } else if (category === 'liquorItems') {
-              const updatedLiquorItems = [];
-              const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
-              const liquorCounts = storedLiquorCounts ? JSON.parse(storedLiquorCounts) : {};
-              for (const item of missingItems.liquorItems) {
-                liquorCounts[item.type] = 0;
-              }
-              await AsyncStorage.setItem('liquorCounts', JSON.stringify(liquorCounts));
-              setMissingItems(prev => ({ ...prev, liquorItems: updatedLiquorItems }));
-            }
+            // Update context with the cleared data
+            setMissingItems({ fridgeItems: [], shelfItems: [], liquorItems: [], customItems: [] });
           },
           style: "destructive"
         }
@@ -286,7 +264,15 @@ const MissingItemsScreen = ({ route }) => {
   };
 
   const updateMissingCount = async (item, index, newCount, category) => {
-    if (category === 'shelfItems') {
+    if (category === 'customItems') {
+      const storedFridges = JSON.parse(await AsyncStorage.getItem('barFridges')) || {};
+      storedFridges[bar.name][item.customIndex].missing = newCount;
+      await AsyncStorage.setItem('barFridges', JSON.stringify(storedFridges));
+      const updatedCustomItems = [...missingItems.customItems];
+      updatedCustomItems[index].missing = newCount;
+      setMissingItems(prev => ({ ...prev, customItems: updatedCustomItems }));
+      setBarFridges(storedFridges);
+    } else if (category === 'shelfItems') {
       const updatedShelves = [...missingItems.shelfItems];
       updatedShelves[index].missing = newCount;
       setMissingItems(prev => ({ ...prev, shelfItems: updatedShelves }));
@@ -469,12 +455,65 @@ const MissingItemsScreen = ({ route }) => {
             ))}
           </>
         )}
+
+        {/* Custom Items */}
+        {missingItems.customItems.length > 0 && (
+          <>
+            <TouchableOpacity onPress={() => removeCategoryItems('customItems', 'Custom Items')}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 20, marginBottom: 10, color: theme.colors.tertiary }}>
+                Custom Items
+              </Text>
+            </TouchableOpacity>
+            {missingItems.customItems.map((item, index) => (
+              <View key={index} style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 10,
+              }}>
+                <TouchableOpacity onPress={() => removeItem(item, index, 'customItems')} style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 16,
+                    color: theme.colors.text,
+                  }}>
+                    {item.type}
+                  </Text>
+                </TouchableOpacity>
+                <TextInput
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                    borderColor: theme.colors.border,
+                    borderWidth: 1,
+                    borderRadius: 5,
+                    width: 50,
+                    textAlign: 'center',
+                    color: theme.colors.text,
+                  }}
+                  value={inputValues[`customItems-${index}`] !== undefined ? inputValues[`customItems-${index}`] : String(item.missing)}
+                  keyboardType="numeric"
+                  onChangeText={(text) => handleInputChange(index, text, 'customItems')}
+                  onBlur={() => handleInputBlur(item, index, 'customItems')}
+                  onFocus={() => setIsEditing(true)}
+                />
+              </View>
+            ))}
+          </>
+        )}
       </ScrollView>
-      <View style={{
-        marginBottom: 10,
-      }}>
-        <Button title="Copy to Clipboard" onPress={copyToClipboard} color="#007BFF" />
-      </View>
+      <TouchableOpacity
+  style={{
+    backgroundColor: '#FFA500',
+    padding: 10,
+    borderRadius: 5,
+    marginTop:-10,
+    marginBottom: 10,
+    alignItems: 'center',
+  }}
+  onPress={() => navigation.navigate('RecommendedCrates', { bar })}
+>
+  <Text style={{ color: '#fff', fontSize: 14 }}>Show Recommended Crates</Text>
+</TouchableOpacity>
       <View style={{
         marginBottom: 10,
       }}>
@@ -488,6 +527,5 @@ const MissingItemsScreen = ({ route }) => {
     </View>
   );
 };
-
 
 export default MissingItemsScreen;
