@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Modal, Button, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemeContext } from '../contexts/ThemeContext'; // Import ThemeContext
 
 const ManageBarsScreen = ({ navigation, route }) => {
   const [bars, setBars] = useState([]);
@@ -9,6 +10,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
   const [editName, setEditName] = useState('');
   const [editFridges, setEditFridges] = useState('');
   const [editShelves, setEditShelves] = useState('');
+  const { theme } = useContext(ThemeContext); // Access theme from ThemeContext
 
   useEffect(() => {
     if (route.params?.updatedBars) {
@@ -53,8 +55,6 @@ const ManageBarsScreen = ({ navigation, route }) => {
       { cancelable: false }
     );
   };
-  
-  
 
   const editBarDetails = (bar) => {
     setEditBar(bar);
@@ -79,11 +79,11 @@ const ManageBarsScreen = ({ navigation, route }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, backgroundColor: '#fff', flexGrow: 1 }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>Manage Bars</Text>
+    <ScrollView contentContainerStyle={{ padding: 16, backgroundColor: theme.colors.background, flexGrow: 1 }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.colors.text }}>Manage Bars</Text>
       {bars.map((bar, index) => (
-        <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
-          <Text style={{ fontSize: 18 }}>{bar.name}</Text>
+        <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+          <Text style={{ fontSize: 18, color: theme.colors.text }}>{bar.name}</Text>
           <View style={{ flexDirection: 'row' }}>
             <TouchableOpacity style={{ backgroundColor: '#007BFF', padding: 10, marginRight: 10, borderRadius: 5 }} onPress={() => editBarDetails(bar)}>
               <Text style={{ color: '#fff', fontSize: 14 }}>Edit</Text>
@@ -112,7 +112,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
         }}>
           <View style={{
             margin: 20,
-            backgroundColor: 'white',
+            backgroundColor: theme.colors.surface,
             borderRadius: 10,
             padding: 35,
             alignItems: 'center',
@@ -123,23 +123,26 @@ const ManageBarsScreen = ({ navigation, route }) => {
             elevation: 5,
             width: '80%',
           }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 15 }}>Edit Bar</Text>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 15, color: theme.colors.text }}>Edit Bar</Text>
             <TextInput
-              style={{ width: '100%', height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, paddingHorizontal: 8 }}
+              style={{ width: '100%', height: 40, borderColor: theme.colors.border, borderWidth: 1, marginBottom: 10, paddingHorizontal: 8, color: theme.colors.text }}
               placeholder="Name"
+              placeholderTextColor={theme.colors.placeholder}
               value={editName}
               onChangeText={setEditName}
             />
             <TextInput
-              style={{ width: '100%', height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, paddingHorizontal: 8 }}
+              style={{ width: '100%', height: 40, borderColor: theme.colors.border, borderWidth: 1, marginBottom: 10, paddingHorizontal: 8, color: theme.colors.text }}
               placeholder="Fridges"
+              placeholderTextColor={theme.colors.placeholder}
               value={editFridges}
               keyboardType="numeric"
               onChangeText={setEditFridges}
             />
             <TextInput
-              style={{ width: '100%', height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, paddingHorizontal: 8 }}
+              style={{ width: '100%', height: 40, borderColor: theme.colors.border, borderWidth: 1, marginBottom: 10, paddingHorizontal: 8, color: theme.colors.text }}
               placeholder="Shelves"
+              placeholderTextColor={theme.colors.placeholder}
               value={editShelves}
               keyboardType="numeric"
               onChangeText={setEditShelves}

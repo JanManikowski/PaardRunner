@@ -80,12 +80,20 @@ const ShelfListScreen = ({ route, navigation }) => {
         <Text style={{ color: theme.colors.onBackground, fontSize: 24, fontWeight: 'bold' }}>
           Shelves in {bar.name}
         </Text>
-        <Button
-          title="Go to Fridges"
-          icon={<Icon name="list" color={theme.colors.onPrimary} />}
-          buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 10 }}
+        <TouchableOpacity
           onPress={() => navigation.navigate('FridgeList', { bar: { name: bar.name } })}
-        />
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: theme.colors.primary,
+            paddingVertical: 10,
+            paddingHorizontal: 15,
+            borderRadius: 10,
+          }}
+        >
+          <Icon name="list" color={theme.colors.onPrimary} style={{ marginRight: 5 }} />
+          <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>Go to Fridges</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView>

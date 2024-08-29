@@ -46,7 +46,9 @@ const CustomLightColors = {
   surfaceDisabled: "rgba(25, 28, 29, 0.12)",
   onSurfaceDisabled: "rgba(25, 28, 29, 0.38)",
   backdrop: "rgba(41, 50, 52, 0.4)",
-  detailText: "#004D40"
+  detailText: "#004D40",
+  text:"black",
+  placeholder: "0,0,0,10"
 };
 
 // Custom Dark Theme Colors
@@ -92,7 +94,8 @@ const CustomDarkColors = {
   onSurfaceDisabled: "rgba(225, 227, 227, 0.38)",
   backdrop: "rgba(41, 50, 52, 0.4)",
   text: "white",
-  detailText:"#A4F6E9"
+  detailText:"#A4F6E9",
+  placeholder: "24,21,52,70"
 };
 
 // Custom Light Theme

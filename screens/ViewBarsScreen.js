@@ -95,7 +95,7 @@ const ViewBarsScreen = ({ navigation, route }) => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 20 }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.backgroundVariant, padding: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text h4 style={{ color: theme.colors.text }}>ViewBars</Text>
         {!isColorPickerVisible && (

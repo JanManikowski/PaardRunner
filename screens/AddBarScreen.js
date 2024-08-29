@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, TextInput, TouchableOpacity, Alert, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
+import { ThemeContext } from '../contexts/ThemeContext'; // Import ThemeContext
 
 const AddBarScreen = ({ navigation }) => {
   const [barName, setBarName] = useState('');
   const [numShelves, setNumShelves] = useState('');
   const [numFridges, setNumFridges] = useState('');
   const [focusedField, setFocusedField] = useState('');
+  const { theme } = useContext(ThemeContext); // Access theme from ThemeContext
 
   const addBarToStorage = async () => {
     if (barName.trim() === '' || numShelves.trim() === '' || numFridges.trim() === '') {
@@ -39,12 +41,12 @@ const AddBarScreen = ({ navigation }) => {
       justifyContent: 'center',
       alignItems: 'center',
       padding: 16,
-      backgroundColor: '#F8F8F8',
+      backgroundColor: theme.colors.background,
     }}>
       <Text style={{
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 30,
         textAlign: 'center',
       }}>
@@ -56,18 +58,18 @@ const AddBarScreen = ({ navigation }) => {
         width: '80%',
         padding: 12,
         marginVertical: 10,
-        borderColor: focusedField === 'barName' ? '#007BFF' : '#CCCCCC',
+        borderColor: focusedField === 'barName' ? theme.colors.primary : theme.colors.border,
         borderWidth: 1,
         borderRadius: 10,
-        backgroundColor: '#EDEDED',
+        backgroundColor: theme.colors.surfaceVariant,
         boxShadow: focusedField === 'barName' ? '0 0 5px rgba(0, 123, 255, 0.5)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
         transition: 'all 0.3s ease',
       }}>
-        <FontAwesome name="glass" size={18} color="#777" style={{ marginRight: 10 }} />
+        <FontAwesome name="glass" size={18} color={theme.colors.icon} style={{ marginRight: 10 }} />
         <TextInput
-          style={{ flex: 1, fontSize: 16, padding: 12 }}
+          style={{ flex: 1, fontSize: 16, padding: 12, color: theme.colors.text }}
           placeholder="Enter bar name"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.colors.placeholder}
           value={barName}
           onChangeText={setBarName}
           onFocus={() => setFocusedField('barName')}
@@ -80,18 +82,18 @@ const AddBarScreen = ({ navigation }) => {
         width: '80%',
         padding: 12,
         marginVertical: 10,
-        borderColor: focusedField === 'numShelves' ? '#007BFF' : '#CCCCCC',
+        borderColor: focusedField === 'numShelves' ? theme.colors.primary : theme.colors.border,
         borderWidth: 1,
         borderRadius: 10,
-        backgroundColor: '#EDEDED',
+        backgroundColor: theme.colors.surfaceVariant,
         boxShadow: focusedField === 'numShelves' ? '0 0 5px rgba(0, 123, 255, 0.5)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
         transition: 'all 0.3s ease',
       }}>
-        <FontAwesome name="archive" size={18} color="#777" style={{ marginRight: 10 }} />
+        <FontAwesome name="archive" size={18} color={theme.colors.icon} style={{ marginRight: 10 }} />
         <TextInput
-          style={{ flex: 1, fontSize: 16, padding: 12 }}
+          style={{ flex: 1, fontSize: 16, padding: 12, color: theme.colors.text }}
           placeholder="Enter number of shelves"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.colors.placeholder}
           value={numShelves}
           onChangeText={setNumShelves}
           keyboardType="numeric"
@@ -105,18 +107,18 @@ const AddBarScreen = ({ navigation }) => {
         width: '80%',
         padding: 12,
         marginVertical: 10,
-        borderColor: focusedField === 'numFridges' ? '#007BFF' : '#CCCCCC',
+        borderColor: focusedField === 'numFridges' ? theme.colors.primary : theme.colors.border,
         borderWidth: 1,
         borderRadius: 10,
-        backgroundColor: '#EDEDED',
+        backgroundColor: theme.colors.surfaceVariant,
         boxShadow: focusedField === 'numFridges' ? '0 0 5px rgba(0, 123, 255, 0.5)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
         transition: 'all 0.3s ease',
       }}>
-        <FontAwesome name="snowflake-o" size={18} color="#777" style={{ marginRight: 10 }} />
+        <FontAwesome name="snowflake-o" size={18} color={theme.colors.text} style={{ marginRight: 10 }} />
         <TextInput
-          style={{ flex: 1, fontSize: 16, padding: 12 }}
+          style={{ flex: 1, fontSize: 16, padding: 12, color: theme.colors.text }}
           placeholder="Enter number of fridges"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.colors.placeholder}
           value={numFridges}
           onChangeText={setNumFridges}
           keyboardType="numeric"
@@ -129,7 +131,7 @@ const AddBarScreen = ({ navigation }) => {
           width: '80%',
           padding: 15,
           marginVertical: 20,
-          backgroundColor: '#007BFF',
+          backgroundColor: theme.colors.primary,
           borderRadius: 10,
           alignItems: 'center',
           shadowColor: '#000',
@@ -141,7 +143,7 @@ const AddBarScreen = ({ navigation }) => {
         onPress={addBarToStorage}
         activeOpacity={0.8}
       >
-        <Text style={{ color: '#FFF', fontSize: 16, fontWeight: 'bold' }}>Add Bar</Text>
+        <Text style={{ color: theme.colors.background, fontSize: 16, fontWeight: 'bold' }}>Add Bar</Text>
       </TouchableOpacity>
     </View>
   );
