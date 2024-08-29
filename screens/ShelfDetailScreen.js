@@ -108,13 +108,13 @@ const ShelfDetailScreen = ({ route, navigation }) => {
       {/* Arrow Buttons */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
         <Button
-          icon={<Icon name="arrow-back" size={30} color={shelfIndex === 0 ? theme.colors.onSurfaceDisabled : theme.colors.primary} />}
+          icon={<Icon name="arrow-back" size={30} color={shelfIndex === 0 ? theme.colors.onSurfaceDisabled : "#00796b"} />}
           type="clear"
           onPress={goToPreviousItem}
           disabled={shelfIndex === 0}
         />
         <Button
-          icon={<Icon name="arrow-forward" size={30} color={shelfIndex === barShelves[barName].length - 1 ? theme.colors.onSurfaceDisabled : theme.colors.primary} />}
+          icon={<Icon name="arrow-forward" size={30} color={shelfIndex === barShelves[barName].length - 1 ? theme.colors.onSurfaceDisabled : "#00796b"} />}
           type="clear"
           onPress={goToNextItem}
           disabled={shelfIndex === barShelves[barName].length - 1}
@@ -178,13 +178,13 @@ const ShelfDetailScreen = ({ route, navigation }) => {
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
         <Button
           title="Retract Value"
-          buttonStyle={{ backgroundColor: '#228B22', borderRadius: 10 }}
+          buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
           containerStyle={{ flex: 1, marginRight: 10 }}
           onPress={() => handleCustomValue(false)}
         />
         <Button
           title="Add Value"
-          buttonStyle={{ backgroundColor: '#228B22', borderRadius: 10 }}
+          buttonStyle={{ backgroundColor: '#4CAF50', borderRadius: 10 }}
           containerStyle={{ flex: 1, marginLeft: 10 }}
           onPress={() => handleCustomValue(true)}
         />
@@ -200,7 +200,7 @@ const ShelfDetailScreen = ({ route, navigation }) => {
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginTop: 20 }}>
         <Button
           title="Go to Fridges"
-          buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 10 }}
+          buttonStyle={{ backgroundColor: "#00796b", borderRadius: 10 }}
           onPress={() => navigation.navigate('FridgeList', { bar: { name: barName } })}
         />
     </View>

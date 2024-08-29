@@ -138,50 +138,78 @@ const BarDetailScreen = ({ route, navigation }) => {
 
       {/* Modal for adding a custom item */}
       <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={{
-          flex: 1,
-          justifyContent: 'center',
+  animationType="slide"
+  transparent={true}
+  visible={modalVisible}
+  onRequestClose={() => setModalVisible(false)}
+>
+  <View style={{
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  }}>
+    <View style={{
+      width: 300,
+      padding: 20,
+      backgroundColor: theme.colors.background,
+      borderRadius: 10,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 5, // For Android shadow
+    }}>
+      <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: theme.colors.text }}>
+        Add Custom Item
+      </Text>
+      <TextInput
+        style={{
+          width: '100%',
+          padding: 10,
+          borderColor: theme.colors.outline,
+          borderWidth: 1,
+          borderRadius: 5,
+          marginBottom: 20,
+          color: theme.colors.text,
+          backgroundColor: theme.colors.surfaceVariant,
+        }}
+        placeholder="Enter item name"
+        placeholderTextColor={theme.colors.onSurface}
+        value={customItem}
+        onChangeText={setCustomItem}
+      />
+      <TouchableOpacity
+        style={{
+          backgroundColor: theme.colors.primary,
+          paddingVertical: 10,
+          paddingHorizontal: 20,
+          borderRadius: 5,
+          width: '100%',
           alignItems: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        }}>
-          <View style={{
-            width: 300,
-            padding: 20,
-            backgroundColor: '#FFF',
-            borderRadius: 10,
-            alignItems: 'center',
-          }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20 }}>
-              Add Custom Item
-            </Text>
-            <TextInput
-              style={{
-                width: '100%',
-                padding: 10,
-                borderColor: '#CCC',
-                borderWidth: 1,
-                borderRadius: 5,
-                marginBottom: 20,
-              }}
-              placeholder="Enter item name"
-              value={customItem}
-              onChangeText={setCustomItem}
-            />
-            <Button title="Add Item" onPress={handleAddCustomItem} />
-            <Button
-              title="Cancel"
-              color="red"
-              onPress={() => setModalVisible(false)}
-              style={{ marginTop: 10 }}
-            />
-          </View>
-        </View>
-      </Modal>
+          marginBottom: 10,
+        }}
+        onPress={handleAddCustomItem}
+      >
+        <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>Add Item</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={{
+          backgroundColor: theme.colors.error,
+          paddingVertical: 10,
+          paddingHorizontal: 20,
+          borderRadius: 5,
+          width: '100%',
+          alignItems: 'center',
+        }}
+        onPress={() => setModalVisible(false)}
+      >
+        <Text style={{ color: theme.colors.onError, fontWeight: 'bold' }}>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
 
       <TouchableOpacity
         style={{

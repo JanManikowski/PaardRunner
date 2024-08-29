@@ -171,13 +171,13 @@ const FridgeDetailScreen = ({ route, navigation }) => {
       <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
         <Button
           title="Retract Value"
-          buttonStyle={{ backgroundColor: '#228B22', borderRadius: 10 }}
+          buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
           containerStyle={{ flex: 1, marginRight: 10 }}
           onPress={() => handleCustomValue(false)}
         />
         <Button
           title="Add Value"
-          buttonStyle={{ backgroundColor: '#228B22', borderRadius: 10 }}
+          buttonStyle={{ backgroundColor: '#4CAF50', borderRadius: 10 }}
           containerStyle={{ flex: 1, marginLeft: 10 }}
           onPress={() => handleCustomValue(true)}
         />

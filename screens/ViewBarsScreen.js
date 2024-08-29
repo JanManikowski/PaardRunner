@@ -43,18 +43,6 @@ const ViewBarsScreen = ({ navigation, route }) => {
     }).start(() => setSelectedBar(null));
   };
 
-  const handleLongPress = (bar) => {
-    setSelectedBar(bar);
-    setPickedColor(bar.color || '#FFFFFF');
-    setTextColor(getContrastingTextColor(bar.color || '#FFFFFF'));
-    setIsColorPickerVisible(true);
-    Animated.timing(animatedValue, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  };
-
   const handlePress = async (bar) => {
     // Store last opened time
     const updatedBars = bars.map(b =>
@@ -65,6 +53,18 @@ const ViewBarsScreen = ({ navigation, route }) => {
 
     // Navigate to BarDetailScreen
     navigation.navigate('BarDetail', { bar });
+  };
+
+  const handleColorPickerPress = (bar) => {
+    setSelectedBar(bar);
+    setPickedColor(bar.color || '#FFFFFF');
+    setTextColor(getContrastingTextColor(bar.color || '#FFFFFF'));
+    setIsColorPickerVisible(true);
+    Animated.timing(animatedValue, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
   };
 
   const getContrastingTextColor = (backgroundColor) => {
@@ -141,69 +141,71 @@ const ViewBarsScreen = ({ navigation, route }) => {
             }}
             renderItem={({ item, drag, index }) => {
               const itemTextColor = getContrastingTextColor(item.color || theme.colors.surfaceVariant);
-          
+
               const lastOpenedDate = item.lastOpened ? new Date(item.lastOpened) : null;
               const now = new Date();
-              const timeDifference = lastOpenedDate ? Math.abs(now - lastOpenedDate) / 30000 : null; // Difference in minutes
-          
+              const timeDifference = lastOpenedDate ? Math.abs(now - lastOpenedDate) / 60000 : null; // Difference in minutes
+
               const lastOpenedTime = lastOpenedDate
                   ? lastOpenedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                   : 'never';
-          
-              const isDanger = timeDifference >= 30;
-          
+
+              const isDanger = timeDifference && timeDifference >= 30;
+
               return (
-                  <TouchableOpacity
-                      style={{
-                          backgroundColor: item.color || theme.colors.surfaceVariant,
-                          padding: 25, // Adjust padding to make the boxes bigger
-                          borderRadius: 8,
-                          shadowColor: theme.colors.shadow,
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.1,
-                          shadowRadius: 5,
-                          marginBottom: index === bars.length - 1 ? 0 : 20,
-                          elevation: 2,
-                          flexDirection: 'row',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          position: 'relative',
-                      }}
-                      onLongPress={() => handleLongPress(item)}
-                      onPress={() => handlePress(item)}
-                  >
-                      <View>
-                          <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: itemTextColor }}>
-                              {item.name}
-                          </Text>
-          
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-                            {isDanger && (
-                              <MaterialIcons name="warning" size={18} color="red" style={{ marginRight: 5 }} />
-                            )}
-                            <Text
-                              style={{
-                                fontSize: 14,
-                                color: isDanger ? 'red' : itemTextColor,
-                                textShadowColor: isDanger ? 'black' : 'transparent', // Add a shadow for danger text
-                                textShadowOffset: isDanger ? { width: -1, height: 1 } : { width: 0, height: 0 }, // Offset the shadow
-                                textShadowRadius: isDanger ? 1 : 0, // Apply a shadow radius for danger text
-                              }}
-                            >
-                              Last opened: {lastOpenedTime}
-                            </Text>
-                          </View>
-                      </View>
-                      <Button
-                        icon={<Icon name="palette" color={getContrastingTextColor(item.color || theme.colors.surfaceVariant)} />}
-                        buttonStyle={{
-                          backgroundColor: item.color || 'transparent',
-                          borderRadius: 10,
-                          borderColor: getContrastingTextColor(item.color || theme.colors.surfaceVariant),
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: item.color || theme.colors.surfaceVariant,
+                    padding: 25,
+                    borderRadius: 8,
+                    shadowColor: theme.colors.shadow,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 5,
+                    marginBottom: index === bars.length - 1 ? 0 : 20,
+                    elevation: 2,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    position: 'relative',
+                  }}
+                  onLongPress={drag} // Enable dragging on long press
+                  onPress={() => handlePress(item)}
+                >
+                  <View>
+                    <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: itemTextColor }}>
+                      {item.name}
+                    </Text>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                      {isDanger && (
+                        <MaterialIcons 
+                          name="warning" 
+                          size={18} 
+                          color={getContrastingTextColor(item.color || '#FF0000')}
+                          style={{ marginRight: 5 }} 
+                        />
+                      )}
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: itemTextColor, // Ensure the text color is consistent with the title color
                         }}
-                        onPress={() => handleLongPress(item)}
-                      />
-                  </TouchableOpacity>
+                      > 
+                        Last opened: {lastOpenedTime}
+                      </Text>
+                    </View>
+                  </View>
+                  <Button
+                    icon={<Icon name="palette" color={getContrastingTextColor(item.color || theme.colors.surfaceVariant)} />}
+                    buttonStyle={{
+                      backgroundColor: item.color || 'transparent',
+                      borderRadius: 10,
+                      borderColor: getContrastingTextColor(item.color || theme.colors.surfaceVariant),
+                    }}
+                    onPress={() => handleColorPickerPress(item)} // Open color picker on icon press
+                  />
+                </TouchableOpacity>
               );
             }}
             contentContainerStyle={{ paddingBottom: 80 }}
