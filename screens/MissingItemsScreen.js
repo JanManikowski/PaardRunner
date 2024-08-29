@@ -6,6 +6,7 @@ import { FridgeContext } from '../contexts/FridgeContext';
 import { getData, saveData, removeData } from '../storage/AsyncStorageHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
+import RecommendedCratesScreen from './RecommendedCratesScreen';
 
 const MissingItemsScreen = ({ route }) => {
   const { bar } = route.params;
@@ -549,24 +550,19 @@ const MissingItemsScreen = ({ route }) => {
           </>
         )}
       </ScrollView>
-      <TouchableOpacity
-  style={{
-    backgroundColor: '#FFA500',
-    padding: 10,
-    borderRadius: 5,
-    marginTop:-10,
-    marginBottom: 10,
-    alignItems: 'center',
-  }}
-  onPress={() => navigation.navigate('RecommendedCrates', { bar })}
->
-  <Text style={{ color: '#fff', fontSize: 14 }}>Show Recommended Crates</Text>
-</TouchableOpacity>
+
+      <View style={{
+          marginBottom: 10,
+        }}>
+        <Button title="Show Recommended Crates" onPress={() => navigation.navigate('RecommendedCrates', { bar })} color="#FFA500" />
+      </View>
+
       <View style={{
         marginBottom: 10,
       }}>
         <Button title="Share List" onPress={shareList} color="#4CAF50" />
       </View>
+
       <View style={{
         marginBottom: 10,
       }}>

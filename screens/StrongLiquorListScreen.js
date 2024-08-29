@@ -103,13 +103,13 @@ const StrongLiquorListScreen = () => {
             <View style={styles.buttonContainer}>
               <TouchableOpacity
                 onPress={() => updateCount(item, -1)}
-                style={[styles.counterButton, { backgroundColor: theme.colors.error }]}
+                style={[styles.counterButton, { backgroundColor: "#F44336" }]}
               >
                 <Text style={styles.buttonText}>-1</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => updateCount(item, 1)}
-                style={[styles.counterButton, { backgroundColor: theme.colors.success }]}
+                style={[styles.counterButton, { backgroundColor: "#4CAF50" }]}
               >
                 <Text style={styles.buttonText}>+1</Text>
               </TouchableOpacity>
@@ -121,7 +121,7 @@ const StrongLiquorListScreen = () => {
       <View style={{ marginTop: 20 }}>
         <TouchableOpacity 
           onPress={removeAllLiquorItems}
-          style={[styles.removeButton, { backgroundColor: theme.colors.error }]}
+          style={[styles.removeButton, { backgroundColor: "#F44336" }]}
         >
           <Text style={styles.removeButtonText}>Remove All Strong Liquor Items</Text>
         </TouchableOpacity>

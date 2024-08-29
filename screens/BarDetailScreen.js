@@ -182,7 +182,7 @@ const BarDetailScreen = ({ route, navigation }) => {
       />
       <TouchableOpacity
         style={{
-          backgroundColor: theme.colors.primary,
+          backgroundColor: "#4CAF50",
           paddingVertical: 10,
           paddingHorizontal: 20,
           borderRadius: 5,
@@ -192,11 +192,11 @@ const BarDetailScreen = ({ route, navigation }) => {
         }}
         onPress={handleAddCustomItem}
       >
-        <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>Add Item</Text>
+        <Text style={{ color: theme.colors, fontWeight: 'bold' }}>Add Item</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={{
-          backgroundColor: theme.colors.error,
+          backgroundColor: "#F44336",
           paddingVertical: 10,
           paddingHorizontal: 20,
           borderRadius: 5,

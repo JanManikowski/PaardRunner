@@ -264,7 +264,7 @@ const ViewBarsScreen = ({ navigation, route }) => {
           <Button
             title="Manage Bars"
             buttonStyle={{
-              backgroundColor: theme.colors.primary,
+              backgroundColor: "#00796b",
               borderRadius: 10,
               padding: 15,
             }}
