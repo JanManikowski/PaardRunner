@@ -201,6 +201,52 @@ const MissingItemsScreen = ({ route }) => {
       ]
     );
   };
+
+  const removeCategoryItems = (category, categoryName) => {
+    Alert.alert(
+      `Remove ${categoryName}`,
+      `Are you sure you want to remove all items in ${categoryName}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Remove",
+          onPress: async () => {
+            if (category === 'customItems') {
+              const storedCustomItems = JSON.parse(await AsyncStorage.getItem('customItems')) || {};
+              storedCustomItems[bar.name] = [];
+              await AsyncStorage.setItem('customItems', JSON.stringify(storedCustomItems));
+              setMissingItems(prev => ({ ...prev, customItems: [] }));
+            } else if (category === 'shelfItems') {
+              await Promise.all(missingItems.shelfItems.map(async (item, index) => {
+                await removeData(`shelf_${bar.name}_${item.shelfIndex}`);
+              }));
+              setMissingItems(prev => ({ ...prev, shelfItems: [] }));
+              saveBarShelves([]);
+            } else if (category === 'fridgeItems') {
+              await Promise.all(missingItems.fridgeItems.map(async (item, index) => {
+                await removeData(`fridge_${bar.name}_${item.fridgeIndex}`);
+              }));
+              setMissingItems(prev => ({ ...prev, fridgeItems: [] }));
+              saveBarFridges([]);
+            } else if (category === 'liquorItems') {
+              const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
+              const liquorCounts = storedLiquorCounts ? JSON.parse(storedLiquorCounts) : {};
+              missingItems.liquorItems.forEach(item => {
+                liquorCounts[item.type] = 0;
+              });
+              await AsyncStorage.setItem('liquorCounts', JSON.stringify(liquorCounts));
+              setMissingItems(prev => ({ ...prev, liquorItems: [] }));
+            }
+          },
+          style: "destructive"
+        }
+      ]
+    );
+  };
+  
   
 
   const removeAllItems = () => {
@@ -320,7 +366,9 @@ const MissingItemsScreen = ({ route }) => {
         shadowRadius: 5,
         shadowOffset: { width: 0, height: 2 },
         marginBottom: 20,
-      }}>
+        
+      }}
+      contentContainerStyle={{ paddingBottom: 15 }}>
         {/* Fridge Items */}
         {missingItems.fridgeItems.length > 0 && (
           <>

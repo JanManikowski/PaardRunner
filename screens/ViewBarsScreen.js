@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import WheelColorPicker from 'react-native-wheel-color-picker';
 import { ThemeContext } from '../contexts/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const ViewBarsScreen = ({ navigation, route }) => {
   const [bars, setBars] = useState([]);
@@ -15,22 +17,15 @@ const ViewBarsScreen = ({ navigation, route }) => {
   const [animatedValue] = useState(new Animated.Value(0));
   const { theme, toggleTheme } = useContext(ThemeContext);
 
-  // ViewBarsScreen.js
-useEffect(() => {
-  const fetchBars = async () => {
-    const storedBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
-    storedBars.forEach(bar => console.log('Loaded bar name:', bar.name)); // Debugging line to print each bar name
-    setBars(storedBars);
-  };
-  fetchBars();
-
-  if (route.params?.refresh) {
-    fetchBars();
-    // Reset refresh parameter
-    navigation.setParams({ refresh: false });
-  }
-}, [route.params?.refresh]); // Adding refresh as a dependency to re-fetch bars when updated
-
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchBars = async () => {
+        const storedBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
+        setBars(storedBars);
+      };
+      fetchBars();
+    }, [])
+  );
 
   const handleColorChange = async () => {
     const updatedBars = bars.map(bar =>
@@ -47,10 +42,8 @@ useEffect(() => {
       useNativeDriver: false,
     }).start(() => setSelectedBar(null));
   };
-  
 
-
-  const handleBarPress = (bar) => {
+  const handleLongPress = (bar) => {
     setSelectedBar(bar);
     setPickedColor(bar.color || '#FFFFFF');
     setTextColor(getContrastingTextColor(bar.color || '#FFFFFF'));
@@ -60,6 +53,18 @@ useEffect(() => {
       duration: 300,
       useNativeDriver: false,
     }).start();
+  };
+
+  const handlePress = async (bar) => {
+    // Store last opened time
+    const updatedBars = bars.map(b =>
+      b.name === bar.name ? { ...b, lastOpened: new Date().toISOString() } : b
+    );
+    setBars(updatedBars);
+    await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
+
+    // Navigate to BarDetailScreen
+    navigation.navigate('BarDetail', { bar });
   };
 
   const getContrastingTextColor = (backgroundColor) => {
@@ -116,7 +121,7 @@ useEffect(() => {
               shadowOpacity: 0.1,
               shadowRadius: 5,
               elevation: 2,
-              backgroundColor: pickedColor, // White box now reflects the current pickedColor
+              backgroundColor: pickedColor,
             },
             animatedStyle,
           ]}
@@ -124,15 +129,9 @@ useEffect(() => {
           <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, textAlign: 'center', color: textColor }}>
             {selectedBar.name}
           </Text>
-          <Text style={{ marginBottom: 5, fontSize: 16, textAlign: 'center', color: textColor }}>
-            Shelves: {selectedBar.numShelves}
-          </Text>
-          <Text style={{ fontSize: 16, textAlign: 'center', color: textColor }}>
-            Fridges: {selectedBar.numFridges}
-          </Text>
         </Animated.View>
       ) : (
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, }}>
           <DraggableFlatList
             data={bars}
             keyExtractor={(item, index) => index.toString()}
@@ -142,48 +141,71 @@ useEffect(() => {
             }}
             renderItem={({ item, drag, index }) => {
               const itemTextColor = getContrastingTextColor(item.color || theme.colors.surfaceVariant);
-            
+          
+              const lastOpenedDate = item.lastOpened ? new Date(item.lastOpened) : null;
+              const now = new Date();
+              const timeDifference = lastOpenedDate ? Math.abs(now - lastOpenedDate) / 30000 : null; // Difference in minutes
+          
+              const lastOpenedTime = lastOpenedDate
+                  ? lastOpenedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : 'never';
+          
+              const isDanger = timeDifference >= 30;
+          
               return (
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: item.color || theme.colors.surfaceVariant, // Bar box color
-                    padding: 15,
-                    borderRadius: 8,
-                    shadowColor: theme.colors.shadow,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 5,
-                    marginBottom: index === bars.length - 1 ? 0 : 20,
-                    elevation: 2,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                  onLongPress={drag}
-                  onPress={() => navigation.navigate('BarDetail', { bar: item })}
-                >
-                  <View>
-                    <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: itemTextColor }}>
-                      {item.name}
-                    </Text>
-                    <Text style={{ marginBottom: 5, fontSize: 16, color: itemTextColor }}>
-                      Shelves: {item.numShelves}
-                    </Text>
-                    <Text style={{ fontSize: 16, color: itemTextColor }}>Fridges: {item.numFridges}</Text>
-                  </View>
-                  <Button
-                    icon={<Icon name="palette" color="white" />}
-                    buttonStyle={{
-                      backgroundColor: item.color || 'transparent', // Match the box color or set to transparent
-                      borderRadius: 10,
-                    }}
-                    onPress={() => handleBarPress(item)}
-                  />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                      style={{
+                          backgroundColor: item.color || theme.colors.surfaceVariant,
+                          padding: 25, // Adjust padding to make the boxes bigger
+                          borderRadius: 8,
+                          shadowColor: theme.colors.shadow,
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 5,
+                          marginBottom: index === bars.length - 1 ? 0 : 20,
+                          elevation: 2,
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          position: 'relative',
+                      }}
+                      onLongPress={() => handleLongPress(item)}
+                      onPress={() => handlePress(item)}
+                  >
+                      <View>
+                          <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: itemTextColor }}>
+                              {item.name}
+                          </Text>
+          
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                            {isDanger && (
+                              <MaterialIcons name="warning" size={18} color="red" style={{ marginRight: 5 }} />
+                            )}
+                            <Text
+                              style={{
+                                fontSize: 14,
+                                color: isDanger ? 'red' : itemTextColor,
+                                textShadowColor: isDanger ? 'black' : 'transparent', // Add a shadow for danger text
+                                textShadowOffset: isDanger ? { width: -1, height: 1 } : { width: 0, height: 0 }, // Offset the shadow
+                                textShadowRadius: isDanger ? 1 : 0, // Apply a shadow radius for danger text
+                              }}
+                            >
+                              Last opened: {lastOpenedTime}
+                            </Text>
+                          </View>
+                      </View>
+                      <Button
+                        icon={<Icon name="palette" color={getContrastingTextColor(item.color || theme.colors.surfaceVariant)} />}
+                        buttonStyle={{
+                          backgroundColor: item.color || 'transparent',
+                          borderRadius: 10,
+                          borderColor: getContrastingTextColor(item.color || theme.colors.surfaceVariant),
+                        }}
+                        onPress={() => handleLongPress(item)}
+                      />
+                  </TouchableOpacity>
               );
             }}
-            
-            
             contentContainerStyle={{ paddingBottom: 80 }}
           />
         </View>
@@ -208,30 +230,30 @@ useEffect(() => {
           <Text h4 style={{ textAlign: 'center', color: theme.colors.text }}>
             Pick a Color
           </Text>
-          
+
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
             <WheelColorPicker
-              color={pickedColor}  // Use color prop instead of initialColor
+              color={pickedColor}
               onColorChange={(color) => {
                 setPickedColor(color);
                 setTextColor(getContrastingTextColor(color));
               }}
               thumbStyle={{ height: 30, width: 30, backgroundColor: 'white' }}
-              style={{ width: 300, height: 300 }} 
+              style={{ width: 300, height: 300 }}
             />
           </View>
 
           <Button
-  title="Confirm"
-  buttonStyle={{
-    backgroundColor: theme.colors.primary,
-    borderRadius: 10,
-    width: '80%',
-    padding: 15,
-  }}
-  titleStyle={{ textAlign: 'center', width: '100%' }}  // Center the text
-  onPress={handleColorChange}
-/>
+            title="Confirm"
+            buttonStyle={{
+              backgroundColor: theme.colors.primary,
+              borderRadius: 10,
+              width: '80%',
+              padding: 15,
+            }}
+            titleStyle={{ textAlign: 'center', width: '100%' }}
+            onPress={handleColorChange}
+          />
         </View>
       )}
 
@@ -248,7 +270,6 @@ useEffect(() => {
           />
         </View>
       )}
-
     </View>
   );
 };

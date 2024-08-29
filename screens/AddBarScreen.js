@@ -26,8 +26,6 @@ const AddBarScreen = ({ navigation }) => {
       setNumShelves('');
       setNumFridges('');
 
-      // Navigate back to ViewBars and pass the updated bars
-      console.log('Adding bar:', barName);
       navigation.navigate('ViewBars', { refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to add bar');

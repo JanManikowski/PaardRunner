@@ -12,7 +12,6 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     if (!bar || !bar.name) {
-      console.error("Bar data is missing or incorrect.");
       navigation.goBack(); // Navigate back if bar data is missing
       return;
     }
@@ -42,9 +41,6 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
         );
         shelfItems = shelves.filter(item => item.missing > 0);
       }
-
-      console.log(`Fridge Items for Crates:`, fridgeItems);
-      console.log(`Shelf Items for Crates:`, shelfItems);
 
       // Create and sort crates for zwarte kratjes (fridge items)
       const zwarteCrates = createCrates(fridgeItems, 24);

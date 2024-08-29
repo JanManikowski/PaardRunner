@@ -78,7 +78,7 @@ const FridgeListScreen = ({ route, navigation }) => {
         />
       </View>
 
-      <Button
+      {/* <Button
         title="Open a Case"
         onPress={() => navigation.navigate('CaseOpening')}
         buttonStyle={{
@@ -87,7 +87,7 @@ const FridgeListScreen = ({ route, navigation }) => {
           marginBottom: 16,
           padding: 10,
         }}
-      />
+      /> */}
 
       <ScrollView>
         {fridges.map((item, index) => (
