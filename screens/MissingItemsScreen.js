@@ -108,7 +108,6 @@ const MissingItemsScreen = ({ route }) => {
   
     setMissingItems({ fridgeItems, shelfItems, liquorItems, customItems });
   };
-  
 
   useFocusEffect(
     useCallback(() => {
@@ -247,8 +246,6 @@ const MissingItemsScreen = ({ route }) => {
       ]
     );
   };
-  
-  
 
   const removeAllItems = () => {
     Alert.alert(
@@ -341,6 +338,14 @@ const MissingItemsScreen = ({ route }) => {
       setMissingItems(prev => ({ ...prev, liquorItems: updatedLiquorItems }));
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.refresh) {
+        fetchMissingItems();
+      }
+    }, [route.params])
+  );
 
   return (
     <View style={{

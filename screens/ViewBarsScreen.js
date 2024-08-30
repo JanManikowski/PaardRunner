@@ -17,6 +17,34 @@ const ViewBarsScreen = ({ navigation, route }) => {
   const [animatedValue] = useState(new Animated.Value(0));
   const { theme, toggleTheme } = useContext(ThemeContext);
 
+  const [iconOpacity] = useState(new Animated.Value(1)); // New animated value for the icon opacity
+
+  useEffect(() => {
+    // Create a loop with a 5-second delay before the flashing effect
+    Animated.loop(
+      Animated.sequence([
+        // Keep the icon fully visible for 5 seconds
+        Animated.timing(iconOpacity, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        // Flash effect: fade out
+        Animated.timing(iconOpacity, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        // Flash effect: fade back in
+        Animated.timing(iconOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [iconOpacity]);
+
   useFocusEffect(
     React.useCallback(() => {
       const fetchBars = async () => {
@@ -179,17 +207,19 @@ const ViewBarsScreen = ({ navigation, route }) => {
 
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
                       {isDanger && (
-                        <MaterialIcons 
-                          name="warning" 
-                          size={18} 
-                          color={getContrastingTextColor(item.color || '#FF0000')}
-                          style={{ marginRight: 5 }} 
-                        />
+                        <Animated.View style={{ opacity: iconOpacity }}>
+                          <MaterialIcons 
+                            name="warning" 
+                            size={18} 
+                            color={getContrastingTextColor(item.color || '#FF0000')}
+                            style={{ marginRight: 5 }} 
+                          />
+                        </Animated.View>
                       )}
                       <Text
                         style={{
                           fontSize: 14,
-                          color: itemTextColor, // Ensure the text color is consistent with the title color
+                          color: itemTextColor,
                         }}
                       > 
                         Last opened: {lastOpenedTime}
@@ -203,7 +233,7 @@ const ViewBarsScreen = ({ navigation, route }) => {
                       borderRadius: 10,
                       borderColor: getContrastingTextColor(item.color || theme.colors.surfaceVariant),
                     }}
-                    onPress={() => handleColorPickerPress(item)} // Open color picker on icon press
+                    onPress={() => handleColorPickerPress(item)}
                   />
                 </TouchableOpacity>
               );

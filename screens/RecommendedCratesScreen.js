@@ -132,7 +132,7 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
             </Text>
             {recommendedCrates.zwarte.length > 0 ? (
               recommendedCrates.zwarte.map((crate, crateIndex) => (
-                <View key={crateIndex} style={[styles.crateContainer, { borderColor: theme.colors.border }]}>
+                <View key={crateIndex} style={[styles.crateContainer, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceVariant }]}>
                   <Text style={[styles.crateTitle, { color: theme.colors.text }]}>
                     Crate {crateIndex + 1}
                   </Text>
@@ -158,7 +158,7 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
             </Text>
             {recommendedCrates.gele.length > 0 ? (
               recommendedCrates.gele.map((crate, crateIndex) => (
-                <View key={crateIndex} style={[styles.crateContainer, { borderColor: theme.colors.border }]}>
+                <View key={crateIndex} style={[styles.crateContainer, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceVariant }]}>
                   <Text style={[styles.crateTitle, { color: theme.colors.text }]}>
                     Crate {crateIndex + 1}
                   </Text>

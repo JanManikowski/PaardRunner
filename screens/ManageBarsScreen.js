@@ -86,7 +86,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
             paddingVertical: 10,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
-            backgroundColor: theme.colors.card,
+            backgroundColor: theme.colors.surfaceVariant,
             borderRadius: 8,
             marginBottom: 10,
             padding: 15
@@ -107,7 +107,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={{
-                backgroundColor: theme.colors.error,
+                backgroundColor: "#F44336",
                 padding: 10,
                 borderRadius: 5
               }}
@@ -120,7 +120,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
       ))}
       <TouchableOpacity
         style={{
-          backgroundColor: theme.colors.success,
+          backgroundColor: "#00796b",
           padding: 15,
           borderRadius: 8,
           marginTop: 20,
@@ -226,7 +226,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
-                  backgroundColor: theme.colors.error,
+                  backgroundColor: "#F44336",
                   padding: 10,
                   borderRadius: 5,
                   flex: 1,
