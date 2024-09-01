@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Button, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -9,6 +9,7 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
   const { barFridges, barShelves } = useContext(FridgeContext);
   const { theme } = useContext(ThemeContext);
   const [recommendedCrates, setRecommendedCrates] = useState({ zwarte: [], gele: [] });
+  const [crateSize, setCrateSize] = useState(24); // Default crate size is 24
 
   useEffect(() => {
     if (!bar || !bar.name) {
@@ -42,89 +43,97 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
         shelfItems = shelves.filter(item => item.missing > 0);
       }
 
-      // Create and sort crates for zwarte kratjes (fridge items)
-      const zwarteCrates = createCrates(fridgeItems, 24);
-
-      // Create and sort crates for gele kratjes (shelf items)
-      const geleCrates = createCrates(shelfItems, 12);
+      // Create and sort crates based on the current crate size
+      const zwarteCrates = createCrates(fridgeItems, crateSize);
+      const geleCrates = createCrates(shelfItems, crateSize);
 
       setRecommendedCrates({ zwarte: zwarteCrates, gele: geleCrates });
     };
 
-    const createCrates = (items, maxItemsPerCrate) => {
-      // Group items by type and calculate the total missing quantity and importance score
-      const groupedItems = items.reduce((acc, item) => {
-        const importanceScore = (item.missing / item.amount) * 100; // Calculate importance as missing percentage
-        if (!acc[item.type]) {
-          acc[item.type] = { quantity: 0, importance: importanceScore };
-        }
-        acc[item.type].quantity += item.missing;
-        acc[item.type].importance = Math.max(acc[item.type].importance, importanceScore); // Use the highest importance score for the group
-        return acc;
-      }, {});
+    fetchItemsForCrates();
+  }, [bar, barFridges, barShelves, crateSize, navigation]); // Recalculate when crateSize changes
 
-      // Convert the grouped items into an array of { type, quantity, importance }
-      const itemArray = Object.keys(groupedItems).map(type => ({
-        type,
-        quantity: groupedItems[type].quantity,
-        importance: groupedItems[type].importance.toFixed(2), // Round to two decimal places
-      }));
+  const createCrates = (items, maxItemsPerCrate) => {
+    const groupedItems = items.reduce((acc, item) => {
+      const importanceScore = (item.missing / item.amount) * 100; // Calculate importance as missing percentage
+      if (!acc[item.type]) {
+        acc[item.type] = { quantity: 0, importance: importanceScore };
+      }
+      acc[item.type].quantity += item.missing;
+      acc[item.type].importance = Math.max(acc[item.type].importance, importanceScore); // Use the highest importance score for the group
+      return acc;
+    }, {});
 
-      // Sort items by importance in descending order
+    let itemArray = Object.keys(groupedItems).map(type => ({
+      type,
+      quantity: groupedItems[type].quantity,
+      importance: groupedItems[type].importance,
+    }));
+
+    const crates = [];
+    let currentCrate = {};
+    let currentItemsCount = 0;
+
+    while (itemArray.length > 0) {
       itemArray.sort((a, b) => b.importance - a.importance);
 
-      // Create crates by filling each with the most important items until the crate is full
-      const crates = [];
-      let currentCrate = [];
-      let currentItemsCount = 0;
+      const item = itemArray[0];
+      const addQuantity = 1; // We now take 1 item at a time
 
-      itemArray.forEach(item => {
-        while (item.quantity > 0) {
-          const remainingSpace = maxItemsPerCrate - currentItemsCount;
-          const addQuantity = Math.min(item.quantity, remainingSpace);
-
-          currentCrate.push({
-            type: item.type,
-            quantity: addQuantity,
-            importance: item.importance
-          });
-
-          currentItemsCount += addQuantity;
-          item.quantity -= addQuantity;
-
-          if (currentItemsCount === maxItemsPerCrate) {
-            crates.push([...currentCrate]); // Push a copy of the currentCrate array
-            currentCrate = [];
-            currentItemsCount = 0;
-          }
-        }
-      });
-
-      // If any items remain in the current crate, add it to the crates array
-      if (currentCrate.length > 0) {
-        crates.push([...currentCrate]); // Push the final crate
+      if (currentCrate[item.type]) {
+        currentCrate[item.type].quantity += addQuantity;
+      } else {
+        currentCrate[item.type] = {
+          type: item.type,
+          quantity: addQuantity,
+          importance: item.importance.toFixed(2)
+        };
       }
 
-      // Sort crates by the highest importance within the crate
-      crates.sort((a, b) => {
-        const maxImportanceA = Math.max(...a.map(i => parseFloat(i.importance)));
-        const maxImportanceB = Math.max(...b.map(i => parseFloat(i.importance)));
-        return maxImportanceB - maxImportanceA;
-      });
+      currentItemsCount += addQuantity;
+      item.quantity -= addQuantity;
 
-      return crates;
-    };
+      if (currentItemsCount === maxItemsPerCrate) {
+        crates.push(Object.values(currentCrate));
+        currentCrate = {};
+        currentItemsCount = 0;
+      }
 
-    fetchItemsForCrates();
-  }, [bar, barFridges, barShelves, navigation]);
+      if (item.quantity <= 0) {
+        itemArray.shift();
+      }
+
+      item.importance = (item.quantity / groupedItems[item.type].quantity) * groupedItems[item.type].importance;
+    }
+
+    if (Object.keys(currentCrate).length > 0) {
+      crates.push(Object.values(currentCrate)); // Push the final crate
+    }
+
+    crates.sort((a, b) => {
+      const maxImportanceA = Math.max(...a.map(i => parseFloat(i.importance)));
+      const maxImportanceB = Math.max(...b.map(i => parseFloat(i.importance)));
+      return maxImportanceB - maxImportanceA;
+    });
+
+    return crates;
+  };
 
   return (
     <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       {bar && bar.name ? (
         <>
           <Text style={[styles.headerText, { color: theme.colors.text }]}>
-            Recommended Crates for {bar.name}
+            Recommended Crates for {bar.name} ({crateSize} items per crate)
           </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => setCrateSize(crateSize === 24 ? 39 : 24)}
+          >
+            <Text style={styles.buttonText}>
+              {crateSize === 24 ? 'Switch to 39-item Crates' : 'Switch to 24-item Crates'}
+            </Text>
+          </TouchableOpacity>
 
           <View style={{background:theme.colors.surfaceVariant}}>
             <Text style={[styles.sectionHeader, { color: theme.colors.primary }]}>
@@ -222,10 +231,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'monospace',
   },
-  itemImportance: {
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
   noItemsText: {
     fontSize: 16,
     fontStyle: 'italic',
@@ -236,6 +241,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
   },
+  button: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: '#007BFF',
+    borderRadius: 5,
+    alignItems: 'center',
+    alignSelf: 'flex-end', // Aligns the button to the right
+    marginBottom: 10, // Adds some space below the button
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 12, // Smaller font size
+    fontWeight: 'bold',
+  },
 });
+
 
 export default RecommendedCratesScreen;

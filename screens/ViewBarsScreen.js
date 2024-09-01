@@ -126,8 +126,10 @@ const ViewBarsScreen = ({ navigation, route }) => {
     <View style={{ flex: 1, backgroundColor: theme.colors.backgroundVariant, padding: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text h4 style={{ color: theme.colors.text }}>ViewBars</Text>
+        <Text style={{ color: theme.colors.text, marginLeft: 120 }}>Darkmode</Text>
         {!isColorPickerVisible && (
           <Switch
+          title="Darkmode"
             value={theme.dark}
             onValueChange={toggleTheme}
           />

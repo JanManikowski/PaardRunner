@@ -75,3 +75,6 @@ yarn-error.*
 *.tsbuildinfo
 
 # @end expo-cli
+
+# build
+*.aab

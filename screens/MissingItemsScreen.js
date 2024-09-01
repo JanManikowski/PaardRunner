@@ -249,48 +249,52 @@ const MissingItemsScreen = ({ route }) => {
 
   const removeAllItems = () => {
     Alert.alert(
-      "Remove All Items",
-      `Are you sure you want to remove all items for ${bar.name}?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Remove All",
-          onPress: async () => {
-            // Update fridges, shelves, liquor, and custom items
-            let updatedFridges = [...missingItems.fridgeItems];
-            let updatedShelves = [...missingItems.shelfItems];
-            let updatedLiquors = [...missingItems.liquorItems];
-            let updatedCustoms = [...missingItems.customItems];
+        "Remove All Items",
+        `Are you sure you want to remove all items for ${bar.name}?`,
+        [
+            {
+                text: "Cancel",
+                style: "cancel"
+            },
+            {
+                text: "Remove All",
+                onPress: async () => {
+                    // Remove fridge items from AsyncStorage
+                    for (let item of missingItems.fridgeItems) {
+                        await removeData(`fridge_${bar.name}_${item.fridgeIndex}`);
+                    }
 
-            for (let item of [...updatedFridges, ...updatedShelves, ...updatedLiquors, ...updatedCustoms]) {
-              if (item.shelfIndex !== undefined) {
-                await removeData(`shelf_${bar.name}_${item.shelfIndex}`);
-              } else if (item.fridgeIndex !== undefined) {
-                await removeData(`fridge_${bar.name}_${item.fridgeIndex}`);
-              } else if (item.customIndex !== undefined) {
-                const storedFridges = JSON.parse(await AsyncStorage.getItem('barFridges')) || {};
-                storedFridges[bar.name] = storedFridges[bar.name].filter((_, i) => i !== item.customIndex);
-                await AsyncStorage.setItem('barFridges', JSON.stringify(storedFridges));
-                setBarFridges(storedFridges);
-              } else {
-                const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
-                const liquorCounts = storedLiquorCounts ? JSON.parse(storedLiquorCounts) : {};
-                liquorCounts[item.type] = 0;
-                await AsyncStorage.setItem('liquorCounts', JSON.stringify(liquorCounts));
-              }
+                    // Remove shelf items from AsyncStorage
+                    for (let item of missingItems.shelfItems) {
+                        await removeData(`shelf_${bar.name}_${item.shelfIndex}`);
+                    }
+
+                    // Remove liquor items from AsyncStorage
+                    const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
+                    if (storedLiquorCounts) {
+                        const liquorCounts = JSON.parse(storedLiquorCounts);
+                        missingItems.liquorItems.forEach(item => {
+                            liquorCounts[item.type] = 0;
+                        });
+                        await AsyncStorage.setItem('liquorCounts', JSON.stringify(liquorCounts));
+                    }
+
+                    // Remove custom items from AsyncStorage
+                    const storedCustomItems = JSON.parse(await AsyncStorage.getItem('customItems')) || {};
+                    storedCustomItems[bar.name] = [];
+                    await AsyncStorage.setItem('customItems', JSON.stringify(storedCustomItems));
+
+                    // Update context and state to reflect the removals
+                    setMissingItems({ fridgeItems: [], shelfItems: [], liquorItems: [], customItems: [] });
+                    saveBarFridges([]);
+                    saveBarShelves([]);
+                },
+                style: "destructive"
             }
-
-            // Update context with the cleared data
-            setMissingItems({ fridgeItems: [], shelfItems: [], liquorItems: [], customItems: [] });
-          },
-          style: "destructive"
-        }
-      ]
+        ]
     );
-  };
+};
+
 
   const handleInputChange = (index, value, category) => {
     const updatedCategoryItems = [...missingItems[category]];
