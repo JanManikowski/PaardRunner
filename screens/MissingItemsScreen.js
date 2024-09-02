@@ -17,7 +17,7 @@ const MissingItemsScreen = ({ route }) => {
     liquorItems: [],
     customItems: [] // New category for custom items
   });
-  const [inputValues, setInputValues] = useState({});
+  const [inputValues, setInputValues] = useState({}); 
   const [isEditing, setIsEditing] = useState(false);
   const navigation = useNavigation();
   const { theme } = useContext(ThemeContext);
@@ -165,42 +165,44 @@ const MissingItemsScreen = ({ route }) => {
         {
           text: "Remove",
           onPress: async () => {
+            let updatedItems = [...missingItems[category]];
+            updatedItems.splice(index, 1); // Remove the item from the category array
+            
             if (category === 'customItems') {
               const storedCustomItems = JSON.parse(await AsyncStorage.getItem('customItems')) || {};
-              storedCustomItems[bar.name] = storedCustomItems[bar.name].filter((_, i) => i !== index);
+              storedCustomItems[bar.name] = updatedItems;
               await AsyncStorage.setItem('customItems', JSON.stringify(storedCustomItems));
-              setMissingItems(prev => ({
-                ...prev,
-                customItems: prev.customItems.filter((_, i) => i !== index)
-              }));
-              setCustomItems(storedCustomItems);
-            } else if (item.shelfIndex !== undefined) {
+            } else if (category === 'shelfItems') {
               await removeData(`shelf_${bar.name}_${item.shelfIndex}`);
-              const updatedShelves = [...missingItems.shelfItems];
-              updatedShelves.splice(index, 1);
-              setMissingItems({ ...missingItems, shelfItems: updatedShelves });
-              saveBarShelves(updatedShelves);
-            } else if (item.fridgeIndex !== undefined) {
+              saveBarShelves(updatedItems);
+            } else if (category === 'fridgeItems') {
               await removeData(`fridge_${bar.name}_${item.fridgeIndex}`);
-              const updatedFridges = [...missingItems.fridgeItems];
-              updatedFridges.splice(index, 1);
-              setMissingItems({ ...missingItems, fridgeItems: updatedFridges });
-              saveBarFridges(updatedFridges);
-            } else {
+              saveBarFridges(updatedItems);
+            } else if (category === 'liquorItems') {
               const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
               const liquorCounts = storedLiquorCounts ? JSON.parse(storedLiquorCounts) : {};
               liquorCounts[item.type] = 0;
               await AsyncStorage.setItem('liquorCounts', JSON.stringify(liquorCounts));
-              const updatedLiquorItems = [...missingItems.liquorItems];
-              updatedLiquorItems.splice(index, 1);
-              setMissingItems({ ...missingItems, liquorItems: updatedLiquorItems });
             }
+            
+            // Update the missingItems state
+            setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
+  
+            // Update inputValues to remove the deleted item's input and shift the remaining ones
+            const updatedInputValues = { ...inputValues };
+            delete updatedInputValues[`${category}-${index}`];
+            for (let i = index + 1; i <= updatedItems.length; i++) {
+              updatedInputValues[`${category}-${i - 1}`] = updatedInputValues[`${category}-${i}`];
+              delete updatedInputValues[`${category}-${i}`];
+            }
+            setInputValues(updatedInputValues);
           },
           style: "destructive"
         }
       ]
     );
   };
+  
 
   const removeCategoryItems = (category, categoryName) => {
     Alert.alert(
@@ -298,17 +300,16 @@ const MissingItemsScreen = ({ route }) => {
 
   const handleInputChange = (index, value, category) => {
     const updatedCategoryItems = [...missingItems[category]];
-    updatedCategoryItems[index].missing = value;
-    setInputValues(prev => ({ ...prev, [`${category}-${index}`]: value }));
-    setIsEditing(true);
+  updatedCategoryItems[index].missing = value;
+  setInputValues(prev => ({ ...prev, [`${category}-${index}`]: value }));
   };
 
   const handleInputBlur = async (item, index, category) => {
     const newCount = parseInt(inputValues[`${category}-${index}`], 10);
-    if (!isNaN(newCount)) {
-      await updateMissingCount(item, index, newCount, category);
-    }
-    setIsEditing(false);
+  if (!isNaN(newCount)) {
+    await updateMissingCount(item, index, newCount, category);
+  }
+  setIsEditing(false);
   };
 
   const updateMissingCount = async (item, index, newCount, category) => {
@@ -350,6 +351,22 @@ const MissingItemsScreen = ({ route }) => {
       }
     }, [route.params])
   );
+
+  const incrementCount = async (index, category) => {
+    const currentValue = parseInt(inputValues[`${category}-${index}`], 10) || missingItems[category][index].missing;
+    const updatedValue = currentValue + 1;
+    handleInputChange(index, String(updatedValue), category);
+    await updateMissingCount(missingItems[category][index], index, updatedValue, category);
+    setIsEditing(false); // Ensure editing state is not set during button click
+  };
+  
+  const decrementCount = async (index, category) => {
+    const currentValue = parseInt(inputValues[`${category}-${index}`], 10) || missingItems[category][index].missing;
+    const updatedValue = currentValue > 0 ? currentValue - 1 : 0;
+    handleInputChange(index, String(updatedValue), category);
+    await updateMissingCount(missingItems[category][index], index, updatedValue, category);
+    setIsEditing(false); // Ensure editing state is not set during button click
+  };
 
   return (
     <View style={{
@@ -402,23 +419,39 @@ const MissingItemsScreen = ({ route }) => {
                     {item.type}
                   </Text>
                 </TouchableOpacity>
-                <TextInput
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 'bold',
-                    borderColor: theme.colors.border,
-                    borderWidth: 1,
-                    borderRadius: 5,
-                    width: 50,
-                    textAlign: 'center',
-                    color: theme.colors.text,
-                  }}
-                  value={inputValues[`fridgeItems-${index}`] !== undefined ? inputValues[`fridgeItems-${index}`] : String(item.missing)}
-                  keyboardType="numeric"
-                  onChangeText={(text) => handleInputChange(index, text, 'fridgeItems')}
-                  onBlur={() => handleInputBlur(item, index, 'fridgeItems')}
-                  onFocus={() => setIsEditing(true)}
-                />
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity onPress={() => decrementCount(index, 'fridgeItems')}>
+                    <Text style={{
+                      fontSize: 24,
+                      marginHorizontal: 10,
+                      color: theme.colors.primary,
+                    }}>-</Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 'bold',
+                      borderColor: theme.colors.border,
+                      borderWidth: 1,
+                      borderRadius: 5,
+                      width: 50,
+                      textAlign: 'center',
+                      color: theme.colors.text,
+                    }}
+                    value={inputValues[`fridgeItems-${index}`] !== undefined ? inputValues[`fridgeItems-${index}`] : String(item.missing)}
+                    keyboardType="numeric"
+                    onChangeText={(text) => handleInputChange(index, text, 'fridgeItems')}
+                    onBlur={() => handleInputBlur(item, index, 'fridgeItems')}
+                    onFocus={() => setIsEditing(true)} // Set editing state only when TextInput is focused
+                  />
+                  <TouchableOpacity onPress={() => incrementCount(index, 'fridgeItems')}>
+                    <Text style={{
+                      fontSize: 24,
+                      marginHorizontal: 10,
+                      color: theme.colors.primary,
+                    }}>+</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </>
@@ -447,6 +480,13 @@ const MissingItemsScreen = ({ route }) => {
                     {item.type}
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => decrementCount(index, 'shelfItems')}>
+                    <Text style={{
+                      fontSize: 24,
+                      marginHorizontal: 10,
+                      color: theme.colors.primary,
+                    }}>-</Text>
+                  </TouchableOpacity>
                 <TextInput
                   style={{
                     fontSize: 16,
@@ -464,6 +504,13 @@ const MissingItemsScreen = ({ route }) => {
                   onBlur={() => handleInputBlur(item, index, 'shelfItems')}
                   onFocus={() => setIsEditing(true)}
                 />
+                <TouchableOpacity onPress={() => incrementCount(index, 'shelfItems')}>
+                    <Text style={{
+                      fontSize: 24,
+                      marginHorizontal: 10,
+                      color: theme.colors.primary,
+                    }}>+</Text>
+                  </TouchableOpacity>
               </View>
             ))}
           </>
@@ -492,6 +539,13 @@ const MissingItemsScreen = ({ route }) => {
                     {item.type}
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => decrementCount(index, 'liquorItems')}>
+                    <Text style={{
+                      fontSize: 24,
+                      marginHorizontal: 10,
+                      color: theme.colors.primary,
+                    }}>-</Text>
+                  </TouchableOpacity>
                 <TextInput
                   style={{
                     fontSize: 16,
@@ -509,6 +563,13 @@ const MissingItemsScreen = ({ route }) => {
                   onBlur={() => handleInputBlur(item, index, 'liquorItems')}
                   onFocus={() => setIsEditing(true)}
                 />
+                <TouchableOpacity onPress={() => incrementCount(index, 'liquorItems')}>
+                    <Text style={{
+                      fontSize: 24,
+                      marginHorizontal: 10,
+                      color: theme.colors.primary,
+                    }}>+</Text>
+                  </TouchableOpacity>
               </View>
             ))}
           </>
@@ -537,6 +598,13 @@ const MissingItemsScreen = ({ route }) => {
                     {item.type}
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => decrementCount(index, 'customItems')}>
+                    <Text style={{
+                      fontSize: 24,
+                      marginHorizontal: 10,
+                      color: theme.colors.primary,
+                    }}>-</Text>
+                  </TouchableOpacity>
                 <TextInput
                   style={{
                     fontSize: 16,
@@ -554,6 +622,13 @@ const MissingItemsScreen = ({ route }) => {
                   onBlur={() => handleInputBlur(item, index, 'customItems')}
                   onFocus={() => setIsEditing(true)}
                 />
+                <TouchableOpacity onPress={() => incrementCount(index, 'customItems')}>
+                    <Text style={{
+                      fontSize: 24,
+                      marginHorizontal: 10,
+                      color: theme.colors.primary,
+                    }}>+</Text>
+                  </TouchableOpacity>
               </View>
             ))}
           </>
