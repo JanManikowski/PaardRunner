@@ -124,16 +124,11 @@ const ViewBarsScreen = ({ navigation, route }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.backgroundVariant, padding: 20 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom:20 }}>
         <Text h4 style={{ color: theme.colors.text }}>ViewBars</Text>
-        <Text style={{ color: theme.colors.text, marginLeft: 120 }}>Darkmode</Text>
-        {!isColorPickerVisible && (
-          <Switch
-          title="Darkmode"
-            value={theme.dark}
-            onValueChange={toggleTheme}
-          />
-        )}
+        <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+          <MaterialIcons name="settings" size={28} color={theme.colors.text} />
+        </TouchableOpacity>
       </View>
 
       {selectedBar ? (
@@ -287,20 +282,6 @@ const ViewBarsScreen = ({ navigation, route }) => {
             }}
             titleStyle={{ textAlign: 'center', width: '100%' }}
             onPress={handleColorChange}
-          />
-        </View>
-      )}
-
-      {!isColorPickerVisible && (
-        <View style={{ zIndex: 3, position: 'absolute', bottom: 20, left: 20, right: 20 }}>
-          <Button
-            title="Manage Bars"
-            buttonStyle={{
-              backgroundColor: "#00796b",
-              borderRadius: 10,
-              padding: 15,
-            }}
-            onPress={() => navigation.navigate('ManageBars')}
           />
         </View>
       )}

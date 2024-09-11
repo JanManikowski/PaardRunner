@@ -1,5 +1,6 @@
+// ManageBarsScreen.js
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, Modal, Button, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, Modal, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 
@@ -118,19 +119,8 @@ const ManageBarsScreen = ({ navigation, route }) => {
           </View>
         </View>
       ))}
-      <TouchableOpacity
-        style={{
-          backgroundColor: "#00796b",
-          padding: 15,
-          borderRadius: 8,
-          marginTop: 20,
-          alignItems: 'center'
-        }}
-        onPress={() => navigation.navigate('AddBar')}
-      >
-        <Text style={{ color: '#fff', fontSize: 16 }}>Add New Bar</Text>
-      </TouchableOpacity>
 
+      {/* Edit Bar Modal */}
       <Modal
         animationType="slide"
         transparent={true}
