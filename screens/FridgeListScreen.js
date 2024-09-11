@@ -73,7 +73,13 @@ const FridgeListScreen = ({ route, navigation }) => {
           Fridges in {bar.name}
         </Text>
         <TouchableOpacity
-          onPress={() => navigation.navigate('ShelfList', { bar: { name: bar.name } })}
+          onPress={() => navigation.reset({
+            index: 1,
+            routes: [
+              { name: 'BarDetail', params: { bar: { name: bar.name } } },
+              { name: 'ShelfList', params: { bar: { name: bar.name } } },
+            ],
+          })}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
