@@ -93,10 +93,10 @@ const MissingItemsScreen = ({ route }) => {
       });
     }
   
-    // Fetch missing strong liquor items
-    const storedLiquorCounts = await AsyncStorage.getItem('liquorCounts');
+    // Fetch missing strong liquor items per bar
+    const storedLiquorCounts = await AsyncStorage.getItem(`liquorCounts_${bar.name}`);
     const liquorCounts = storedLiquorCounts ? JSON.parse(storedLiquorCounts) : {};
-    strongLiquor.forEach((liquor) => {
+    Object.keys(liquorCounts).forEach((liquor) => {
       if (liquorCounts[liquor] > 0) {
         liquorItems.push({ type: liquor, missing: liquorCounts[liquor] });
       }

@@ -4,45 +4,58 @@ import { FridgeContext } from '../contexts/FridgeContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const StrongLiquorListScreen = () => {
-  const { strongLiquor } = useContext(FridgeContext);
+const StrongLiquorListScreen = ({ route }) => {
+  const { bar } = route.params;
+  const { barLiquor, addLiquor, removeLiquor, saveBarLiquor } = useContext(FridgeContext);
   const { theme } = useContext(ThemeContext);
   const [liquorCounts, setLiquorCounts] = useState({});
+  const liquors = barLiquor[bar.name] || [];
 
   useEffect(() => {
     const loadCounts = async () => {
-      const storedCounts = await AsyncStorage.getItem('liquorCounts');
+      const storedLiquor = barLiquor[bar.name];
+      if (!storedLiquor || storedLiquor.length === 0) {
+        // If no liquor list exists for this bar, initialize it with default items
+        const defaultLiquors = [
+          'Jack Daniels', 'Jameson', 'Southern Comfort', 'Vodka', 'Red Vodka', 
+          'Rum', 'Brown Rum', 'Bacardi Lemon', 'Bacardi Razz', 'Malibu', 'Gin'
+        ];
+        saveBarLiquor(bar.name, defaultLiquors);  // Save the default list for the bar
+      }
+      
+      const storedCounts = await AsyncStorage.getItem(`liquorCounts_${bar.name}`);
       if (storedCounts) {
         setLiquorCounts(JSON.parse(storedCounts));
       } else {
-        const initialCounts = strongLiquor.reduce((acc, liquor) => {
+        const initialCounts = (barLiquor[bar.name] || []).reduce((acc, liquor) => {
           acc[liquor] = 0;
           return acc;
         }, {});
         setLiquorCounts(initialCounts);
       }
     };
-
+  
     loadCounts();
-  }, [strongLiquor]);
+  }, [barLiquor, bar.name]);
 
   const updateCount = async (liquor, value) => {
     const newCount = Math.max((liquorCounts[liquor] || 0) + value, 0);
     const updatedCounts = { ...liquorCounts, [liquor]: newCount };
     setLiquorCounts(updatedCounts);
-    await AsyncStorage.setItem('liquorCounts', JSON.stringify(updatedCounts));
+    await AsyncStorage.setItem(`liquorCounts_${bar.name}`, JSON.stringify(updatedCounts));
   };
 
   const resetCount = async (liquor) => {
     const updatedCounts = { ...liquorCounts, [liquor]: 0 };
     setLiquorCounts(updatedCounts);
-    await AsyncStorage.setItem('liquorCounts', JSON.stringify(updatedCounts));
+    await AsyncStorage.setItem(`liquorCounts_${bar.name}`, JSON.stringify(updatedCounts));
   };
 
   const removeAllLiquorItems = async () => {
-    await AsyncStorage.removeItem('liquorCounts');
+    await AsyncStorage.removeItem(`liquorCounts_${bar.name}`);
     setLiquorCounts({});
-    Alert.alert('All strong liquor items have been removed from local storage.');
+    saveBarLiquor(bar.name, []);
+    Alert.alert(`All strong liquor items for ${bar.name} have been removed from local storage.`);
   };
 
   const getImageSource = (type) => {
@@ -70,18 +83,18 @@ const StrongLiquorListScreen = () => {
       case 'Gin':
         return require('../assets/strong/gin.jpg');
       default:
-        return require('../assets/placeholder.jpg'); // Default placeholder image
+        return require('../assets/placeholder.jpg');
     }
   };
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       <Text style={{ color: theme.colors.onBackground, fontSize: 24, fontWeight: 'bold', marginBottom: 16 }}>
-        Strong Liquor
+        Strong Liquor in {bar.name}
       </Text>
       
       <ScrollView>
-        {strongLiquor.map((item, index) => (
+        {liquors.map((item, index) => (
           <TouchableOpacity
             key={index}
             onPress={() => updateCount(item, 1)}

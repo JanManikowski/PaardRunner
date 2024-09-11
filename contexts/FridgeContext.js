@@ -23,7 +23,7 @@ const calculateMaxAmounts = (numFridges, numShelves) => {
     'Orange Juice': 2 * numShelves,
     'Cassis': 2 * numShelves,
     'Bitter Lemon': 2 * numShelves,
-    'White Wine': 4 * 2 * numShelves, // Assuming 2 rows of white wine
+    'White Wine': 4 * 2 * numShelves,
     'Rose': 4 * numShelves,
     'Sweet Wine': 4 * numShelves,
     'Ginger Beer': 4 * numShelves,
@@ -37,12 +37,7 @@ export const FridgeProvider = ({ children }) => {
   const [maxAmounts, setMaxAmounts] = useState({});
   const [barColors, setBarColors] = useState({});
   const [customItems, setCustomItems] = useState({});
-
-
-  const [strongLiquor, setStrongLiquor] = useState([
-    'Jack Daniels', 'Jameson', 'Southern Comfort', 'Vodka', 'Red Vodka',
-    'Rum', 'Brown Rum', 'Bacardi Lemon', 'Bacardi Razz', 'Malibu', 'Gin'
-  ]);
+  const [barLiquor, setBarLiquor] = useState({});
 
   useEffect(() => {
     const updateMaxAmounts = async () => {
@@ -88,12 +83,24 @@ export const FridgeProvider = ({ children }) => {
     }
   };
 
-  const addLiquor = (liquor) => {
-    setStrongLiquor([...strongLiquor, liquor]);
+  // Store liquor for a specific bar
+  const saveBarLiquor = async (barName, liquorList) => {
+    const updatedLiquor = { ...barLiquor, [barName]: liquorList || [
+      'Jack Daniels', 'Jameson', 'Southern Comfort', 'Vodka', 'Red Vodka', 
+      'Rum', 'Brown Rum', 'Bacardi Lemon', 'Bacardi Razz', 'Malibu', 'Gin'
+    ]};
+    setBarLiquor(updatedLiquor);
+    await AsyncStorage.setItem('barLiquor', JSON.stringify(updatedLiquor));
   };
 
-  const removeLiquor = (liquor) => {
-    setStrongLiquor(strongLiquor.filter(item => item !== liquor));
+  const addLiquor = (barName, liquor) => {
+    const updatedLiquor = [...(barLiquor[barName] || []), liquor];
+    saveBarLiquor(barName, updatedLiquor);
+  };
+
+  const removeLiquor = (barName, liquor) => {
+    const updatedLiquor = (barLiquor[barName] || []).filter(item => item !== liquor);
+    saveBarLiquor(barName, updatedLiquor);
   };
 
   const addCustomMissingItem = async (barName, item) => {
@@ -111,18 +118,15 @@ export const FridgeProvider = ({ children }) => {
     }
   };
   
-  
-
   return (
     <FridgeContext.Provider value={{
       barFridges, setBarFridges, saveBarFridges,
       barShelves, setBarShelves, saveBarShelves,
       maxAmounts, barColors, setBarColors, saveBarColors,
-      strongLiquor, addLiquor, removeLiquor,
+      barLiquor, addLiquor, removeLiquor, saveBarLiquor,
       customItems, setCustomItems, addCustomMissingItem
     }}>
       {children}
     </FridgeContext.Provider>
-    
   );
 };

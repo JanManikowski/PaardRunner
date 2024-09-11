@@ -122,7 +122,7 @@ const BarDetailScreen = ({ route, navigation }) => {
           alignItems: 'center',
           backgroundColor: theme.colors.surfaceVariant,
         }}
-        onPress={() => navigation.navigate('StrongLiquorList')}
+        onPress={() => navigation.navigate('StrongLiquorList', { bar })}
       >
         <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>View Strong Liquor</Text>
       </TouchableOpacity>
