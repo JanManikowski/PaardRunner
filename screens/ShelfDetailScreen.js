@@ -201,7 +201,13 @@ const ShelfDetailScreen = ({ route, navigation }) => {
         <Button
           title="Go to Fridges"
           buttonStyle={{ backgroundColor: "#00796b", borderRadius: 10 }}
-          onPress={() => navigation.navigate('FridgeList', { bar: { name: barName } })}
+          onPress={() => navigation.reset({
+            index: 1,
+            routes: [
+              { name: 'BarDetail', params: { bar: { name: barName } } },
+              { name: 'FridgeList', params: { bar: { name: barName } } },
+            ],
+          })}
         />
     </View>
   </View>

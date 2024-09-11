@@ -42,8 +42,10 @@ const FridgeListScreen = ({ route, navigation }) => {
         return require('../assets/fridge/sparood.jpg');
       case 'Weizen 0.0':
         return require('../assets/fridge/weizen.jpeg');
-      case 'Bok':
-        return require('../assets/fridge/bok.png');
+      case 'Viper Cranberry':
+        return require('../assets/fridge/vipercranberry.jpg');
+      case 'Viper Peach':
+        return require('../assets/fridge/viperpeach.jpeg');
       case 'IPA':
         return require('../assets/fridge/ipa.png');
       default:
@@ -116,7 +118,7 @@ const FridgeListScreen = ({ route, navigation }) => {
               flexDirection: 'row',
             }}
           >
-            <Image source={getImageSource(item.type)} style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10 }} />
+            <Image source={getImageSource(item.type)} style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10, backgroundColor:"white" }} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: 'bold', color: theme.colors.text }}>{item.type}</Text>
               {item.missing > 0 && (

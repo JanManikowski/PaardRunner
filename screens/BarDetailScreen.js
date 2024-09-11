@@ -20,7 +20,8 @@ const BarDetailScreen = ({ route, navigation }) => {
         { type: 'Radler', amount: 12, missing: 0 },
         { type: 'Spa Rood', amount: 24, missing: 0 },
         { type: 'Weizen 0.0', amount: 12, missing: 0 },
-        { type: 'Bok', amount: 6, missing: 0 },
+        { type: 'Viper Cranberry', amount: 6, missing: 0 },
+        { type: 'Viper Peach', amount: 6, missing: 0 },
         { type: 'IPA', amount: 12, missing: 0 },
       ];
       setBarFridges(prev => ({ ...prev, [bar.name]: initialFridges }));

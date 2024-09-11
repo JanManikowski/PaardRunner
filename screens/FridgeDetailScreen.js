@@ -87,8 +87,10 @@ const FridgeDetailScreen = ({ route, navigation }) => {
         return require('../assets/fridge/sparood.jpg');
       case 'Weizen 0.0':
         return require('../assets/fridge/weizen.jpeg');
-      case 'Bok':
-        return require('../assets/fridge/bok.png');
+      case 'Viper Cranberry':
+        return require('../assets/fridge/vipercranberry.jpg');
+      case 'Viper Peach':
+        return require('../assets/fridge/viperpeach.jpeg');
       case 'IPA':
         return require('../assets/fridge/ipa.png');
       default:
@@ -195,7 +197,13 @@ const FridgeDetailScreen = ({ route, navigation }) => {
         <Button
           title="Go to Shelves"
           buttonStyle={{ backgroundColor: '#00796b', borderRadius: 10 }}
-          onPress={() => navigation.navigate('ShelfList', { bar: { name: barName } })}
+          onPress={() => navigation.reset({
+            index: 1,
+            routes: [
+              { name: 'BarDetail', params: { bar: { name: barName } } },
+              { name: 'ShelfList', params: { bar: { name: barName } } },
+            ],
+          })}
         />
     </View>
   </View>
