@@ -13,6 +13,7 @@ import { FridgeProvider } from '../contexts/FridgeContext';
 import CaseOpeningScreen from '../screens/CaseOpeningScreen';
 import StrongLiquorListScreen from '../screens/StrongLiquorListScreen';
 import RecommendedCratesScreen from '../screens/RecommendedCratesScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Stack = createStackNavigator();
 
@@ -32,6 +33,7 @@ const AppNavigator = () => {
         <Stack.Screen name="CaseOpening" component={CaseOpeningScreen} />
         <Stack.Screen name="StrongLiquorList" component={StrongLiquorListScreen} />
         <Stack.Screen name="RecommendedCrates" component={RecommendedCratesScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </FridgeProvider>
   );

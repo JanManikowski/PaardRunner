@@ -45,7 +45,7 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
 
       // Create and sort crates based on the current crate size
       const zwarteCrates = createCrates(fridgeItems, crateSize);
-      const geleCrates = createCrates(shelfItems, crateSize);
+      const geleCrates = createCrates(shelfItems, 12);
 
       setRecommendedCrates({ zwarte: zwarteCrates, gele: geleCrates });
     };
