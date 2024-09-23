@@ -23,6 +23,7 @@
     "expo-dev-client": "~4.0.24",
     "expo-font": "~12.0.9",
     "expo-google-fonts": "^0.0.0",
+    "expo-image-picker": "^15.0.7",
     "expo-status-bar": "~1.12.1",
     "expo-updates": "~0.25.23",
     "lodash": "^4.17.21",

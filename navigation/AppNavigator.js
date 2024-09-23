@@ -14,6 +14,10 @@ import CaseOpeningScreen from '../screens/CaseOpeningScreen';
 import StrongLiquorListScreen from '../screens/StrongLiquorListScreen';
 import RecommendedCratesScreen from '../screens/RecommendedCratesScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import ItemManagerScreen from '../screens/ItemManagerScreen';
+import CategoryDetailScreen from '../screens/CategoryDetailScreen';
+import ItemDetailScreen from '../screens/ItemDetailScreen';
+import CategoryListScreen from '../screens/CategoryListScreen';
 
 const Stack = createStackNavigator();
 
@@ -34,6 +38,10 @@ const AppNavigator = () => {
         <Stack.Screen name="StrongLiquorList" component={StrongLiquorListScreen} />
         <Stack.Screen name="RecommendedCrates" component={RecommendedCratesScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="ItemManager" component={ItemManagerScreen} />
+        <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
+        <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
+        <Stack.Screen name="CategoryList" component={CategoryListScreen} />
       </Stack.Navigator>
     </FridgeProvider>
   );

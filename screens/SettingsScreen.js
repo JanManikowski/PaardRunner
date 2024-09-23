@@ -42,6 +42,7 @@ const SettingsScreen = ({ navigation }) => {
           padding: 15,
           backgroundColor: theme.colors.primary,
           borderRadius: 10,
+          marginBottom: 20,
           alignItems: 'center',
         }}
         onPress={toggleTheme}
@@ -49,6 +50,19 @@ const SettingsScreen = ({ navigation }) => {
         <Text style={{ color: theme.colors.background, fontSize: 16 }}>
           Switch to {theme.dark ? 'Light Mode' : 'Dark Mode'}
         </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={{
+          padding: 15,
+          backgroundColor: theme.colors.primary,
+          borderRadius: 10,
+          marginBottom: 20,
+          alignItems: 'center',
+        }}
+        onPress={() => navigation.navigate('ItemManager')}  // New button for Item Manager
+      >
+        <Text style={{ color: theme.colors.background, fontSize: 16 }}>Item Manager</Text>
       </TouchableOpacity>
     </View>
   );
