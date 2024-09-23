@@ -1,66 +1,89 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Button, TouchableOpacity } from 'react-native';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, Button, TouchableOpacity, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FridgeContext } from '../contexts/FridgeContext';
 import { ThemeContext } from '../contexts/ThemeContext';
+import { getData, saveData, removeData } from '../storage/AsyncStorageHelper';
 
 const RecommendedCratesScreen = ({ route, navigation }) => {
   const { bar } = route.params || {};
-  const { barFridges, barShelves } = useContext(FridgeContext);
+  const { barFridges, setBarFridges, barShelves, setBarShelves, saveBarFridges, saveBarShelves, strongLiquor, addCustomMissingItem } = useContext(FridgeContext);
   const { theme } = useContext(ThemeContext);
   const [recommendedCrates, setRecommendedCrates] = useState({ zwarte: [], gele: [] });
-  const [crateSize, setCrateSize] = useState(24); // Default crate size is 24
+  const [crateSize, setCrateSize] = useState(24);
 
-  useEffect(() => {
-    if (!bar || !bar.name) {
-      navigation.goBack(); // Navigate back if bar data is missing
-      return;
-    }
-
-    const fetchItemsForCrates = async () => {
-      let fridgeItems = [];
-      let shelfItems = [];
-
-      // Fetch missing fridge items for the current bar
-      if (barFridges[bar.name]) {
-        const fridges = await Promise.all(
-          barFridges[bar.name].map(async (fridge, index) => {
-            const savedMissing = await AsyncStorage.getItem(`fridge_${bar.name}_${index}`);
-            return { ...fridge, missing: savedMissing !== null ? parseInt(savedMissing, 10) : fridge.missing };
-          })
-        );
-        fridgeItems = fridges.filter(item => item.missing > 0);
-      }
-
-      // Fetch missing shelf items for the current bar
-      if (barShelves[bar.name]) {
-        const shelves = await Promise.all(
-          barShelves[bar.name].map(async (shelf, index) => {
-            const savedMissing = await AsyncStorage.getItem(`shelf_${bar.name}_${index}`);
-            return { ...shelf, missing: savedMissing !== null ? parseInt(savedMissing, 10) : shelf.missing };
-          })
-        );
-        shelfItems = shelves.filter(item => item.missing > 0);
-      }
-
-      // Create and sort crates based on the current crate size
-      const zwarteCrates = createCrates(fridgeItems, crateSize);
-      const geleCrates = createCrates(shelfItems, 12);
-
-      setRecommendedCrates({ zwarte: zwarteCrates, gele: geleCrates });
-    };
-
-    fetchItemsForCrates();
-  }, [bar, barFridges, barShelves, crateSize, navigation]); // Recalculate when crateSize changes
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;  // Flag to check if the component is still mounted
+  
+      const fetchItemsForCrates = async () => {
+        try {
+          let fridgeItems = [];
+          let shelfItems = [];
+  
+          if (barFridges[bar.name]) {
+            const fridges = await Promise.all(
+              barFridges[bar.name].map(async (fridge, index) => {
+                const savedMissing = await AsyncStorage.getItem(`fridge_${bar.name}_${index}`);
+                return {
+                  ...fridge,
+                  missing: savedMissing !== null ? parseInt(savedMissing, 10) : fridge.missing,
+                  fridgeIndex: index
+                };
+              })
+            );
+            fridgeItems = fridges.filter(item => item.missing > 0);
+          }
+  
+          if (barShelves[bar.name]) {
+            const shelves = await Promise.all(
+              barShelves[bar.name].map(async (shelf, index) => {
+                const savedMissing = await AsyncStorage.getItem(`shelf_${bar.name}_${index}`);
+                return {
+                  ...shelf,
+                  missing: savedMissing !== null ? parseInt(savedMissing, 10) : shelf.missing,
+                  shelfIndex: index
+                };
+              })
+            );
+            shelfItems = shelves.filter(item => item.missing > 0);
+          }
+  
+          // Only update the state if the component is still mounted
+          if (isMounted) {
+            setRecommendedCrates({
+              zwarte: createCrates(fridgeItems, crateSize),
+              gele: createCrates(shelfItems, 12)
+            });
+          }
+        } catch (error) {
+          console.log('Error fetching crate items:', error);
+        }
+      };
+  
+      fetchItemsForCrates();
+  
+      // Cleanup function to handle component unmount
+      return () => {
+        isMounted = false; // Set the flag to false when the component unmounts
+      };
+    }, [barFridges, barShelves, bar.name, crateSize])
+  );
 
   const createCrates = (items, maxItemsPerCrate) => {
     const groupedItems = items.reduce((acc, item) => {
-      const importanceScore = (item.missing / item.amount) * 100; // Calculate importance as missing percentage
+      const importanceScore = (item.missing / item.amount) * 100;
       if (!acc[item.type]) {
-        acc[item.type] = { quantity: 0, importance: importanceScore };
+        acc[item.type] = {
+          quantity: 0,
+          importance: importanceScore,
+          fridgeIndex: item.fridgeIndex,
+          shelfIndex: item.shelfIndex
+        };
       }
       acc[item.type].quantity += item.missing;
-      acc[item.type].importance = Math.max(acc[item.type].importance, importanceScore); // Use the highest importance score for the group
+      acc[item.type].importance = Math.max(acc[item.type].importance, importanceScore);
       return acc;
     }, {});
 
@@ -68,6 +91,8 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
       type,
       quantity: groupedItems[type].quantity,
       importance: groupedItems[type].importance,
+      fridgeIndex: groupedItems[type].fridgeIndex,
+      shelfIndex: groupedItems[type].shelfIndex
     }));
 
     const crates = [];
@@ -78,7 +103,7 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
       itemArray.sort((a, b) => b.importance - a.importance);
 
       const item = itemArray[0];
-      const addQuantity = 1; // We now take 1 item at a time
+      const addQuantity = 1;
 
       if (currentCrate[item.type]) {
         currentCrate[item.type].quantity += addQuantity;
@@ -86,7 +111,9 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
         currentCrate[item.type] = {
           type: item.type,
           quantity: addQuantity,
-          importance: item.importance.toFixed(2)
+          importance: item.importance.toFixed(2),
+          fridgeIndex: item.fridgeIndex,
+          shelfIndex: item.shelfIndex
         };
       }
 
@@ -107,7 +134,7 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
     }
 
     if (Object.keys(currentCrate).length > 0) {
-      crates.push(Object.values(currentCrate)); // Push the final crate
+      crates.push(Object.values(currentCrate));
     }
 
     crates.sort((a, b) => {
@@ -119,6 +146,62 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
     return crates;
   };
 
+  const deleteCrate = async (crateItems, crateType, crateIndex) => {
+    Alert.alert(
+      "Delete Crate",
+      "Are you sure you want to delete all items in this crate?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          onPress: async () => {
+            try {
+              for (let item of crateItems) {
+                let key, savedMissing, newMissing;
+  
+                if (crateType === 'zwarte') {
+                  key = `fridge_${bar.name}_${item.fridgeIndex}`;
+                } else if (crateType === 'gele') {
+                  key = `shelf_${bar.name}_${item.shelfIndex}`;
+                }
+  
+                if (key) {
+                  savedMissing = await AsyncStorage.getItem(key);
+                  if (savedMissing !== null) {
+                    savedMissing = parseInt(savedMissing, 10);
+                    newMissing = savedMissing - item.quantity;
+  
+                    if (newMissing > 0) {
+                      await AsyncStorage.setItem(key, newMissing.toString());
+                    } else {
+                      await removeData(key);
+                    }
+                  }
+                }
+              }
+  
+              const updatedCrates = recommendedCrates[crateType].filter((_, index) => index !== crateIndex);
+              setRecommendedCrates(prev => ({ ...prev, [crateType]: updatedCrates }));
+  
+              if (crateType === 'zwarte') {
+                saveBarFridges(updatedCrates);
+              } else if (crateType === 'gele') {
+                saveBarShelves(updatedCrates);
+              }
+            } catch (error) {
+              console.log('Error deleting crate:', error);
+            }
+          },
+          style: "destructive"
+        }
+      ]
+    );
+  };
+  
+  
   return (
     <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       {bar && bar.name ? (
@@ -134,14 +217,22 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
               {crateSize === 24 ? 'Switch to 39-item Crates' : 'Switch to 24-item Crates'}
             </Text>
           </TouchableOpacity>
-
-          <View style={{background:theme.colors.surfaceVariant}}>
+  
+          <View style={{ background: theme.colors.surfaceVariant }}>
             <Text style={[styles.sectionHeader, { color: theme.colors.primary }]}>
               Zwarte Kratjes (Fridge Items)
             </Text>
             {recommendedCrates.zwarte.length > 0 ? (
               recommendedCrates.zwarte.map((crate, crateIndex) => (
-                <View key={crateIndex} style={[styles.crateContainer, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceVariant }]}>
+                <TouchableOpacity
+                  key={crateIndex}
+                  onLongPress={() => {
+                    console.log(`Deleting crate of type: zwarte, at index: ${crateIndex}`);
+                    console.log('Crate contents:', crate);
+                    deleteCrate(crate, 'zwarte', crateIndex);
+                  }}
+                  style={[styles.crateContainer, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceVariant }]}
+                >
                   <Text style={[styles.crateTitle, { color: theme.colors.text }]}>
                     Crate {crateIndex + 1}
                   </Text>
@@ -152,22 +243,24 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
                       </Text>
                     </View>
                   ))}
-                </View>
+                </TouchableOpacity>
               ))
             ) : (
-              <Text style={[styles.noItemsText, { color: theme.colors.text }]}>
-                No missing items for zwarte kratjes.
-              </Text>
+              <Text>No missing items for zwarte kratjes.</Text>
             )}
           </View>
-
+  
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: theme.colors.secondary }]}>
               Gele Kratjes (Shelf Items)
             </Text>
             {recommendedCrates.gele.length > 0 ? (
               recommendedCrates.gele.map((crate, crateIndex) => (
-                <View key={crateIndex} style={[styles.crateContainer, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceVariant }]}>
+                <TouchableOpacity
+                  key={crateIndex}
+                  onLongPress={() => deleteCrate(crate, 'gele', crateIndex)}
+                  style={[styles.crateContainer, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceVariant }]}
+                >
                   <Text style={[styles.crateTitle, { color: theme.colors.text }]}>
                     Crate {crateIndex + 1}
                   </Text>
@@ -178,7 +271,7 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
                       </Text>
                     </View>
                   ))}
-                </View>
+                </TouchableOpacity>
               ))
             ) : (
               <Text style={[styles.noItemsText, { color: theme.colors.text }]}>
@@ -194,6 +287,7 @@ const RecommendedCratesScreen = ({ route, navigation }) => {
       )}
     </ScrollView>
   );
+  
 };
 
 const styles = StyleSheet.create({
@@ -247,15 +341,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#007BFF',
     borderRadius: 5,
     alignItems: 'center',
-    alignSelf: 'flex-end', // Aligns the button to the right
-    marginBottom: 10, // Adds some space below the button
+    alignSelf: 'flex-end',
+    marginBottom: 10,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 12, // Smaller font size
+    fontSize: 12,
     fontWeight: 'bold',
   },
 });
-
 
 export default RecommendedCratesScreen;

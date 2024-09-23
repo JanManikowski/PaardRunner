@@ -21,8 +21,9 @@ const getData = async (key) => {
 const removeData = async (key) => {
   try {
     await AsyncStorage.removeItem(key);
-  } catch (e) {
-    console.error('Error removing data', e);
+    console.log(`Removed data for key: ${key}`);
+  } catch (error) {
+    console.error(`Failed to remove data for key: ${key}`, error);
   }
 };
 
