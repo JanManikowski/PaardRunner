@@ -20,6 +20,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
         {items.length > 0 ? (
           items.map((item, index) => (
             <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              {console.log('Item Image URI:', item.image)}
               {/* Display item image */}
               {item.image ? (
                 <Image source={{ uri: item.image }} style={{ width: 50, height: 50, marginRight: 10 }} />
@@ -52,7 +53,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
                   borderRadius: 5,
                   marginLeft: 10,
                 }}
-                onPress={() => navigation.navigate('ItemDetail', { categoryName, item })}  // Navigate to ItemDetail
+                onPress={() => navigation.navigate('ItemEditor', { categoryName, item })}  // Navigate to ItemDetail
               >
                 <Text style={{ color: theme.colors.onPrimary }}>Edit</Text>
               </TouchableOpacity>
@@ -72,7 +73,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
           alignItems: 'center',
           marginTop: 20,
         }}
-        onPress={() => navigation.navigate('ItemDetail', { categoryName })}  // Navigate to add new item
+        onPress={() => navigation.navigate('ItemEditor', { categoryName })}  // Navigate to add new item
       >
         <Text style={{ color: theme.colors.onPrimary }}>Add New Item</Text>
       </TouchableOpacity>

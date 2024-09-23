@@ -23,7 +23,7 @@ const ItemEditorScreen = ({ route, navigation }) => {
     });
 
     if (!result.canceled) {
-      setImage(result.uri);  // Set image to the selected file
+      setImage(result.assets[0].uri);  // Set image to the selected file
     }
   };
 
@@ -97,7 +97,19 @@ const ItemEditorScreen = ({ route, navigation }) => {
       </TouchableOpacity>
 
       {/* Display Selected Image */}
-      {image && <Image source={{ uri: image }} style={{ width: 100, height: 100, marginBottom: 20 }} />}
+      {image && (
+        <Image
+          source={{ uri: image }}
+          style={{
+            width: 150,
+            height: 150,
+            borderRadius: 10,
+            alignSelf: 'center',
+            marginBottom: 20,
+            backgroundColor: '#ccc', // Fallback background color for preview
+          }}
+        />
+      )}
 
       {/* Save Button */}
       <TouchableOpacity
