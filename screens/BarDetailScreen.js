@@ -1,13 +1,34 @@
 import React, { useContext, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { CategoryContext } from '../contexts/CategoryContext';  // Access CategoryContext
+import { CategoryContext } from '../contexts/CategoryContext';
+import Toast from 'react-native-toast-message';  // Import Toast for feedback
 
 const BarDetailScreen = ({ route, navigation }) => {
   const { bar } = route.params;
   const { theme } = useContext(ThemeContext);
-  const { categories } = useContext(CategoryContext);  // Access categories from the context
-  const [missingItem, setMissingItem] = useState('');  // State to handle missing item input
+  const { categories } = useContext(CategoryContext);
+  const [customItem, setCustomItem] = useState('');  // State for custom item input
+
+  const handleAddCustomItem = () => {
+    if (customItem.trim()) {
+      // Add logic for adding the custom item
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: `${customItem} has been added`,
+        position: 'top',
+      });
+      setCustomItem('');  // Clear the input field after adding the item
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter a valid item name.',
+        position: 'top',
+      });
+    }
+  };
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
@@ -16,7 +37,7 @@ const BarDetailScreen = ({ route, navigation }) => {
       </Text>
 
       <ScrollView>
-        {/* Loop through dynamic categories */}
+        {/* Custom Categories */}
         {Object.keys(categories).map((categoryName) => (
           <TouchableOpacity
             key={categoryName}
@@ -27,7 +48,7 @@ const BarDetailScreen = ({ route, navigation }) => {
               backgroundColor: theme.colors.surfaceVariant,
               alignItems: 'center',
             }}
-            onPress={() => navigation.navigate('CategoryList', { categoryName, bar })}  // Navigate to CategoryList
+            onPress={() => navigation.navigate('CategoryList', { categoryName, bar })}
           >
             <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
               View {categoryName}
@@ -35,7 +56,7 @@ const BarDetailScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         ))}
 
-        {/* Existing functionality for Strong Liquor */}
+        {/* Strong Liquor */}
         <TouchableOpacity
           style={{
             padding: 20,
@@ -51,45 +72,67 @@ const BarDetailScreen = ({ route, navigation }) => {
           </Text>
         </TouchableOpacity>
 
-        {/* Missing Items Input Field */}
-        <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: theme.colors.text }}>
-          Missing Items
-        </Text>
-        <TextInput
-          style={{
-            borderColor: theme.colors.border,
-            borderWidth: 1,
-            padding: 10,
-            borderRadius: 5,
-            backgroundColor: theme.colors.surfaceVariant,
-            color: theme.colors.text,
-            marginBottom: 20,
-          }}
-          placeholder="Enter custom missing item"
-          value={missingItem}
-          onChangeText={setMissingItem}
-          onSubmitEditing={() => {
-            // Handle adding the missing item
-            console.log('Missing Item:', missingItem);  // You can replace this with your actual logic
-            setMissingItem('');
-          }}
-        />
-
-        {/* Existing functionality for Custom Items */}
+        {/* View Missing Items */}
         <TouchableOpacity
           style={{
             padding: 20,
             borderRadius: 8,
-            marginBottom: 10,
-            backgroundColor: theme.colors.surfaceVariant,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 5,
+            marginBottom: 20,
+            elevation: 2,
             alignItems: 'center',
+            backgroundColor: theme.colors.surfaceVariant,
           }}
-          onPress={() => navigation.navigate('CustomItems', { bar })}
+          onPress={() => navigation.navigate('MissingItems', { bar })}
         >
           <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
-            View Custom Items
+            View Missing Items
           </Text>
         </TouchableOpacity>
+
+        <View style={{ flex: 1 }} /> 
+
+        {/* Custom Item Input */}
+        <TextInput
+          style={{
+            padding: 10,
+            borderColor: theme.colors.outline,
+            borderWidth: 1,
+            borderRadius: 5,
+            marginBottom: 20,
+            color: theme.colors.text,
+            backgroundColor: theme.colors.surfaceVariant,
+          }}
+          placeholder="Enter custom item name"
+          placeholderTextColor={theme.colors.onSurface}
+          value={customItem}
+          onChangeText={setCustomItem}
+          onSubmitEditing={handleAddCustomItem}  // Automatically add the item when Enter is pressed
+        />
+
+        {/* Add Custom Item Button */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: theme.colors.primary,
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+            borderRadius: 5,
+            width: '100%',
+            alignItems: 'center',
+            marginBottom: 20,
+          }}
+          onPress={handleAddCustomItem}
+        >
+          <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>
+            Add Custom Item
+          </Text>
+        </TouchableOpacity>
+
+        {/* Toast Notifications */}
+        <Toast ref={(ref) => Toast.setRef(ref)} />
       </ScrollView>
     </View>
   );

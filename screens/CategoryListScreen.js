@@ -35,7 +35,7 @@ const CategoryListScreen = ({ route, navigation }) => {
                 flexDirection: 'row',
                 alignItems: 'center',
               }}
-              onPress={() => navigation.navigate('ItemDetail', { item, categoryName, bar })}  // Navigate to ItemDetail
+              onPress={() => navigation.navigate('ItemDetail', { item, categoryName, bar })} 
             >
               {/* Display item image */}
               {item.image ? (

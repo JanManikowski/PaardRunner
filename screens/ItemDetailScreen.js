@@ -1,116 +1,122 @@
-import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
-import { CategoryContext } from '../contexts/CategoryContext';  // Use CategoryContext
-import { ThemeContext } from '../contexts/ThemeContext';        // Use ThemeContext
-import * as ImagePicker from 'expo-image-picker';  // To handle image uploads
+import React, { useState, useContext, useEffect } from 'react';
+import { View, Text, Button, TextInput, Image, TouchableOpacity } from 'react-native';
+import { ThemeContext } from '../contexts/ThemeContext';
+import { CategoryContext } from '../contexts/CategoryContext';
+import Toast from 'react-native-toast-message';  // Toast for notifications
 
 const ItemDetailScreen = ({ route, navigation }) => {
-  const { categoryName, item } = route.params || {};  // Get categoryName and item if passed (item is optional for adding)
-  const { addItemToCategory, updateItemInCategory } = useContext(CategoryContext);
+  const { categoryName, item, bar } = route.params;  // Get the category and item data from route params
+  const { categories, updateItemInCategory } = useContext(CategoryContext);
   const { theme } = useContext(ThemeContext);
+  const [currentItem, setCurrentItem] = useState(item);  // State to manage the selected item
+  const [missing, setMissing] = useState(item.missing || 0);  // State for missing items
+  const [customValue, setCustomValue] = useState('');  // State for custom input
 
-  const [itemName, setItemName] = useState(item ? item.name : '');  // Pre-populate if editing
-  const [maxAmount, setMaxAmount] = useState(item ? item.maxAmount.toString() : '');
-  const [image, setImage] = useState(item ? item.image : null);  // Pre-populate image if editing
+  useEffect(() => {
+    // Update the item in the category when the missing value changes
+    const updatedItem = { ...currentItem, missing };
+    updateItemInCategory(categoryName, updatedItem);
+  }, [missing]);
 
-  // Handle image picking
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setImage(result.uri);  // Set image to the selected file
-    }
+  const updateMissing = (value) => {
+    setMissing((prev) => Math.max(0, Math.min(prev + value, currentItem.maxAmount)));
   };
 
-  const handleSaveItem = () => {
-    const newItem = {
-      name: itemName,
-      maxAmount: parseInt(maxAmount, 10),
-      image: image || null,  // Store the selected image or leave it null
-    };
-
-    if (item) {
-      updateItemInCategory(categoryName, newItem);  // Edit existing item
+  const handleCustomValueChange = (isAdd) => {
+    const value = parseInt(customValue, 10);
+    if (!isNaN(value)) {
+      updateMissing(isAdd ? value : -value);
     } else {
-      addItemToCategory(categoryName, newItem);  // Add new item
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Input',
+        text2: 'Please enter a valid number.',
+      });
     }
+    setCustomValue('');  // Clear the custom input field after processing
+  };
 
-    navigation.goBack();  // Navigate back to the category detail
+  const clearMissing = () => {
+    setMissing(0);  // Clear the missing value
+  };
+
+  const getImageSource = () => {
+    return currentItem.image ? { uri: currentItem.image } : require('../assets/placeholder.jpg');
   };
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.colors.text }}>
-        {item ? `Edit Item` : `Add New Item`}
-      </Text>
+      {/* Item details */}
+      <View style={{ alignItems: 'center', marginBottom: 20 }}>
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.primary }}>
+          {currentItem.name}
+        </Text>
+        <Text style={{ fontSize: 16, color: '#d32f2f', fontWeight: 'bold' }}>
+          Missing Items: {missing}
+        </Text>
+        <Text style={{ fontSize: 16, color: theme.colors.text }}>
+          Max Allowed: {currentItem.maxAmount}
+        </Text>
+      </View>
 
-      {/* Item Name Input */}
-      <TextInput
-        style={{
-          borderColor: theme.colors.border,
-          borderWidth: 1,
-          padding: 10,
-          borderRadius: 5,
-          marginBottom: 10,
-          backgroundColor: theme.colors.surfaceVariant,
-          color: theme.colors.text,
-        }}
-        placeholder="Item Name"
-        value={itemName}
-        onChangeText={setItemName}
-      />
+      {/* Display Image */}
+      <View style={{ alignItems: 'center', marginBottom: 20 }}>
+        <Image
+          source={getImageSource()}
+          style={{ width: 150, height: 150, borderRadius: 10, backgroundColor: 'white' }}
+        />
+      </View>
 
-      {/* Max Amount Input */}
+      {/* Adjust Missing Items with Buttons */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
+        <Button title="-5" onPress={() => updateMissing(-5)} />
+        <Button title="-1" onPress={() => updateMissing(-1)} />
+        <Button title="+1" onPress={() => updateMissing(1)} />
+        <Button title="+5" onPress={() => updateMissing(5)} />
+      </View>
+
+      {/* Custom Value Input */}
       <TextInput
-        style={{
-          borderColor: theme.colors.border,
-          borderWidth: 1,
-          padding: 10,
-          borderRadius: 5,
-          marginBottom: 10,
-          backgroundColor: theme.colors.surfaceVariant,
-          color: theme.colors.text,
-        }}
-        placeholder="Max Amount"
-        value={maxAmount}
-        onChangeText={setMaxAmount}
+        placeholder="Enter custom value"
+        value={customValue}
+        onChangeText={setCustomValue}
         keyboardType="numeric"
+        style={{
+          borderColor: theme.colors.outline,
+          borderWidth: 1,
+          padding: 10,
+          borderRadius: 5,
+          marginBottom: 20,
+          textAlign: 'center',
+          color: theme.colors.text,
+        }}
       />
 
-      {/* Pick Image Button */}
+      {/* Buttons to Add or Subtract Custom Value */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
+        <Button title="Add Custom Value" onPress={() => handleCustomValueChange(true)} />
+        <Button title="Subtract Custom Value" onPress={() => handleCustomValueChange(false)} />
+      </View>
+
+      {/* Clear Missing Items */}
       <TouchableOpacity
         style={{
-          backgroundColor: theme.colors.primary,
-          padding: 10,
+          backgroundColor: '#B22222',
+          paddingVertical: 10,
+          paddingHorizontal: 20,
           borderRadius: 5,
           alignItems: 'center',
-          marginBottom: 10,
+          marginBottom: 20,
         }}
-        onPress={pickImage}
+        onPress={clearMissing}
       >
-        <Text style={{ color: theme.colors.onPrimary }}>{image ? 'Change Image' : 'Pick Image'}</Text>
+        <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>
+          Clear Missing Items
+        </Text>
       </TouchableOpacity>
 
-      {/* Display Selected Image */}
-      {image && <Image source={{ uri: image }} style={{ width: 100, height: 100, marginBottom: 20 }} />}
-
-      {/* Save Button */}
-      <TouchableOpacity
-        style={{
-          backgroundColor: theme.colors.primary,
-          padding: 10,
-          borderRadius: 5,
-          alignItems: 'center',
-        }}
-        onPress={handleSaveItem}
-      >
-        <Text style={{ color: theme.colors.onPrimary }}>{item ? 'Save Changes' : 'Add Item'}</Text>
-      </TouchableOpacity>
+      {/* Toast Notifications */}
+      <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
 };
