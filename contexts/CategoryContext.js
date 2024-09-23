@@ -68,14 +68,27 @@ export const CategoryProvider = ({ children }) => {
     await saveCategories(newCategories);
   };
 
+  // Update the entire category items (useful for importing data)
+  const updateCategoryItems = async (categoryName, updatedItems) => {
+    const newCategories = { ...categories, [categoryName]: updatedItems };
+    await saveCategories(newCategories);
+  };
+
+  // Set categories directly (used for importing data)
+  const setCategoriesDirectly = async (importedCategories) => {
+    await saveCategories(importedCategories);
+  };
+
   return (
     <CategoryContext.Provider value={{
       categories,
+      setCategories: setCategoriesDirectly, // Added setCategories for direct updates
       addCategory,
       deleteCategory,
       addItemToCategory,
       removeItemFromCategory,
-      updateItemInCategory
+      updateItemInCategory,
+      updateCategoryItems
     }}>
       {children}
     </CategoryContext.Provider>

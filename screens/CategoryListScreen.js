@@ -23,7 +23,6 @@ const CategoryListScreen = ({ route, navigation }) => {
         <Text style={{ color: theme.colors.onBackground, fontSize: 24, fontWeight: 'bold' }}>
           Items in {categoryName}
         </Text>
-        
       </View>
 
       <ScrollView>
@@ -58,9 +57,14 @@ const CategoryListScreen = ({ route, navigation }) => {
                 }}
               />
               
-              {/* Item name and other details */}
+              {/* Item name and missing items information */}
               <View style={{ flex: 1 }}>
                 <Text style={{ fontWeight: 'bold', color: theme.colors.text }}>{item.name}</Text>
+                {item.missing > 0 && (
+                  <Text style={{ color: theme.colors.error, fontWeight: 'bold' }}>
+                    {`${item.missing} missing`}
+                  </Text>
+                )}
               </View>
 
               {/* Navigate Icon */}

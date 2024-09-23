@@ -1,14 +1,30 @@
-import React, { useContext } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useContext, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';  // Import useFocusEffect
+import DraggableFlatList from 'react-native-draggable-flatlist';
 import { CategoryContext } from '../contexts/CategoryContext';  // Access category context
 import { ThemeContext } from '../contexts/ThemeContext';       // Access theme context
 
 const CategoryDetailScreen = ({ route, navigation }) => {
   const { categoryName } = route.params;
-  const { categories, removeItemFromCategory } = useContext(CategoryContext);
+  const { categories, updateCategoryItems, removeItemFromCategory } = useContext(CategoryContext);  // Added `updateCategoryItems`
   const { theme } = useContext(ThemeContext);
+  const [items, setItems] = useState(categories[categoryName] || []);  // Initialize state with category items
 
-  const items = categories[categoryName] || [];
+  // Function to handle drag-and-drop reorder
+  const handleDragEnd = ({ data }) => {
+    setItems(data);  // Update local state
+    updateCategoryItems(categoryName, data);  // Save new order to context
+  };
+
+  // UseFocusEffect to refresh the items every time the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (categories[categoryName]) {
+        setItems(categories[categoryName]);  // Refresh the category items on focus
+      }
+    }, [categories, categoryName])
+  );
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
@@ -16,53 +32,61 @@ const CategoryDetailScreen = ({ route, navigation }) => {
         {categoryName} Items
       </Text>
 
-      <ScrollView>
-        {items.length > 0 ? (
-          items.map((item, index) => (
-            <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              {console.log('Item Image URI:', item.image)}
-              {/* Display item image */}
-              {item.image ? (
-                <Image source={{ uri: item.image }} style={{ width: 50, height: 50, marginRight: 10 }} />
-              ) : (
-                <Image source={require('../assets/placeholder.jpg')} style={{ width: 50, height: 50, marginRight: 10 }} />
-              )}
+      {/* Draggable List */}
+      <DraggableFlatList
+        data={items}
+        keyExtractor={(item, index) => `draggable-item-${index}`}
+        onDragEnd={handleDragEnd}
+        renderItem={({ item, drag, isActive }) => (
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              marginBottom: 10,
+              backgroundColor: isActive ? theme.colors.primary : theme.colors.surfaceVariant,
+              padding: 10,
+              borderRadius: 8,
+            }}
+            onLongPress={drag}  // Start drag on long press
+          >
+            {/* Display item image */}
+            <Image
+              source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
+              style={{ width: 50, height: 50, marginRight: 10, borderRadius: 5 }}
+            />
 
-              {/* Display item details */}
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 18, color: theme.colors.text }}>{item.name}</Text>
-                <Text style={{ color: theme.colors.text }}>Max: {item.maxAmount}</Text>
-              </View>
-
-              {/* Buttons for delete and edit */}
-              <TouchableOpacity
-                style={{
-                  backgroundColor: theme.colors.error,
-                  padding: 5,
-                  borderRadius: 5,
-                  marginLeft: 10,
-                }}
-                onPress={() => removeItemFromCategory(categoryName, item.name)}  // Remove item
-              >
-                <Text style={{ color: theme.colors.onError }}>Delete</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: theme.colors.primary,
-                  padding: 5,
-                  borderRadius: 5,
-                  marginLeft: 10,
-                }}
-                onPress={() => navigation.navigate('ItemEditor', { categoryName, item })}  // Navigate to ItemDetail
-              >
-                <Text style={{ color: theme.colors.onPrimary }}>Edit</Text>
-              </TouchableOpacity>
+            {/* Display item details */}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, color: theme.colors.text }}>{item.name}</Text>
+              <Text style={{ color: theme.colors.text }}>Max: {item.maxAmount}</Text>
             </View>
-          ))
-        ) : (
-          <Text style={{ color: theme.colors.text }}>No items available in this category.</Text>
+
+            {/* Buttons for delete and edit */}
+            <TouchableOpacity
+              style={{
+                backgroundColor: theme.colors.error,
+                padding: 5,
+                borderRadius: 5,
+                marginLeft: 10,
+              }}
+              onPress={() => removeItemFromCategory(categoryName, item.name)}  // Remove item
+            >
+              <Text style={{ color: theme.colors.onError }}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                backgroundColor: theme.colors.primary,
+                padding: 5,
+                borderRadius: 5,
+                marginLeft: 10,
+              }}
+              onPress={() => navigation.navigate('ItemEditor', { categoryName, item })}  // Navigate to ItemEditor
+            >
+              <Text style={{ color: theme.colors.onPrimary }}>Edit</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
         )}
-      </ScrollView>
+      />
 
       {/* Button to add a new item */}
       <TouchableOpacity
@@ -82,3 +106,4 @@ const CategoryDetailScreen = ({ route, navigation }) => {
 };
 
 export default CategoryDetailScreen;
+ 
