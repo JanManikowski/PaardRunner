@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+
 const firebaseConfig = {
     apiKey: "AIzaSyAOE360zecctwh8-pduD4Dcte2L53qSHRU",
     authDomain: "paardrunner.firebaseapp.com",

@@ -20,6 +20,7 @@ import ItemDetailScreen from '../screens/ItemDetailScreen';
 import CategoryListScreen from '../screens/CategoryListScreen';
 import ItemEditorScreen from '../screens/ItemEditorScreen';
 import LoginScreen from '../screens/LoginScreen';
+import AdminFeaturesScreen from '../screens/AdminFeaturesScreen';
 
 const Stack = createStackNavigator();
 
@@ -46,6 +47,7 @@ const AppNavigator = () => {
         <Stack.Screen name="CategoryList" component={CategoryListScreen} />
         <Stack.Screen name="ItemEditor" component={ItemEditorScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="AdminFeatures" component={AdminFeaturesScreen} />
       </Stack.Navigator>
     </FridgeProvider>
   );
