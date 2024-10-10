@@ -1,4 +1,3 @@
-// ManageBarsScreen.js
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Modal, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,7 +22,15 @@ const ManageBarsScreen = ({ navigation, route }) => {
 
   const fetchBars = async () => {
     try {
-      const storedBars = await AsyncStorage.getItem('bars');
+      // Retrieve the active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        console.error('No active organization selected');
+        return;
+      }
+
+      // Fetch bars linked to the active organization
+      const storedBars = await AsyncStorage.getItem(`bars_${activeOrgId}`);
       if (storedBars) {
         setBars(JSON.parse(storedBars));
       }
@@ -33,24 +40,35 @@ const ManageBarsScreen = ({ navigation, route }) => {
   };
 
   const deleteBar = async (barName) => {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this bar?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          onPress: async () => {
-            const filteredBars = bars.filter(bar => bar.name !== barName);
-            setBars(filteredBars);
-            await AsyncStorage.setItem('bars', JSON.stringify(filteredBars));
-            navigation.navigate('ViewBars', { refresh: true });
+    try {
+      // Retrieve the active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        console.error('No active organization selected');
+        return;
+      }
+
+      Alert.alert(
+        'Confirm Delete',
+        'Are you sure you want to delete this bar?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            onPress: async () => {
+              const filteredBars = bars.filter(bar => bar.name !== barName);
+              setBars(filteredBars);
+              await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(filteredBars));
+              navigation.navigate('ViewBars', { refresh: true });
+            },
+            style: 'destructive',
           },
-          style: 'destructive',
-        },
-      ],
-      { cancelable: false }
-    );
+        ],
+        { cancelable: false }
+      );
+    } catch (error) {
+      console.error('Failed to delete bar', error);
+    }
   };
 
   const editBarDetails = (bar) => {
@@ -62,16 +80,27 @@ const ManageBarsScreen = ({ navigation, route }) => {
   };
 
   const saveBarDetails = async () => {
-    const updatedBars = bars.map(bar => {
-      if (bar.name === editBar.name) {
-        return { ...bar, name: editName, fridges: parseInt(editFridges) || 0, shelves: parseInt(editShelves) || 0 };
+    try {
+      // Retrieve the active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        console.error('No active organization selected');
+        return;
       }
-      return bar;
-    });
-    setBars(updatedBars);
-    await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
-    setEditModalVisible(false);
-    navigation.navigate('ViewBars', { refresh: true });
+
+      const updatedBars = bars.map(bar => {
+        if (bar.name === editBar.name) {
+          return { ...bar, name: editName, fridges: parseInt(editFridges) || 0, shelves: parseInt(editShelves) || 0 };
+        }
+        return bar;
+      });
+      setBars(updatedBars);
+      await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
+      setEditModalVisible(false);
+      navigation.navigate('ViewBars', { refresh: true });
+    } catch (error) {
+      console.error('Failed to save bar details', error);
+    }
   };
 
   return (

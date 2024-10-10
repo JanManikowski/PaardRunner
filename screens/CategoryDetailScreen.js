@@ -1,30 +1,72 @@
 import React, { useContext, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';  // Import useFocusEffect
+import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { CategoryContext } from '../contexts/CategoryContext';  // Access category context
-import { ThemeContext } from '../contexts/ThemeContext';       // Access theme context
+import { ThemeContext } from '../contexts/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CategoryDetailScreen = ({ route, navigation }) => {
   const { categoryName } = route.params;
-  const { categories, updateCategoryItems, removeItemFromCategory } = useContext(CategoryContext);  // Added `updateCategoryItems`
   const { theme } = useContext(ThemeContext);
-  const [items, setItems] = useState(categories[categoryName] || []);  // Initialize state with category items
+  const [items, setItems] = useState([]);
 
   // Function to handle drag-and-drop reorder
-  const handleDragEnd = ({ data }) => {
-    setItems(data);  // Update local state
-    updateCategoryItems(categoryName, data);  // Save new order to context
+  const handleDragEnd = async ({ data }) => {
+    setItems(data);
+    await saveItemsToStorage(data);
   };
 
   // UseFocusEffect to refresh the items every time the screen is focused
   useFocusEffect(
     useCallback(() => {
-      if (categories[categoryName]) {
-        setItems(categories[categoryName]);  // Refresh the category items on focus
-      }
-    }, [categories, categoryName])
+      fetchItems();
+    }, [categoryName])
   );
+
+  const fetchItems = async () => {
+    try {
+      // Retrieve active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        console.error('No active organization selected');
+        return;
+      }
+
+      // Fetch items linked to the active organization and category
+      const storedItems = await AsyncStorage.getItem(`items_${activeOrgId}_${categoryName}`);
+      if (storedItems) {
+        setItems(JSON.parse(storedItems));
+      }
+    } catch (error) {
+      console.error('Failed to load items from storage', error);
+    }
+  };
+
+  const saveItemsToStorage = async (items) => {
+    try {
+      // Retrieve active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        Alert.alert('Error', 'No active organization selected');
+        return;
+      }
+
+      // Save updated items list to AsyncStorage
+      await AsyncStorage.setItem(`items_${activeOrgId}_${categoryName}`, JSON.stringify(items));
+    } catch (error) {
+      console.error('Failed to save items to storage', error);
+    }
+  };
+
+  const removeItem = async (itemName) => {
+    try {
+      const filteredItems = items.filter(item => item.name !== itemName);
+      setItems(filteredItems);
+      await saveItemsToStorage(filteredItems);
+    } catch (error) {
+      console.error('Failed to remove item', error);
+    }
+  };
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
@@ -47,7 +89,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
               padding: 10,
               borderRadius: 8,
             }}
-            onLongPress={drag}  // Start drag on long press
+            onLongPress={drag} // Start drag on long press
           >
             {/* Display item image */}
             <Image
@@ -69,7 +111,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
                 borderRadius: 5,
                 marginLeft: 10,
               }}
-              onPress={() => removeItemFromCategory(categoryName, item.name)}  // Remove item
+              onPress={() => removeItem(item.name)} // Remove item
             >
               <Text style={{ color: theme.colors.onError }}>Delete</Text>
             </TouchableOpacity>
@@ -80,7 +122,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
                 borderRadius: 5,
                 marginLeft: 10,
               }}
-              onPress={() => navigation.navigate('ItemEditor', { categoryName, item })}  // Navigate to ItemEditor
+              onPress={() => navigation.navigate('ItemEditor', { categoryName, item })} // Navigate to ItemEditor
             >
               <Text style={{ color: theme.colors.onPrimary }}>Edit</Text>
             </TouchableOpacity>
@@ -97,7 +139,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
           alignItems: 'center',
           marginTop: 20,
         }}
-        onPress={() => navigation.navigate('ItemEditor', { categoryName })}  // Navigate to add new item
+        onPress={() => navigation.navigate('ItemEditor', { categoryName })} // Navigate to add new item
       >
         <Text style={{ color: theme.colors.onPrimary }}>Add New Item</Text>
       </TouchableOpacity>
@@ -106,4 +148,3 @@ const CategoryDetailScreen = ({ route, navigation }) => {
 };
 
 export default CategoryDetailScreen;
- 

@@ -132,4 +132,37 @@ export const fetchUserOrganizations = async () => {
     }
   };
 
+  export const fetchCategories = async (orgId) => {
+    try {
+      const categoriesSnapshot = await firestore()
+        .collection('organizations')
+        .doc(orgId)
+        .collection('categories')
+        .get();
+  
+      const categories = categoriesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return categories;
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      throw new Error('Unable to fetch categories');
+    }
+  };
+  
+  // Function to fetch bars for a given organization ID
+  export const fetchBars = async (orgId) => {
+    try {
+      const barsSnapshot = await firestore()
+        .collection('organizations')
+        .doc(orgId)
+        .collection('bars')
+        .get();
+  
+      const bars = barsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return bars;
+    } catch (error) {
+      console.error('Error fetching bars:', error);
+      throw new Error('Unable to fetch bars');
+    }
+  };
+
   

@@ -1,12 +1,12 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
-import { CategoryContext } from '../contexts/CategoryContext';  // Use CategoryContext
+import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';        // Use ThemeContext
 import * as ImagePicker from 'expo-image-picker';  // To handle image uploads
+// import { v4 as uuidv4 } from 'uuid'; (removed due to compatibility issue) // Import uuid for generating unique IDs
 
 const ItemEditorScreen = ({ route, navigation }) => {
   const { categoryName, item } = route.params || {};  // Get categoryName and item if passed (item is optional for adding)
-  const { addItemToCategory, updateItemInCategory } = useContext(CategoryContext);
   const { theme } = useContext(ThemeContext);
 
   const [itemName, setItemName] = useState(item ? item.name : '');  // Pre-populate if editing
@@ -27,20 +27,49 @@ const ItemEditorScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleSaveItem = () => {
-    const newItem = {
-      name: itemName,
-      maxAmount: parseInt(maxAmount, 10),
-      image: image || null,  // Store the selected image or leave it null
-    };
-
-    if (item) {
-      updateItemInCategory(categoryName, newItem);  // Edit existing item
-    } else {
-      addItemToCategory(categoryName, newItem);  // Add new item
+  const handleSaveItem = async () => {
+    if (itemName.trim() === '') {
+      Alert.alert('Error', 'Item name is required');
+      return;
     }
 
-    navigation.goBack();  // Navigate back to the category detail
+    try {
+      // Retrieve active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        Alert.alert('Error', 'No active organization selected');
+        return;
+      }
+
+      // Fetch items linked to the active organization and category
+      const storedItems = await AsyncStorage.getItem(`items_${activeOrgId}_${categoryName}`);
+      const items = storedItems ? JSON.parse(storedItems) : [];
+
+      const newItem = {
+        id: item ? item.id : Date.now().toString(),
+        name: itemName,
+        maxAmount: parseInt(maxAmount, 10),
+        image: image || null,  // Store the selected image or leave it null
+      };
+
+      let updatedItems;
+      if (item) {
+        // Update existing item
+        updatedItems = items.map(i => (i.id === item.id ? newItem : i));
+      } else {
+        // Add new item
+        updatedItems = [...items, newItem];
+      }
+
+      // Save the updated items list
+      await AsyncStorage.setItem(`items_${activeOrgId}_${categoryName}`, JSON.stringify(updatedItems));
+      Alert.alert('Success', item ? 'Item updated successfully' : 'Item added successfully');
+
+      navigation.navigate('CategoryDetail', { refresh: true });  // Navigate back to the category detail
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save item');
+      console.error(error);
+    }
   };
 
   return (

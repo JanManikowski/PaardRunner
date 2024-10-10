@@ -28,17 +28,31 @@ const SettingsScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, []);
 
-  // Fetch organizations when user is logged in
+  // Load organizations from local storage first and then fetch from database
   useEffect(() => {
-    if (user) {
-      loadOrganizations();
-    }
+    const loadOrganizationsFromLocalStorage = async () => {
+      const storedOrganizations = await AsyncStorage.getItem('organizations');
+      if (storedOrganizations) {
+        setOrganizations(JSON.parse(storedOrganizations));
+      }
+      if (user) {
+        await loadOrganizationsFromDatabase();
+      }
+    };
+    loadOrganizationsFromLocalStorage();
   }, [user]);
 
-  const loadOrganizations = async () => {
+  // Fetch organizations from the database and update local storage if needed
+  const loadOrganizationsFromDatabase = async () => {
     try {
       const orgs = await fetchUserOrganizations();
-      setOrganizations(orgs);
+      const storedOrganizations = await AsyncStorage.getItem('organizations');
+      const parsedStoredOrganizations = storedOrganizations ? JSON.parse(storedOrganizations) : [];
+
+      if (JSON.stringify(orgs) !== JSON.stringify(parsedStoredOrganizations)) {
+        setOrganizations(orgs);
+        await AsyncStorage.setItem('organizations', JSON.stringify(orgs));
+      }
       const storedActiveOrg = await AsyncStorage.getItem('activeOrgId');
       if (storedActiveOrg) {
         setActiveOrgId(storedActiveOrg);
@@ -51,28 +65,13 @@ const SettingsScreen = ({ navigation }) => {
   const handleSetActiveOrganization = async () => {
     try {
       await AsyncStorage.setItem('activeOrgId', selectedOrgId);
+      console.log(`Active organization set: ${selectedOrgId}`); // Log to confirm
       setActiveOrgId(selectedOrgId);
-      // Fetch the organization-specific data and store it locally
-      await loadOrganizationData(selectedOrgId);
       Alert.alert('Active organization set successfully');
       setIsModalVisible(false);
     } catch (error) {
       console.error('Error setting active organization:', error);
       Alert.alert('Error', 'Failed to set active organization.');
-    }
-  };
-
-  const loadOrganizationData = async (orgId) => {
-    try {
-      // Fetch categories, bars, and items from Firebase
-      const categories = await fetchCategories(orgId);
-      const bars = await fetchBars(orgId);
-
-      // Save data in local storage
-      await AsyncStorage.setItem('categories', JSON.stringify(categories));
-      await AsyncStorage.setItem('bars', JSON.stringify(bars));
-    } catch (error) {
-      console.error('Error loading organization data:', error);
     }
   };
 
@@ -82,70 +81,70 @@ const SettingsScreen = ({ navigation }) => {
 
       {user && (
         <View style={{ marginBottom: 20 }}>
-        <TouchableOpacity
-          style={{
-            padding: 15,
-            backgroundColor: theme.colors.primary,
-            borderRadius: 10,
-            alignItems: 'center',
-            marginBottom: 15,
-          }}
-          onPress={() => setIsModalVisible(true)}
-        >
-          <Text style={{ color: theme.colors.background, fontSize: 16 }}>Choose Organization</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              padding: 15,
+              backgroundColor: theme.colors.primary,
+              borderRadius: 10,
+              alignItems: 'center',
+              marginBottom: 15,
+            }}
+            onPress={() => setIsModalVisible(true)}
+          >
+            <Text style={{ color: theme.colors.background, fontSize: 16 }}>Choose Organization</Text>
+          </TouchableOpacity>
 
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={isModalVisible}
-          onRequestClose={() => setIsModalVisible(false)}
-        >
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <View style={{ width: '80%', backgroundColor: theme.colors.card, padding: 20, borderRadius: 10 }}>
-              <View style={{ backgroundColor: theme.colors.background, padding: 15, borderRadius: 10 }}>
-                <Text style={{ fontSize: 18, color: theme.colors.text, marginBottom: 20 }}>Select Active Organization:</Text>
-                <FlatList
-                  data={organizations}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={{ padding: 10, backgroundColor: item.id === selectedOrgId ? theme.colors.primary : theme.colors.card, marginBottom: 10, borderRadius: 5 }}
-                      onPress={() => setSelectedOrgId(item.id)}
-                    >
-                      <Text style={{ color: theme.colors.text }}>{item.name}</Text>
-                    </TouchableOpacity>
-                  )}
-                />
-                <TouchableOpacity
-                  style={{
-                    padding: 15,
-                    backgroundColor: theme.colors.primary,
-                    borderRadius: 10,
-                    alignItems: 'center',
-                    marginTop: 15,
-                  }}
-                  onPress={handleSetActiveOrganization}
-                  disabled={!selectedOrgId}
-                >
-                  <Text style={{ color: theme.colors.background, fontSize: 16 }}>Set Active Organization</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    padding: 10,
-                    marginTop: 10,
-                    alignItems: 'center',
-                  }}
-                  onPress={() => setIsModalVisible(false)}
-                >
-                  <Text style={{ color: theme.colors.primary, fontSize: 16 }}>Cancel</Text>
-                </TouchableOpacity>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={isModalVisible}
+            onRequestClose={() => setIsModalVisible(false)}
+          >
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+              <View style={{ width: '80%', backgroundColor: theme.colors.card, padding: 20, borderRadius: 10 }}>
+                <View style={{ backgroundColor: theme.colors.background, padding: 15, borderRadius: 10 }}>
+                  <Text style={{ fontSize: 18, color: theme.colors.text, marginBottom: 20 }}>Select Active Organization:</Text>
+                  <FlatList
+                    data={organizations}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={{ padding: 10, backgroundColor: item.id === selectedOrgId ? theme.colors.primary : theme.colors.card, marginBottom: 10, borderRadius: 5 }}
+                        onPress={() => setSelectedOrgId(item.id)}
+                      >
+                        <Text style={{ color: theme.colors.text }}>{item.name}</Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      padding: 15,
+                      backgroundColor: theme.colors.primary,
+                      borderRadius: 10,
+                      alignItems: 'center',
+                      marginTop: 15,
+                    }}
+                    onPress={handleSetActiveOrganization}
+                    disabled={!selectedOrgId}
+                  >
+                    <Text style={{ color: theme.colors.background, fontSize: 16 }}>Set Active Organization</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      padding: 10,
+                      marginTop: 10,
+                      alignItems: 'center',
+                    }}
+                    onPress={() => setIsModalVisible(false)}
+                  >
+                    <Text style={{ color: theme.colors.primary, fontSize: 16 }}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        </Modal>
-      </View>
-    )}
+          </Modal>
+        </View>
+      )}
 
       <TouchableOpacity
         style={{
@@ -199,6 +198,19 @@ const SettingsScreen = ({ navigation }) => {
         <Text style={{ color: theme.colors.background, fontSize: 16 }}>
           Switch to {theme.dark ? 'Light Mode' : 'Dark Mode'}
         </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={{
+          padding: 15,
+          backgroundColor: theme.colors.primary,
+          borderRadius: 10,
+          marginBottom: 15,
+          alignItems: 'center',
+        }}
+        onPress={() => navigation.navigate('AdminFeatures')}
+      >
+        <Text style={{ color: theme.colors.background, fontSize: 16 }}>Admin</Text>
       </TouchableOpacity>
 
       {user && (

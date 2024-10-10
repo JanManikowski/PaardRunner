@@ -1,19 +1,76 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Modal } from 'react-native';
-import { CategoryContext } from '../contexts/CategoryContext';  // Import your context
-import { ThemeContext } from '../contexts/ThemeContext';       // Import your theme context
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const ItemManagerScreen = ({ navigation }) => {
-  const { categories, addCategory, deleteCategory } = useContext(CategoryContext);  // Use CategoryContext
   const { theme } = useContext(ThemeContext);  // Use ThemeContext for styling
+  const [categories, setCategories] = useState({});
   const [newCategoryName, setNewCategoryName] = useState('');  // State for new category input
   const [modalVisible, setModalVisible] = useState(false);  // State for modal visibility
 
-  const handleAddCategory = () => {
-    if (newCategoryName.trim()) {
-      addCategory(newCategoryName);  // Add category through context
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      // Retrieve active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        console.error('No active organization selected');
+        return;
+      }
+
+      // Fetch categories linked to the active organization
+      const storedCategories = await AsyncStorage.getItem(`categories_${activeOrgId}`);
+      if (storedCategories) {
+        setCategories(JSON.parse(storedCategories));
+      }
+    } catch (error) {
+      console.error('Failed to load categories from storage', error);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (newCategoryName.trim() === '') {
+      return;
+    }
+
+    try {
+      // Retrieve active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        console.error('No active organization selected');
+        return;
+      }
+
+      const updatedCategories = { ...categories, [newCategoryName]: [] };
+      setCategories(updatedCategories);
+      await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
+
       setNewCategoryName('');  // Clear input after adding
       setModalVisible(false);  // Close the modal
+    } catch (error) {
+      console.error('Failed to add category', error);
+    }
+  };
+
+  const deleteCategory = async (categoryName) => {
+    try {
+      // Retrieve active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        console.error('No active organization selected');
+        return;
+      }
+
+      const updatedCategories = { ...categories };
+      delete updatedCategories[categoryName];
+      setCategories(updatedCategories);
+      await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
+    } catch (error) {
+      console.error('Failed to delete category', error);
     }
   };
 

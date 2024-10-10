@@ -1,25 +1,78 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { CategoryContext } from '../contexts/CategoryContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';  // Import Toast for feedback
+import { useFocusEffect } from '@react-navigation/native';
 
 const BarDetailScreen = ({ route, navigation }) => {
   const { bar } = route.params;
   const { theme } = useContext(ThemeContext);
-  const { categories } = useContext(CategoryContext);
+  const [categories, setCategories] = useState({});
   const [customItem, setCustomItem] = useState('');  // State for custom item input
 
-  const handleAddCustomItem = () => {
+  // Fetch categories linked to the active organization
+  const fetchCategories = async () => {
+    try {
+      // Retrieve active organization ID
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        console.error('No active organization selected');
+        return;
+      }
+
+      // Fetch categories from AsyncStorage
+      const storedCategories = await AsyncStorage.getItem(`categories_${activeOrgId}`);
+      if (storedCategories) {
+        setCategories(JSON.parse(storedCategories));
+      }
+    } catch (error) {
+      console.error('Failed to load categories from storage', error);
+    }
+  };
+
+  // Fetch categories whenever the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchCategories();
+    }, [])
+  );
+
+  // Handle adding a custom item
+  const handleAddCustomItem = async () => {
     if (customItem.trim()) {
-      // Add logic for adding the custom item
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: `${customItem} has been added`,
-        position: 'top',
-      });
-      setCustomItem('');  // Clear the input field after adding the item
+      try {
+        // Retrieve active organization ID
+        const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+        if (!activeOrgId) {
+          Alert.alert('Error', 'No active organization selected');
+          return;
+        }
+
+        // Fetch custom items for the bar from AsyncStorage
+        const storedCustomItems = await AsyncStorage.getItem(`customItems_${activeOrgId}_${bar.id}`);
+        const customItems = storedCustomItems ? JSON.parse(storedCustomItems) : [];
+
+        // Add the new custom item
+        const updatedCustomItems = [...customItems, customItem];
+        await AsyncStorage.setItem(`customItems_${activeOrgId}_${bar.id}`, JSON.stringify(updatedCustomItems));
+
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: `${customItem} has been added`,
+          position: 'top',
+        });
+        setCustomItem('');  // Clear the input field after adding the item
+      } catch (error) {
+        console.error('Failed to add custom item', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to add custom item.',
+          position: 'top',
+        });
+      }
     } else {
       Toast.show({
         type: 'error',
@@ -48,7 +101,7 @@ const BarDetailScreen = ({ route, navigation }) => {
               backgroundColor: theme.colors.surfaceVariant,
               alignItems: 'center',
             }}
-            onPress={() => navigation.navigate('CategoryList', { categoryName, bar })}
+            onPress={() => navigation.navigate('CategoryDetail', { categoryName, bar })}
           >
             <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
               View {categoryName}
@@ -77,7 +130,7 @@ const BarDetailScreen = ({ route, navigation }) => {
           </Text>
         </TouchableOpacity>
 
-        <View style={{ flex: 1 }} /> 
+        <View style={{ flex: 1 }} />
 
         {/* Custom Item Input */}
         <TextInput

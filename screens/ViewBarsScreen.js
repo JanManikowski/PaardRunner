@@ -1,23 +1,23 @@
+// ViewBarsScreen.js
 import React, { useState, useEffect, useContext } from 'react';
 import { View, TouchableOpacity, Animated } from 'react-native';
-import { Text, Button, Icon, Switch } from 'react-native-elements';
+import { Text, Button, Icon } from 'react-native-elements';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import WheelColorPicker from 'react-native-wheel-color-picker';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 
-const ViewBarsScreen = ({ navigation, route }) => {
+const ViewBarsScreen = ({ navigation }) => {
   const [bars, setBars] = useState([]);
   const [selectedBar, setSelectedBar] = useState(null);
   const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
   const [pickedColor, setPickedColor] = useState('#FFFFFF');
   const [textColor, setTextColor] = useState('#000000'); // Default text color is black
   const [animatedValue] = useState(new Animated.Value(0));
-  const { theme, toggleTheme } = useContext(ThemeContext);
-
-  const [iconOpacity] = useState(new Animated.Value(1)); // New animated value for the icon opacity
+  const { theme } = useContext(ThemeContext);
+  const [selectedOrganization, setSelectedOrganization] = useState(null);
+  const [iconOpacity] = useState(new Animated.Value(1));
 
   useEffect(() => {
     // Create a loop with a 5-second delay before the flashing effect
@@ -47,22 +47,31 @@ const ViewBarsScreen = ({ navigation, route }) => {
 
   useFocusEffect(
     React.useCallback(() => {
-      const fetchBars = async () => {
-        const storedBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
-        setBars(storedBars);
+      const loadOrganizationAndBars = async () => {
+        const organizationId = await AsyncStorage.getItem('activeOrgId');
+        if (organizationId) {
+          console.log(`Loading bars for organization ID: ${organizationId}`);
+          setSelectedOrganization(organizationId);
+          const storedBars = JSON.parse(await AsyncStorage.getItem(`bars_${organizationId}`)) || [];
+          setBars(storedBars);
+        } else {
+          console.log('No organization selected');
+        }
       };
-      fetchBars();
+      loadOrganizationAndBars();
     }, [])
   );
 
   const handleColorChange = async () => {
+    if (!selectedOrganization) return;
+
     const updatedBars = bars.map(bar =>
       bar.name === selectedBar.name
         ? { ...bar, color: pickedColor, textColor: getContrastingTextColor(pickedColor) }
         : bar
     );
     setBars(updatedBars);
-    await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
+    await AsyncStorage.setItem(`bars_${selectedOrganization}`, JSON.stringify(updatedBars));
     setIsColorPickerVisible(false);
     Animated.timing(animatedValue, {
       toValue: 0,
@@ -72,12 +81,14 @@ const ViewBarsScreen = ({ navigation, route }) => {
   };
 
   const handlePress = async (bar) => {
+    if (!selectedOrganization) return;
+
     // Store last opened time
     const updatedBars = bars.map(b =>
       b.name === bar.name ? { ...b, lastOpened: new Date().toISOString() } : b
     );
     setBars(updatedBars);
-    await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
+    await AsyncStorage.setItem(`bars_${selectedOrganization}`, JSON.stringify(updatedBars));
 
     // Navigate to BarDetailScreen
     navigation.navigate('BarDetail', { bar });
@@ -124,7 +135,7 @@ const ViewBarsScreen = ({ navigation, route }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.backgroundVariant, padding: 20 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom:20 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <Text h4 style={{ color: theme.colors.text }}>ViewBars</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
           <MaterialIcons name="settings" size={28} color={theme.colors.text} />
@@ -156,26 +167,18 @@ const ViewBarsScreen = ({ navigation, route }) => {
           </Text>
         </Animated.View>
       ) : (
-        <View style={{ flex: 1, }}>
+        <View style={{ flex: 1 }}>
           <DraggableFlatList
             data={bars}
             keyExtractor={(item, index) => index.toString()}
             onDragEnd={async ({ data }) => {
               setBars(data);
-              await AsyncStorage.setItem('bars', JSON.stringify(data));
+              if (selectedOrganization) {
+                await AsyncStorage.setItem(`bars_${selectedOrganization}`, JSON.stringify(data));
+              }
             }}
             renderItem={({ item, drag, index }) => {
               const itemTextColor = getContrastingTextColor(item.color || theme.colors.surfaceVariant);
-
-              const lastOpenedDate = item.lastOpened ? new Date(item.lastOpened) : null;
-              const now = new Date();
-              const timeDifference = lastOpenedDate ? Math.abs(now - lastOpenedDate) / 60000 : null; // Difference in minutes
-
-              const lastOpenedTime = lastOpenedDate
-                  ? lastOpenedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : 'never';
-
-              const isDanger = timeDifference && timeDifference >= 30;
 
               return (
                 <TouchableOpacity
@@ -194,34 +197,16 @@ const ViewBarsScreen = ({ navigation, route }) => {
                     alignItems: 'center',
                     position: 'relative',
                   }}
-                  onLongPress={drag} // Enable dragging on long press
+                  onLongPress={drag}
                   onPress={() => handlePress(item)}
                 >
                   <View>
                     <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: itemTextColor }}>
                       {item.name}
                     </Text>
-
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-                      {isDanger && (
-                        <Animated.View style={{ opacity: iconOpacity }}>
-                          <MaterialIcons 
-                            name="warning" 
-                            size={18} 
-                            color={getContrastingTextColor(item.color || '#FF0000')}
-                            style={{ marginRight: 5 }} 
-                          />
-                        </Animated.View>
-                      )}
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: itemTextColor,
-                        }}
-                      > 
-                        Last opened: {lastOpenedTime}
-                      </Text>
-                    </View>
+                    <Text style={{ fontSize: 14, color: itemTextColor }}>
+                      Last opened: {item.lastOpened ? new Date(item.lastOpened).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'never'}
+                    </Text>
                   </View>
                   <Button
                     icon={<Icon name="palette" color={getContrastingTextColor(item.color || theme.colors.surfaceVariant)} />}

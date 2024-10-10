@@ -18,16 +18,28 @@ const AddBarScreen = ({ navigation }) => {
     }
 
     try {
-      const bars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
+      // Retrieve active organization ID from AsyncStorage
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        Alert.alert('Error', 'No active organization selected');
+        return;
+      }
+
+      // Get the bars linked to the active organization
+      const bars = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
       const newBar = { name: barName, numShelves: parseInt(numShelves), numFridges: parseInt(numFridges), fridges: [], shelves: [] };
       const updatedBars = [...bars, newBar];
-      await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
+
+      // Save the updated bars list to the correct organization key in AsyncStorage
+      await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
       Alert.alert('Success', 'Bar added successfully');
 
+      // Reset form fields
       setBarName('');
       setNumShelves('');
       setNumFridges('');
 
+      // Navigate back to ViewBarsScreen and refresh
       navigation.navigate('ViewBars', { refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to add bar');
