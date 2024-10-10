@@ -54,3 +54,51 @@ const AppNavigator = () => {
 };
 
 export default AppNavigator;
+
+// Function to log local storage data (for debugging purposes)
+export const logLocalStorageData = async () => {
+  try {
+    const bars = await AsyncStorage.getItem('bars');
+    const categories = await AsyncStorage.getItem('categories');
+    const items = await AsyncStorage.getItem('items');
+
+    const parsedBars = bars ? JSON.parse(bars) : [];
+    const parsedCategories = categories ? JSON.parse(categories) : {};
+    const parsedItems = items ? JSON.parse(items) : [];
+
+    console.log('Bars:');
+    parsedBars.forEach((bar, index) => {
+      console.log(`Bar ${index + 1}:`);
+      console.log(`  Name: ${bar.name}`);
+      console.log(`  Color: ${bar.color}`);
+      console.log(`  Number of Fridges: ${bar.numFridges}`);
+      console.log(`  Number of Shelves: ${bar.numShelves}`);
+      console.log(`  Last Opened: ${bar.lastOpened}`);
+    });
+
+    console.log('Categories:');
+    Object.keys(parsedCategories).forEach((categoryName) => {
+      console.log(`Category: ${categoryName}`);
+      parsedCategories[categoryName].forEach((item, index) => {
+        console.log(`  Item ${index + 1}:`);
+        console.log(`    Name: ${item.name}`);
+        console.log(`    Max Amount: ${item.maxAmount}`);
+        console.log(`    Missing: ${item.missing ?? 'N/A'}`);
+        console.log(`    Image: ${item.image}`);
+      });
+    });
+
+    console.log('Items:');
+    if (parsedItems.length > 0) {
+      parsedItems.forEach((item, index) => {
+        console.log(`Item ${index + 1}:`);
+        console.log(`  Name: ${item.name}`);
+        console.log(`  Max Amount: ${item.maxAmount}`);
+      });
+    } else {
+      console.log('No items found');
+    }
+  } catch (error) {
+    console.error('Error logging local storage data:', error);
+  }
+};
