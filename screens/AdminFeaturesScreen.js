@@ -1,28 +1,24 @@
-// Updated AdminFeaturesScreen.js with buttons for exporting data and uploading from local storage.
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, FlatList, TextInput } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { auth } from '../utils/firebaseConfig';
 import {
-  exportAllOrganizations,
-  fetchUserOrganizations,
   createOrganization,
+  addCategory,
+  addItem,
   createBarInFirebase,
-  fetchBar,
-  fetchCategory,
-  createCategoryInFirebase,
-  fetchItem,
-  createItemInFirebase,
-  logLocalStorageData
+  fetchUserOrganizations,
+  fetchBars,
+  fetchCategories,
+  logLocalStorage,
 } from '../utils/firebaseService';
-
-// Assume AsyncStorage is used for local storage
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AdminFeaturesScreen = ({ navigation }) => {
   const { theme } = useContext(ThemeContext);
   const [user, setUser] = useState(null);
   const [organizations, setOrganizations] = useState([]);
+  const [newOrgName, setNewOrgName] = useState('');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -53,45 +49,41 @@ const AdminFeaturesScreen = ({ navigation }) => {
     }
   };
 
-  const handleCreateOrganization = async () => {
-    try {
-      const orgName = 'New Organization'; // You can replace this with user input in the future
-      await createOrganization(orgName, user.email);
-      Alert.alert('Success', 'Organization created successfully.');
-      loadOrganizations();
-    } catch (error) {
-      console.error('Error creating organization:', error);
-      Alert.alert('Error', 'Failed to create organization.');
-    }
-  };
-
   const handleUploadLocalStorageToFirebase = async () => {
     try {
-      const bars = await getLocalStorageData('bars');
-      const categories = await getLocalStorageData('categories');
-      const items = await getLocalStorageData('items');
-  
-      if (bars) {
-        for (let bar of bars) {
-          // Create a new bar in Firebase without managing an ID manually
-          await createBarInFirebase(bar);
-          console.log('Bar uploaded:', bar);
-        }
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        Alert.alert('Error', 'No active organization selected');
+        return;
       }
   
-      if (categories) {
-        for (let category of categories) {
-          // Assume barId is obtained dynamically, you may need additional logic here
-          await createCategoryInFirebase(category);
-          console.log('Category uploaded:', category);
-        }
+      const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
+      const org = organizations.find(org => org.id === activeOrgId);
+  
+      if (!org) {
+        console.error('No matching organization found');
+        return;
       }
   
-      if (items) {
-        for (let item of items) {
-          // Assume barId and categoryId are obtained dynamically
-          await createItemInFirebase(item);
-          console.log('Item uploaded:', item);
+      const orgId = await createOrUpdateOrganization(org.name, org.createdBy);
+      const bars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
+      const barsForOrg = bars.filter(bar => bar.orgId === activeOrgId);
+  
+      for (let bar of barsForOrg) {
+        const barId = await createBarInFirebase(orgId, bar);
+  
+        const categories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+        const categoriesForBar = categories.filter(category => category.barId === bar.id);
+  
+        for (let category of categoriesForBar) {
+          const categoryId = await addCategory(barId, category.name);
+  
+          const items = JSON.parse(await AsyncStorage.getItem('items')) || [];
+          const itemsForCategory = items.filter(item => item.categoryId === category.id);
+  
+          for (let item of itemsForCategory) {
+            await addItem(categoryId, item.name, item.maxAmount, item.picture);
+          }
         }
       }
   
@@ -100,6 +92,38 @@ const AdminFeaturesScreen = ({ navigation }) => {
       console.error('Error uploading data to Firebase:', error);
       Alert.alert('Error', 'Failed to upload data to Firebase.');
     }
+  };
+  
+
+  const handleClearLocalStorage = async () => {
+    try {
+      await AsyncStorage.clear();
+      Alert.alert('Success', 'Local storage has been cleared successfully.');
+    } catch (error) {
+      console.error('Error clearing local storage:', error);
+      Alert.alert('Error', 'Failed to clear local storage.');
+    }
+  };
+
+  const handleAddOrganization = async () => {
+    if (newOrgName.trim() === '') {
+      Alert.alert('Error', 'Organization name cannot be empty.');
+      return;
+    }
+
+    try {
+      await createOrganization(newOrgName, user.email);
+      Alert.alert('Success', 'Organization added successfully.');
+      setNewOrgName('');
+      loadOrganizations();
+    } catch (error) {
+      console.error('Error adding organization:', error);
+      Alert.alert('Error', 'Failed to add organization.');
+    }
+  };
+
+  const handleLogLocalStorage = async () => {
+    await logLocalStorage();
   };
 
   return (
@@ -110,7 +134,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
 
       {user && (
         <>
-          {/* Export Data Button */}
+          {/* Upload Local Storage to Firebase Button */}
           <TouchableOpacity
             style={{
               padding: 15,
@@ -122,6 +146,64 @@ const AdminFeaturesScreen = ({ navigation }) => {
             onPress={handleUploadLocalStorageToFirebase}
           >
             <Text style={{ color: theme.colors.background, fontSize: 16 }}>Upload Local Storage to Firebase</Text>
+          </TouchableOpacity>
+
+          {/* Clear Local Storage Button */}
+          <TouchableOpacity
+            style={{
+              padding: 15,
+              backgroundColor: theme.colors.error,
+              borderRadius: 10,
+              alignItems: 'center',
+              marginBottom: 15,
+            }}
+            onPress={handleClearLocalStorage}
+          >
+            <Text style={{ color: theme.colors.onError, fontSize: 16 }}>Clear Local Storage</Text>
+          </TouchableOpacity>
+
+          {/* Add Organization Section */}
+          <View style={{ marginBottom: 20 }}>
+            <TextInput
+              style={{
+                padding: 10,
+                borderColor: theme.colors.outline,
+                borderWidth: 1,
+                borderRadius: 5,
+                marginBottom: 10,
+                color: theme.colors.text,
+                backgroundColor: theme.colors.surfaceVariant,
+              }}
+              placeholder="Enter organization name"
+              placeholderTextColor={theme.colors.onSurface}
+              value={newOrgName}
+              onChangeText={setNewOrgName}
+            />
+            <TouchableOpacity
+              style={{
+                padding: 15,
+                backgroundColor: theme.colors.primary,
+                borderRadius: 10,
+                alignItems: 'center',
+              }}
+              onPress={handleAddOrganization}
+            >
+              <Text style={{ color: theme.colors.background, fontSize: 16 }}>Add Organization</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Log Local Storage Button */}
+          <TouchableOpacity
+            style={{
+              padding: 15,
+              backgroundColor: theme.colors.secondary,
+              borderRadius: 10,
+              alignItems: 'center',
+              marginBottom: 15,
+            }}
+            onPress={handleLogLocalStorage}
+          >
+            <Text style={{ color: theme.colors.background, fontSize: 16 }}>Log Local Storage</Text>
           </TouchableOpacity>
 
           {/* List of Organizations */}
@@ -144,37 +226,10 @@ const AdminFeaturesScreen = ({ navigation }) => {
               )}
             />
           </View>
-
-          {/* Add Organization Button */}
-          <TouchableOpacity
-            style={{
-              padding: 15,
-              backgroundColor: theme.colors.primary,
-              borderRadius: 10,
-              alignItems: 'center',
-              marginBottom: 15,
-            }}
-            onPress={handleCreateOrganization}
-          >
-            <Text style={{ color: theme.colors.background, fontSize: 16 }}>Add Organization</Text>
-          </TouchableOpacity>
-
-          {/* Add Organization Button */}
-          <TouchableOpacity
-            style={{
-              padding: 15,
-              backgroundColor: theme.colors.primary,
-              borderRadius: 10,
-              alignItems: 'center',
-              marginBottom: 15,
-            }}
-            onPress={logLocalStorageData}
-          >
-            <Text style={{ color: theme.colors.background, fontSize: 16 }}>Log</Text>
-          </TouchableOpacity>
         </>
       )}
 
+      {/* Back Button */}
       <TouchableOpacity
         style={{
           padding: 15,
@@ -191,4 +246,3 @@ const AdminFeaturesScreen = ({ navigation }) => {
 };
 
 export default AdminFeaturesScreen;
-

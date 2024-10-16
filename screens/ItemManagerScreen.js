@@ -5,7 +5,7 @@ import { ThemeContext } from '../contexts/ThemeContext';
 
 const ItemManagerScreen = ({ navigation }) => {
   const { theme } = useContext(ThemeContext);  // Use ThemeContext for styling
-  const [categories, setCategories] = useState({});
+  const [categories, setCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');  // State for new category input
   const [modalVisible, setModalVisible] = useState(false);  // State for modal visibility
 
@@ -15,20 +15,18 @@ const ItemManagerScreen = ({ navigation }) => {
 
   const fetchCategories = async () => {
     try {
-      // Retrieve active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
-
-      // Fetch categories linked to the active organization
-      const storedCategories = await AsyncStorage.getItem(`categories_${activeOrgId}`);
-      if (storedCategories) {
-        setCategories(JSON.parse(storedCategories));
-      }
+  
+      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+      const filteredCategories = allCategories.filter(category => category.orgId === activeOrgId);
+  
+      setCategories(filteredCategories);
     } catch (error) {
-      console.error('Failed to load categories from storage', error);
+      console.error('Failed to load categories', error);
     }
   };
 
@@ -36,25 +34,44 @@ const ItemManagerScreen = ({ navigation }) => {
     if (newCategoryName.trim() === '') {
       return;
     }
-
+  
     try {
-      // Retrieve active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
-
-      const updatedCategories = { ...categories, [newCategoryName]: [] };
-      setCategories(updatedCategories);
-      await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
-
-      setNewCategoryName('');  // Clear input after adding
-      setModalVisible(false);  // Close the modal
+  
+      // Retrieve all categories from local storage
+      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+  
+      // Create a new category object with orgId attached (no barId)
+      const newCategory = { name: newCategoryName, orgId: activeOrgId };
+  
+      // Check if the category already exists for the organization
+      const categoryExists = allCategories.some(category => category.name === newCategoryName && category.orgId === activeOrgId);
+      if (categoryExists) {
+        console.log(`Category "${newCategoryName}" already exists for this organization.`);
+        return;
+      }
+  
+      // Add the new category and save it
+      const updatedCategories = [...allCategories, newCategory];
+      await AsyncStorage.setItem('categories', JSON.stringify(updatedCategories));
+  
+      setNewCategoryName('');
+      setModalVisible(false);
+  
+      // Update categories list for the current org
+      setCategories(updatedCategories.filter(category => category.orgId === activeOrgId));
     } catch (error) {
       console.error('Failed to add category', error);
     }
   };
+  
+  
+  
+  
 
   const deleteCategory = async (categoryName) => {
     try {
@@ -147,38 +164,39 @@ const ItemManagerScreen = ({ navigation }) => {
 
       {/* List of Categories */}
       <ScrollView>
-        {Object.keys(categories).map(categoryName => (
-          <TouchableOpacity
-            key={categoryName}
-            onPress={() => navigation.navigate('CategoryDetail', { categoryName })}  // Navigate to CategoryDetailScreen
-            style={{
-              borderRadius: 10,
-              marginVertical: 5,
-              backgroundColor: theme.colors.surfaceVariant,
-              shadowColor: theme.colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 5,
-              elevation: 2,
-              padding: 10,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text style={{ fontSize: 18, color: theme.colors.text }}>{categoryName}</Text>
-            <TouchableOpacity
-              style={{
-                backgroundColor: theme.colors.error,
-                padding: 5,
-                borderRadius: 5,
-              }}
-              onPress={() => deleteCategory(categoryName)}  // Delete category on press
-            >
-              <Text style={{ color: theme.colors.onError }}>Delete</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+  {categories.map((category, index) => (
+    <TouchableOpacity
+      key={index} // use the index as a unique key
+      onPress={() => navigation.navigate('CategoryDetail', { categoryName: category.name })}  // Navigate to CategoryDetailScreen
+      style={{
+        borderRadius: 10,
+        marginVertical: 5,
+        backgroundColor: theme.colors.surfaceVariant,
+        shadowColor: theme.colors.shadow,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 2,
+        padding: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+      }}
+    >
+      <Text style={{ fontSize: 18, color: theme.colors.text }}>{category.name}</Text>
+      <TouchableOpacity
+        style={{
+          backgroundColor: theme.colors.error,
+          padding: 5,
+          borderRadius: 5,
+        }}
+        onPress={() => deleteCategory(category.name)}  // Delete category on press
+      >
+        <Text style={{ color: theme.colors.onError }}>Delete</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  ))}
+</ScrollView>
+
     </View>
   );
 };

@@ -32,40 +32,41 @@ const ItemEditorScreen = ({ route, navigation }) => {
       Alert.alert('Error', 'Item name is required');
       return;
     }
-
+  
     try {
-      // Retrieve active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-
-      // Fetch items linked to the active organization and category
-      const storedItems = await AsyncStorage.getItem(`items_${activeOrgId}_${categoryName}`);
-      const items = storedItems ? JSON.parse(storedItems) : [];
-
+  
+      // Fetch all items globally
+      const storedItems = await AsyncStorage.getItem('items');
+      const allItems = storedItems ? JSON.parse(storedItems) : [];
+  
       const newItem = {
         id: item ? item.id : Date.now().toString(),
         name: itemName,
         maxAmount: parseInt(maxAmount, 10),
-        image: image || null,  // Store the selected image or leave it null
+        image: image || null,
+        categoryName: categoryName,  // Attach categoryName instead of categoryId
+        orgId: activeOrgId  // Attach organization ID
       };
-
+  
       let updatedItems;
       if (item) {
         // Update existing item
-        updatedItems = items.map(i => (i.id === item.id ? newItem : i));
+        updatedItems = allItems.map(i => (i.id === item.id ? newItem : i));
       } else {
         // Add new item
-        updatedItems = [...items, newItem];
+        updatedItems = [...allItems, newItem];
       }
-
+  
       // Save the updated items list
-      await AsyncStorage.setItem(`items_${activeOrgId}_${categoryName}`, JSON.stringify(updatedItems));
+      await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
       Alert.alert('Success', item ? 'Item updated successfully' : 'Item added successfully');
-
-      navigation.navigate('CategoryDetail', { refresh: true });  // Navigate back to the category detail
+  
+      navigation.navigate('CategoryDetail', { refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to save item');
       console.error(error);

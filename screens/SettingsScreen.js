@@ -28,6 +28,7 @@ const SettingsScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, []);
 
+
   // Load organizations from local storage first and then fetch from database
   useEffect(() => {
     const loadOrganizationsFromLocalStorage = async () => {

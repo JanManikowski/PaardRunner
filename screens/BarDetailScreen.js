@@ -20,16 +20,19 @@ const BarDetailScreen = ({ route, navigation }) => {
         console.error('No active organization selected');
         return;
       }
-
-      // Fetch categories from AsyncStorage
-      const storedCategories = await AsyncStorage.getItem(`categories_${activeOrgId}`);
-      if (storedCategories) {
-        setCategories(JSON.parse(storedCategories));
-      }
+  
+      // Retrieve all categories from storage
+      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+  
+      // Filter categories for the active organization
+      const filteredCategories = allCategories.filter(category => category.orgId === activeOrgId);
+      setCategories(filteredCategories);
     } catch (error) {
       console.error('Failed to load categories from storage', error);
     }
   };
+  
+
 
   // Fetch categories whenever the screen is focused
   useFocusEffect(
@@ -88,27 +91,31 @@ const BarDetailScreen = ({ route, navigation }) => {
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: theme.colors.text }}>
         {bar.name} Inventory
       </Text>
-
+  
       <ScrollView>
         {/* Custom Categories */}
-        {Object.keys(categories).map((categoryName) => (
-          <TouchableOpacity
-            key={categoryName}
-            style={{
-              padding: 20,
-              borderRadius: 8,
-              marginBottom: 10,
-              backgroundColor: theme.colors.surfaceVariant,
-              alignItems: 'center',
-            }}
-            onPress={() => navigation.navigate('CategoryDetail', { categoryName, bar })}
-          >
-            <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
-              View {categoryName}
-            </Text>
-          </TouchableOpacity>
-        ))}
-
+        {categories.length > 0 ? (
+          categories.map((category, index) => (
+            <TouchableOpacity
+              key={index}
+              style={{
+                padding: 20,
+                borderRadius: 8,
+                marginBottom: 10,
+                backgroundColor: theme.colors.surfaceVariant,
+                alignItems: 'center',
+              }}
+              onPress={() => navigation.navigate('CategoryList', { categoryName: category.name, bar })}
+            >
+              <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
+                View {category.name} {/* Use the category's name */}
+              </Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <Text style={{ textAlign: 'center', color: theme.colors.text }}>No categories available.</Text>
+        )}
+  
         {/* View Missing Items */}
         <TouchableOpacity
           style={{
@@ -129,9 +136,9 @@ const BarDetailScreen = ({ route, navigation }) => {
             View Missing Items
           </Text>
         </TouchableOpacity>
-
+  
         <View style={{ flex: 1 }} />
-
+  
         {/* Custom Item Input */}
         <TextInput
           style={{
@@ -147,9 +154,9 @@ const BarDetailScreen = ({ route, navigation }) => {
           placeholderTextColor={theme.colors.onSurface}
           value={customItem}
           onChangeText={setCustomItem}
-          onSubmitEditing={handleAddCustomItem}  // Automatically add the item when Enter is pressed
+          onSubmitEditing={handleAddCustomItem}
         />
-
+  
         {/* Add Custom Item Button */}
         <TouchableOpacity
           style={{
@@ -167,12 +174,13 @@ const BarDetailScreen = ({ route, navigation }) => {
             Add Custom Item
           </Text>
         </TouchableOpacity>
-
+  
         {/* Toast Notifications */}
         <Toast ref={(ref) => Toast.setRef(ref)} />
       </ScrollView>
     </View>
   );
+  
 };
 
 export default BarDetailScreen;

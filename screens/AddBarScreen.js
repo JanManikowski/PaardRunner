@@ -12,40 +12,47 @@ const AddBarScreen = ({ navigation }) => {
   const { theme } = useContext(ThemeContext); // Access theme from ThemeContext
 
   const addBarToStorage = async () => {
-    if (barName.trim() === '' || numShelves.trim() === '' || numFridges.trim() === '') {
+    if (!barName.trim() || !numShelves.trim() || !numFridges.trim()) {
       Alert.alert('Error', 'All fields are required');
       return;
     }
-
+  
     try {
-      // Retrieve active organization ID from AsyncStorage
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-
-      // Get the bars linked to the active organization
-      const bars = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
-      const newBar = { name: barName, numShelves: parseInt(numShelves), numFridges: parseInt(numFridges), fridges: [], shelves: [] };
-      const updatedBars = [...bars, newBar];
-
-      // Save the updated bars list to the correct organization key in AsyncStorage
-      await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
+  
+      // Retrieve all bars from storage
+      const allBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
+  
+      // Create a new bar object with orgId attached
+      const newBar = {
+        name: barName,
+        numShelves: parseInt(numShelves),
+        numFridges: parseInt(numFridges),
+        orgId: activeOrgId,
+        fridges: [],
+        shelves: []
+      };
+  
+      // Save the updated bars list back to storage
+      const updatedBars = [...allBars, newBar];
+      await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
       Alert.alert('Success', 'Bar added successfully');
-
-      // Reset form fields
+  
+      // Reset form fields and navigate back
       setBarName('');
       setNumShelves('');
       setNumFridges('');
-
-      // Navigate back to ViewBarsScreen and refresh
       navigation.navigate('ViewBars', { refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to add bar');
       console.error(error);
     }
   };
+  
 
   return (
     <View style={{

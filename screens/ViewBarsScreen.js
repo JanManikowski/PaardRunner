@@ -52,8 +52,11 @@ const ViewBarsScreen = ({ navigation }) => {
         if (organizationId) {
           console.log(`Loading bars for organization ID: ${organizationId}`);
           setSelectedOrganization(organizationId);
-          const storedBars = JSON.parse(await AsyncStorage.getItem(`bars_${organizationId}`)) || [];
-          setBars(storedBars);
+  
+          // Fetch all bars globally and filter them by orgId
+          const allBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
+          const filteredBars = allBars.filter(bar => bar.orgId === organizationId);
+          setBars(filteredBars);
         } else {
           console.log('No organization selected');
         }
@@ -61,6 +64,7 @@ const ViewBarsScreen = ({ navigation }) => {
       loadOrganizationAndBars();
     }, [])
   );
+  
 
   const handleColorChange = async () => {
     if (!selectedOrganization) return;
