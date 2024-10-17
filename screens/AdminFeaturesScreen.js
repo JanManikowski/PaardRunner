@@ -76,8 +76,8 @@ const AdminFeaturesScreen = ({ navigation }) => {
 
         // Upload categories for each bar
         const categories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
-        const categoriesForBar = categories.filter(category => category.orgId === activeOrgId);
-        for (let category of categoriesForBar) {
+        const categoriesForOrg = categories.filter(category => category.orgId === activeOrgId);
+        for (let category of categoriesForOrg) {
           const categoryId = await addCategory(barId, category.name);
 
           // Upload items for each category

@@ -3,12 +3,12 @@ import { collection, addDoc, getDocs, query, where, setDoc, doc } from 'firebase
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Function to create or update an organization in Firebase
-export const createOrUpdateOrganization = async (orgName, createdBy) => {
+export const createOrUpdateOrganization = async (name, createdBy) => {
   try {
-    const orgRef = doc(db, 'organizations', orgName);
+    const orgRef = doc(db, 'organizations', name);
     await setDoc(orgRef, {
-      name: orgName,
-      createdBy: createdBy,
+      name,
+      createdBy,
     }, { merge: true });
     return orgRef.id;
   } catch (error) {
@@ -17,7 +17,7 @@ export const createOrUpdateOrganization = async (orgName, createdBy) => {
   }
 };
 
-export const createOrUpdateBarInFirebase = async (orgId, bar) => {
+export const createBarInFirebase = async (orgId, bar) => {
   try {
     const barRef = doc(db, 'organizations', orgId, 'bars', bar.name);
     await setDoc(barRef, {
@@ -25,17 +25,16 @@ export const createOrUpdateBarInFirebase = async (orgId, bar) => {
       numShelves: bar.numShelves,
       numFridges: bar.numFridges,
       orgId: bar.orgId,
-      lastOpened: bar.lastOpened,
-      color: bar.color,
+      color: bar.color || '#FFFFFF',
     }, { merge: true });
     return barRef.id;
   } catch (error) {
-    console.error('Error creating/updating bar:', error);
+    console.error('Error creating bar:', error);
     throw error;
   }
 };
 
-export const addOrUpdateCategory = async (barId, categoryName) => {
+export const addCategory = async (barId, categoryName) => {
   try {
     const categoryRef = doc(db, 'bars', barId, 'categories', categoryName);
     await setDoc(categoryRef, {
@@ -43,21 +42,21 @@ export const addOrUpdateCategory = async (barId, categoryName) => {
     }, { merge: true });
     return categoryRef.id;
   } catch (error) {
-    console.error('Error adding/updating category:', error);
+    console.error('Error adding category:', error);
     throw error;
   }
 };
 
-export const addOrUpdateItem = async (categoryId, itemName, maxAmount, imageUri) => {
+export const addItem = async (categoryId, itemName, maxAmount, image) => {
   try {
     const itemRef = doc(db, 'categories', categoryId, 'items', itemName);
     await setDoc(itemRef, {
       name: itemName,
-      maxAmount: maxAmount,
-      image: imageUri,
+      maxAmount,
+      image: image || null,
     }, { merge: true });
   } catch (error) {
-    console.error('Error adding/updating item:', error);
+    console.error('Error adding item:', error);
     throw error;
   }
 };
