@@ -1,9 +1,9 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, FlatList, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, FlatList, TextInput,Button } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { auth } from '../utils/firebaseConfig';
 import {
-  createOrganization,
+  createOrUpdateOrganization,
   addCategory,
   addItem,
   createBarInFirebase,
@@ -56,37 +56,39 @@ const AdminFeaturesScreen = ({ navigation }) => {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-  
+
+      // Retrieve organization details
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
       const org = organizations.find(org => org.id === activeOrgId);
-  
       if (!org) {
         console.error('No matching organization found');
         return;
       }
-  
+
+      // Create or update the organization in Firebase
       const orgId = await createOrUpdateOrganization(org.name, org.createdBy);
+
+      // Upload bars for the organization
       const bars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
       const barsForOrg = bars.filter(bar => bar.orgId === activeOrgId);
-  
       for (let bar of barsForOrg) {
         const barId = await createBarInFirebase(orgId, bar);
-  
+
+        // Upload categories for each bar
         const categories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
-        const categoriesForBar = categories.filter(category => category.barId === bar.id);
-  
+        const categoriesForBar = categories.filter(category => category.orgId === activeOrgId);
         for (let category of categoriesForBar) {
           const categoryId = await addCategory(barId, category.name);
-  
+
+          // Upload items for each category
           const items = JSON.parse(await AsyncStorage.getItem('items')) || [];
-          const itemsForCategory = items.filter(item => item.categoryId === category.id);
-  
+          const itemsForCategory = items.filter(item => item.categoryName === category.name && item.orgId === activeOrgId);
           for (let item of itemsForCategory) {
-            await addItem(categoryId, item.name, item.maxAmount, item.picture);
+            await addItem(categoryId, item.name, item.maxAmount, item.image);
           }
         }
       }
-  
+
       Alert.alert('Upload Complete', 'Local storage data uploaded to Firebase successfully.');
     } catch (error) {
       console.error('Error uploading data to Firebase:', error);
@@ -135,18 +137,13 @@ const AdminFeaturesScreen = ({ navigation }) => {
       {user && (
         <>
           {/* Upload Local Storage to Firebase Button */}
-          <TouchableOpacity
-            style={{
-              padding: 15,
-              backgroundColor: theme.colors.primary,
-              borderRadius: 10,
-              alignItems: 'center',
-              marginBottom: 15,
-            }}
-            onPress={handleUploadLocalStorageToFirebase}
-          >
-            <Text style={{ color: theme.colors.background, fontSize: 16 }}>Upload Local Storage to Firebase</Text>
-          </TouchableOpacity>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+      <Button
+        title="Upload Organization to Firebase"
+        onPress={handleUploadLocalStorageToFirebase}
+        color={theme.colors.primary}
+      />
+    </View>
 
           {/* Clear Local Storage Button */}
           <TouchableOpacity

@@ -3,80 +3,61 @@ import { collection, addDoc, getDocs, query, where, setDoc, doc } from 'firebase
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Function to create or update an organization in Firebase
-export const createOrUpdateOrganization = async (name, email) => {
+export const createOrUpdateOrganization = async (orgName, createdBy) => {
   try {
-    const q = query(collection(db, 'organizations'), where('name', '==', name));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      // Update existing organization
-      const orgDoc = querySnapshot.docs[0];
-      await setDoc(doc(db, 'organizations', orgDoc.id), {
-        name: name,
-        createdBy: email,
-      }, { merge: true });
-      console.log('Organization updated:', orgDoc.id);
-      return orgDoc.id;
-    } else {
-      // Create new organization
-      const orgRef = await addDoc(collection(db, 'organizations'), {
-        name: name,
-        createdBy: email,
-      });
-      console.log('Organization added:', orgRef.id);
-      return orgRef.id;
-    }
+    const orgRef = doc(db, 'organizations', orgName);
+    await setDoc(orgRef, {
+      name: orgName,
+      createdBy: createdBy,
+    }, { merge: true });
+    return orgRef.id;
   } catch (error) {
-    console.error('Error creating or updating organization:', error);
+    console.error('Error creating/updating organization:', error);
     throw error;
   }
 };
 
-// Function to create a bar in Firebase
-export const createBarInFirebase = async (orgId, bar) => {
+export const createOrUpdateBarInFirebase = async (orgId, bar) => {
   try {
-    const barRef = await addDoc(collection(db, 'bars'), {
+    const barRef = doc(db, 'organizations', orgId, 'bars', bar.name);
+    await setDoc(barRef, {
       name: bar.name,
       numShelves: bar.numShelves,
       numFridges: bar.numFridges,
-      orgId: orgId,  // Storing orgId separately
-    });
-    console.log('Bar added:', barRef.id);
+      orgId: bar.orgId,
+      lastOpened: bar.lastOpened,
+      color: bar.color,
+    }, { merge: true });
     return barRef.id;
   } catch (error) {
-    console.error('Error adding bar:', error);
+    console.error('Error creating/updating bar:', error);
     throw error;
   }
 };
 
-
-// Function to add a category in Firebase
-export const addCategory = async (barId, categoryName) => {
+export const addOrUpdateCategory = async (barId, categoryName) => {
   try {
-    const categoryRef = await addDoc(collection(db, 'categories'), {
+    const categoryRef = doc(db, 'bars', barId, 'categories', categoryName);
+    await setDoc(categoryRef, {
       name: categoryName,
-      barId: barId,
-    });
-    console.log('Category added:', categoryRef.id);
+    }, { merge: true });
     return categoryRef.id;
   } catch (error) {
-    console.error('Error adding category:', error);
+    console.error('Error adding/updating category:', error);
     throw error;
   }
 };
 
-// Function to add an item in Firebase
-export const addItem = async (categoryId, itemName, maxAmount, picture) => {
+export const addOrUpdateItem = async (categoryId, itemName, maxAmount, imageUri) => {
   try {
-    const itemRef = await addDoc(collection(db, 'items'), {
+    const itemRef = doc(db, 'categories', categoryId, 'items', itemName);
+    await setDoc(itemRef, {
       name: itemName,
       maxAmount: maxAmount,
-      picture: picture,
-      categoryId: categoryId,
-    });
-    console.log('Item added:', itemRef.id);
-    return itemRef.id;
+      image: imageUri,
+    }, { merge: true });
   } catch (error) {
-    console.error('Error adding item:', error);
+    console.error('Error adding/updating item:', error);
     throw error;
   }
 };

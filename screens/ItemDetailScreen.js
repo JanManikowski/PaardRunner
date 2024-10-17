@@ -1,48 +1,49 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { ScrollView, View, Image } from 'react-native';
+import { View, Image } from 'react-native';
 import { Text, Button, Input, Icon } from 'react-native-elements';
 import { ThemeContext } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 
-const CategoryDetailScreen = ({ route, navigation }) => {
-  const { item, categoryName, bar } = route.params;
+const ItemDetailScreen = ({ route, navigation }) => {
+  const { bar, items: initialItems = [], itemIndex: initialItemIndex = 0 } = route.params || {};
   const { theme } = useContext(ThemeContext);
 
-  if (!item) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: theme.colors.text }}>Loading...</Text>
-      </View>
-    );
-  }
-
-  const [currentItem, setCurrentItem] = useState(item);
-  const [missing, setMissing] = useState(item?.missing || 0);
+  const [items, setItems] = useState(initialItems);
+  const [currentIndex, setCurrentIndex] = useState(initialItemIndex);
+  const [currentItem, setCurrentItem] = useState(initialItems[initialItemIndex] || {});
+  const [missing, setMissing] = useState(currentItem?.missing || 0);
   const [customValue, setCustomValue] = useState('');
 
   useEffect(() => {
+    if (items.length > 0 && currentIndex < items.length) {
+      setCurrentItem(items[currentIndex]);
+    }
+    console.log('Current item:', currentItem); // Log current item for debugging
+  }, [items, currentIndex]);
+
+  useEffect(() => {
     // Fetch missing data if it changes
-    if (item) {
-      const loadData = async () => {
-        const savedMissing = await AsyncStorage.getItem(`item_${item.id}_missing`);
+    const loadData = async () => {
+      if (currentItem && currentItem.id) {
+        const savedMissing = await AsyncStorage.getItem(`item_${currentItem.id}_missing`);
         if (savedMissing !== null) {
           setMissing(parseInt(savedMissing, 10));
         }
-      };
-      loadData();
-    }
-  }, [item.id]);
+      }
+    };
+    loadData();
+  }, [currentItem]);
 
   useEffect(() => {
     // Save missing data whenever it changes
-    if (item) {
-      const saveMissing = async () => {
-        await AsyncStorage.setItem(`item_${item.id}_missing`, missing.toString());
-      };
-      saveMissing();
-    }
-  }, [missing]);
+    const saveMissing = async () => {
+      if (currentItem && currentItem.id) {
+        await AsyncStorage.setItem(`item_${currentItem.id}_missing`, missing.toString());
+      }
+    };
+    saveMissing();
+  }, [missing, currentItem]);
 
   const updateMissing = (value) => {
     setMissing((prevMissing) => {
@@ -62,23 +63,50 @@ const CategoryDetailScreen = ({ route, navigation }) => {
     setMissing(0);
   };
 
+  const goToNextItem = () => {
+    if (currentIndex < items.length - 1) {
+      setCurrentIndex((prevIndex) => prevIndex + 1);
+    }
+  };
+
+  const goToPreviousItem = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex((prevIndex) => prevIndex - 1);
+    }
+  };
+
+  if (!currentItem || items.length === 0) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+        <Text style={{ color: theme.colors.text }}>No items available</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      {/* Arrow Buttons for navigating between items - similar styling */}
+      {/* Arrow Buttons for navigating between items */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
         <Button
-          icon={<Icon name="arrow-back" size={30} color={'#00796b'} />}
+          icon={<Icon name="arrow-back" size={30} color={currentIndex === 0 ? '#ccc' : '#00796b'} />}
           type="clear"
-          onPress={() => navigation.goBack()} // Go back to the list of items
+          onPress={goToPreviousItem}
+          disabled={currentIndex === 0}
+        />
+        <Button
+          icon={<Icon name="arrow-forward" size={30} color={currentIndex === items.length - 1 ? '#ccc' : '#00796b'} />}
+          type="clear"
+          onPress={goToNextItem}
+          disabled={currentIndex === items.length - 1}
         />
       </View>
 
       <View style={{ backgroundColor: theme.colors.surfaceVariant, borderRadius: 10, marginBottom: 25 }}>
         {/* Item Details */}
         <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <Text h4 style={{ color: theme.colors.primary, marginBottom: 10 }}>{currentItem.name}</Text>
+          <Text h4 style={{ color: theme.colors.primary, marginBottom: 10 }}>{currentItem.name || 'Unnamed Item'}</Text>
           <Text style={{ fontSize: 16, color: '#d32f2f', fontWeight: 'bold' }}>Missing Items: {missing}</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 16 }}>Max Allowed: {currentItem.maxAmount}</Text>
+          <Text style={{ color: theme.colors.text, fontSize: 16 }}>Max Allowed: {currentItem.maxAmount || 'N/A'}</Text>
         </View>
 
         {/* Update Buttons */}
@@ -163,7 +191,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
         <Button
           title="Go to Category List"
           buttonStyle={{ backgroundColor: '#00796b', borderRadius: 10 }}
-          onPress={() => navigation.navigate('CategoryList', { categoryName, bar })}
+          onPress={() => navigation.navigate('CategoryList', { categoryName: currentItem.categoryName, bar })}
         />
       </View>
 
@@ -172,4 +200,4 @@ const CategoryDetailScreen = ({ route, navigation }) => {
   );
 };
 
-export default CategoryDetailScreen;
+export default ItemDetailScreen;

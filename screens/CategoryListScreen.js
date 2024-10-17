@@ -1,8 +1,9 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { View, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Text, Icon } from 'react-native-elements';
 import { ThemeContext } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 const CategoryListScreen = ({ route, navigation }) => {
   const { categoryName, bar } = route.params;
@@ -14,11 +15,14 @@ const CategoryListScreen = ({ route, navigation }) => {
     const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
     const filteredItems = storedItems.filter(item => item.categoryName === categoryName && item.orgId === bar.orgId);
     setItems(filteredItems);
+    console.log('Items for category:', categoryName, filteredItems); // Log items for debugging
   };
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchItems();
+    }, [categoryName])
+  );
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
@@ -43,7 +47,7 @@ const CategoryListScreen = ({ route, navigation }) => {
               flexDirection: 'row',
               alignItems: 'center',
             }}
-            onPress={() => navigation.navigate('ItemDetail', { item, categoryName, bar })}
+            onPress={() => navigation.navigate('ItemDetail', { items, itemIndex: index, bar })} // Navigate to ItemDetail
           >
             <Image
               source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
