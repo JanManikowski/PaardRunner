@@ -25,18 +25,18 @@ const CategoryDetailScreen = ({ route, navigation }) => {
 
   const fetchItems = async () => {
     try {
+      // Retrieve active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
   
-      // Fetch all items globally
-      const storedItems = await AsyncStorage.getItem('items');
-      const allItems = storedItems ? JSON.parse(storedItems) : [];
-  
-      // Filter items by organization and category
-      const filteredItems = allItems.filter(item => item.orgId === activeOrgId && item.categoryName === categoryName);
+      // Fetch all items from AsyncStorage
+      const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
+      
+      // Filter items for the active organization and category
+      const filteredItems = storedItems.filter(item => item.categoryName === categoryName && item.orgId === activeOrgId);
       setItems(filteredItems);
     } catch (error) {
       console.error('Failed to load items from storage', error);
