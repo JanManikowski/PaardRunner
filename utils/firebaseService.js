@@ -1,6 +1,7 @@
 import { db } from './firebaseConfig';
 import { collection, addDoc, getDocs, query, where, setDoc, doc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from './firebaseConfig';
 
 // Function to create or update an organization in Firebase
 export const createOrUpdateOrganization = async (name, createdBy) => {
@@ -70,7 +71,8 @@ export const addItem = async (orgId, categoryName, itemName, maxAmount, image) =
 // Function to fetch user organizations
 export const fetchUserOrganizations = async () => {
   try {
-    const q = query(collection(db, 'organizations'));
+    const currentUser = auth.currentUser;  // Get the currently logged-in user
+    const q = query(collection(db, 'organizations'), where('createdBy', '==', currentUser.email));
     const querySnapshot = await getDocs(q);
     const organizations = [];
     querySnapshot.forEach((doc) => {

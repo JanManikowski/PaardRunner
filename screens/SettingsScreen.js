@@ -46,14 +46,15 @@ const SettingsScreen = ({ navigation }) => {
   // Fetch organizations from the database and update local storage if needed
   const loadOrganizationsFromDatabase = async () => {
     try {
-      const orgs = await fetchUserOrganizations();
+      const orgs = await fetchUserOrganizations();  // This fetches orgs based on the current user email
       const storedOrganizations = await AsyncStorage.getItem('organizations');
       const parsedStoredOrganizations = storedOrganizations ? JSON.parse(storedOrganizations) : [];
-
+  
       if (JSON.stringify(orgs) !== JSON.stringify(parsedStoredOrganizations)) {
         setOrganizations(orgs);
         await AsyncStorage.setItem('organizations', JSON.stringify(orgs));
       }
+  
       const storedActiveOrg = await AsyncStorage.getItem('activeOrgId');
       if (storedActiveOrg) {
         setActiveOrgId(storedActiveOrg);

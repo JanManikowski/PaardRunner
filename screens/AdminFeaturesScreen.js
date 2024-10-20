@@ -36,12 +36,13 @@ const AdminFeaturesScreen = ({ navigation }) => {
 
   const loadOrganizations = async () => {
     try {
-      const orgs = await fetchUserOrganizations();
+      const orgs = await fetchUserOrganizations(); 
       setOrganizations(orgs);
     } catch (error) {
       console.error('Error loading organizations:', error);
     }
   };
+  
 
   const getLocalStorageData = async (key) => {
     try {
