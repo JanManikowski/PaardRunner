@@ -34,11 +34,13 @@ export const createBarInFirebase = async (orgId, bar) => {
   }
 };
 
-export const addCategory = async (barId, categoryName) => {
+
+export const addCategory = async (orgId, categoryName) => {
   try {
-    const categoryRef = doc(db, 'bars', barId, 'categories', categoryName);
+    const categoryRef = doc(db, 'organizations', orgId, 'categories', categoryName);  // Categories under organizations, no barId
     await setDoc(categoryRef, {
       name: categoryName,
+      orgId: orgId,  // Store orgId
     }, { merge: true });
     return categoryRef.id;
   } catch (error) {
@@ -47,19 +49,23 @@ export const addCategory = async (barId, categoryName) => {
   }
 };
 
-export const addItem = async (categoryId, itemName, maxAmount, image) => {
+export const addItem = async (orgId, categoryName, itemName, maxAmount, image) => {
   try {
-    const itemRef = doc(db, 'categories', categoryId, 'items', itemName);
+    const itemRef = doc(db, 'organizations', orgId, 'categories', categoryName, 'items', itemName);  // Items under categories by name
     await setDoc(itemRef, {
       name: itemName,
       maxAmount,
       image: image || null,
+      categoryName: categoryName,  // Store categoryName
     }, { merge: true });
   } catch (error) {
     console.error('Error adding item:', error);
     throw error;
   }
 };
+
+
+
 
 // Function to fetch user organizations
 export const fetchUserOrganizations = async () => {
@@ -211,4 +217,51 @@ export const uploadBarsToFirebase = async (orgId, bars) => {
     throw error;
   }
 };
+
+export const deleteAllBars = async (orgId) => {
+  try {
+    const barsSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars'));
+    barsSnapshot.forEach(async (barDoc) => {
+      await deleteAllCategories(barDoc.id);  // Delete all categories for the bar
+      await deleteDoc(doc(db, 'organizations', orgId, 'bars', barDoc.id));  // Then delete the bar
+    });
+    console.log(`All bars deleted for organization: ${orgId}`);
+  } catch (error) {
+    console.error('Error deleting bars:', error);
+    throw error;
+  }
+};
+
+// Function to delete all categories for each bar
+export const deleteAllCategories = async (barId) => {
+  try {
+    const categoriesSnapshot = await getDocs(collection(db, 'bars', barId, 'categories'));
+    categoriesSnapshot.forEach(async (categoryDoc) => {
+      await deleteAllItems(categoryDoc.id);  // Delete all items for the category
+      await deleteDoc(doc(db, 'bars', barId, 'categories', categoryDoc.id));  // Then delete the category
+    });
+    console.log(`All categories deleted for bar: ${barId}`);
+  } catch (error) {
+    console.error('Error deleting categories:', error);
+    throw error;
+  }
+};
+
+// Function to delete all items for each category
+export const deleteAllItems = async (categoryId) => {
+  try {
+    const itemsSnapshot = await getDocs(collection(db, 'categories', categoryId, 'items'));
+    itemsSnapshot.forEach(async (itemDoc) => {
+      await deleteDoc(doc(db, 'categories', categoryId, 'items', itemDoc.id));  // Delete each item
+    });
+    console.log(`All items deleted for category: ${categoryId}`);
+  } catch (error) {
+    console.error('Error deleting items:', error);
+    throw error;
+  }
+};
+
+
+
+
 
