@@ -1,6 +1,6 @@
 // Updated SettingsScreen.js
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Modal, FlatList, TextInput } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { auth } from '../utils/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,6 +10,7 @@ import {
   addCategory,
   addItem,
   exportData,
+  fetchOrganizationsByCode
 } from '../utils/firebaseService';
 
 const SettingsScreen = ({ navigation }) => {
@@ -19,6 +20,7 @@ const SettingsScreen = ({ navigation }) => {
   const [activeOrgId, setActiveOrgId] = useState(null);
   const [selectedOrgId, setSelectedOrgId] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [code, setCode] = useState(''); // State to store the code input by the user
 
   // Check for logged-in user
   useEffect(() => {
@@ -74,6 +76,27 @@ const SettingsScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Error setting active organization:', error);
       Alert.alert('Error', 'Failed to set active organization.');
+    }
+  };
+
+  const handleFetchByCode = async () => {
+    if (!code) {
+      Alert.alert('Please enter a valid 6-digit code');
+      return;
+    }
+
+    try {
+      const orgs = await fetchOrganizationsByCode(code); // Fetch from Firebase
+      if (orgs.length === 0) {
+        Alert.alert('No organizations found for this code');
+      } else {
+        setOrganizations(orgs);
+        await AsyncStorage.setItem('organizations', JSON.stringify(orgs)); // Save to local storage
+        console.log('Fetched organizations:', orgs); // Console log the fetched data
+      }
+    } catch (error) {
+      console.error('Error fetching organizations by code:', error);
+      Alert.alert('Error', 'Failed to fetch organizations.');
     }
   };
 
@@ -185,6 +208,37 @@ const SettingsScreen = ({ navigation }) => {
         onPress={() => navigation.navigate('ItemManager')}
       >
         <Text style={{ color: theme.colors.background, fontSize: 16 }}>Item Manager</Text>
+      </TouchableOpacity>
+
+      <Text style={{ color: theme.colors.text, fontSize: 16 }}>Enter 6-digit Code:</Text>
+      <TextInput
+        style={{
+          borderColor: theme.colors.text,
+          borderWidth: 1,
+          padding: 10,
+          borderRadius: 5,
+          marginBottom: 20,
+          color: theme.colors.text,
+        }}
+        placeholder="Enter 6-digit code"
+        placeholderTextColor={theme.colors.textSecondary}
+        value={code}
+        onChangeText={setCode}
+        keyboardType="numeric"
+        maxLength={6}
+      />
+
+      <TouchableOpacity
+        style={{
+          padding: 15,
+          backgroundColor: theme.colors.primary,
+          borderRadius: 10,
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+        onPress={handleFetchByCode}
+      >
+        <Text style={{ color: theme.colors.background, fontSize: 16 }}>Fetch Organizations</Text>
       </TouchableOpacity>
 
       <TouchableOpacity

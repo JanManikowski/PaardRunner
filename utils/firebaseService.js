@@ -1,7 +1,9 @@
 import { db } from './firebaseConfig';
-import { collection, addDoc, getDocs, query, where, setDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, setDoc, doc, getDoc, Firestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebaseConfig';
+import firebase from 'firebase/app';
+import 'firebase/firestore';
 
 // Function to create or update an organization in Firebase
 export const createOrUpdateOrganization = async (name) => {
@@ -329,6 +331,23 @@ export const checkAndAssignUserCode = async (userId) => {
   return userData?.code || uniqueCode;
 };
 
+export const fetchOrganizationsByCode = async (code) => {
+  try {
+    const organizationsRef = collection(db, 'organizations'); // Reference to 'organizations' collection
+    const q = query(organizationsRef, where('code', '==', code)); // Query where 'code' matches
+    const querySnapshot = await getDocs(q); // Fetch documents based on the query
+
+    const organizations = [];
+    querySnapshot.forEach((doc) => {
+      organizations.push({ id: doc.id, ...doc.data() }); // Push each organization into the array
+    });
+
+    return organizations;
+  } catch (error) {
+    console.error('Error fetching organizations by code:', error);
+    throw error;
+  }
+};
 
 
 
