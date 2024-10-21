@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, FlatList, TextInput, Button } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { auth } from '../utils/firebaseConfig';
+import { db, auth } from '../utils/firebaseConfig';
 import {
   createOrUpdateOrganization,
   addCategory,
@@ -17,6 +17,7 @@ import {
   deleteAllItems,
 } from '../utils/firebaseService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, getDoc } from 'firebase/firestore';
 
 const AdminFeaturesScreen = ({ navigation }) => {
   const { theme } = useContext(ThemeContext);
@@ -56,14 +57,12 @@ const AdminFeaturesScreen = ({ navigation }) => {
 
   const handleUploadLocalStorageToFirebase = async () => {
     try {
-      // Retrieve the currently active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
   
-      // Retrieve the stored organizations and find the active one
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
       const org = organizations.find(org => org.id === activeOrgId);
       if (!org) {
@@ -71,8 +70,10 @@ const AdminFeaturesScreen = ({ navigation }) => {
         return;
       }
   
-      // Create or update the active organization in Firebase
-      const orgId = await createOrUpdateOrganization(org.name, org.createdBy);
+      console.log('Uploading organization:', org.name);  // Add a log here
+  
+      const orgId = await createOrUpdateOrganization(org.name);  // Only pass organization name
+      console.log('Organization created with ID:', orgId);  // Debugging log
   
       // Retrieve and filter bars for the active organization
       const bars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
@@ -101,7 +102,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Upload Complete', 'Local storage data uploaded to Firebase successfully.');
     } catch (error) {
       console.error('Error uploading data to Firebase:', error);
-      Alert.alert('Error', 'Failed to upload data to Firebase.');
+    Alert.alert('Error', 'Failed to upload data to Firebase.');
     }
   };
   
@@ -124,9 +125,32 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Error', 'Organization name cannot be empty.');
       return;
     }
-
+  
     try {
-      await createOrUpdateOrganization(newOrgName, user.email);
+      // Fetch the current authenticated user from Firebase Authentication
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('No authenticated user.');
+      }
+  
+      // Reference the user's document in Firestore
+      const userRef = doc(db, 'users', currentUser.uid);  // Use the current user's UID
+      const userDoc = await getDoc(userRef);  // Fetch the document
+  
+      if (!userDoc.exists()) {
+        throw new Error('User document does not exist.');
+      }
+  
+      // Log the user code from Firestore
+      const userCode = userDoc.data().code;
+      console.log('User Code:', userCode);  // This will log the user’s code in the console
+  
+      if (!userCode) {
+        throw new Error('User code is missing.');
+      }
+  
+      // Now create or update the organization with the user code
+      await createOrUpdateOrganization(newOrgName, currentUser.email);
       Alert.alert('Success', 'Organization added successfully.');
       setNewOrgName('');
       loadOrganizations();
@@ -135,6 +159,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to add organization.');
     }
   };
+  
 
   const handleLogLocalStorage = async () => {
     await logLocalStorage();

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';  // Import the correct method for Firebase v9+
 import { useNavigation } from '@react-navigation/native';
+import { checkAndAssignUserCode } from '../utils/firebaseService';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
@@ -15,8 +16,12 @@ const LoginScreen = () => {
   const handleLogin = () => {
     if (email && password) {
       signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
+        .then(async (userCredential) => {
           Alert.alert('Logged in successfully');
+          
+          // Ensure the user document and unique code are set
+          await checkAndAssignUserCode(userCredential.user.uid);
+
           navigation.navigate('Settings');  // Navigate back to Settings screen after login
         })
         .catch((error) => {

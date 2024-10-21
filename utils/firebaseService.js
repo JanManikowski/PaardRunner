@@ -1,16 +1,43 @@
 import { db } from './firebaseConfig';
-import { collection, addDoc, getDocs, query, where, setDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, setDoc, doc, getDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebaseConfig';
 
 // Function to create or update an organization in Firebase
-export const createOrUpdateOrganization = async (name, createdBy) => {
+export const createOrUpdateOrganization = async (name) => {
+  console.log("hello")
   try {
+    const currentUser = auth.currentUser;  // Get the currently logged-in user
+    const userEmail = currentUser.email;   // Get the user's email
+
+    // Query Firestore to find the document in 'users' collection where the email matches
+    const q = query(collection(db, 'users'), where('email', '==', userEmail));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      throw new Error('User document does not exist.');
+    }
+
+    let userCode = null;
+    querySnapshot.forEach((doc) => {
+      userCode = doc.data().code;  // Get the user's unique code
+    });
+
+    if (!userCode) {
+      throw new Error('User code does not exist.');
+    }
+
+    // Log the user's code
+    console.log('User code:', userCode);  
+
+    // Now create or update the organization, including the user's code
     const orgRef = doc(db, 'organizations', name);
     await setDoc(orgRef, {
       name,
-      createdBy,
+      createdBy: userEmail,
+      code: userCode  // Include the user's unique code in the organization document
     }, { merge: true });
+
     return orgRef.id;
   } catch (error) {
     console.error('Error creating/updating organization:', error);
@@ -261,6 +288,45 @@ export const deleteAllItems = async (categoryId) => {
     console.error('Error deleting items:', error);
     throw error;
   }
+};
+
+export const checkAndAssignUserCode = async (userId) => {
+  const currentUser = auth.currentUser;  // Get the current logged-in user
+  const userRef = doc(db, 'users', userId);  // Reference to the user's document in Firestore
+  const userDoc = await getDoc(userRef);  // Fetch the user document from Firestore
+
+  // If the user does not have a Firestore document, create it
+  if (!userDoc.exists()) {
+    await setDoc(userRef, {
+      email: currentUser.email,  // Store the user's email
+      code: null  // Set code to null initially, it will be assigned below
+    });
+  }
+
+  let userData = userDoc.data();
+
+  // Check if the user already has a code
+  if (!userData || !userData.code) {
+    let uniqueCode;
+    let codeExists = true;
+
+    // Generate a unique 6-digit code
+    while (codeExists) {
+      uniqueCode = Math.floor(100000 + Math.random() * 900000).toString();  // Generates a 6-digit number
+
+      // Check if this code already exists in the users collection
+      const querySnapshot = await getDocs(query(collection(db, 'users'), where('code', '==', uniqueCode)));
+
+      if (querySnapshot.empty) {
+        codeExists = false;  // The code is unique
+      }
+    }
+
+    // Save the new code in the user's Firestore document
+    await setDoc(userRef, { code: uniqueCode }, { merge: true });  // Merge with existing data (e.g., email)
+  }
+
+  return userData?.code || uniqueCode;
 };
 
 
