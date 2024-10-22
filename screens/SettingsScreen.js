@@ -10,7 +10,8 @@ import {
   addCategory,
   addItem,
   exportData,
-  fetchOrganizationsByCode
+  fetchOrganizationsByCode,
+  logLocalStorage
 } from '../utils/firebaseService';
 
 const SettingsScreen = ({ navigation }) => {
@@ -45,6 +46,20 @@ const SettingsScreen = ({ navigation }) => {
     loadOrganizationsFromLocalStorage();
   }, [user]);
 
+  useEffect(() => {
+    const loadOrganizationsFromLocalStorage = async () => {
+      const storedOrganizations = await AsyncStorage.getItem('organizations');
+      if (storedOrganizations) {
+        setOrganizations(JSON.parse(storedOrganizations));
+      }
+      const storedActiveOrg = await AsyncStorage.getItem('activeOrgId');
+      if (storedActiveOrg) {
+        setActiveOrgId(storedActiveOrg);
+      }
+    };
+    loadOrganizationsFromLocalStorage();
+  }, []);
+
   // Fetch organizations from the database and update local storage if needed
   const loadOrganizationsFromDatabase = async () => {
     try {
@@ -68,11 +83,15 @@ const SettingsScreen = ({ navigation }) => {
 
   const handleSetActiveOrganization = async () => {
     try {
-      await AsyncStorage.setItem('activeOrgId', selectedOrgId);
-      console.log(`Active organization set: ${selectedOrgId}`); // Log to confirm
-      setActiveOrgId(selectedOrgId);
-      Alert.alert('Active organization set successfully');
-      setIsModalVisible(false);
+      if (selectedOrgId) {
+        await AsyncStorage.setItem('activeOrgId', selectedOrgId);
+        console.log(`Active organization set: ${selectedOrgId}`); // Log to confirm
+        setActiveOrgId(selectedOrgId);
+        Alert.alert('Active organization set successfully');
+        setIsModalVisible(false);
+      } else {
+        Alert.alert('Please select an organization');
+      }
     } catch (error) {
       console.error('Error setting active organization:', error);
       Alert.alert('Error', 'Failed to set active organization.');
@@ -84,15 +103,104 @@ const SettingsScreen = ({ navigation }) => {
       Alert.alert('Please enter a valid 6-digit code');
       return;
     }
-
+  
     try {
-      const orgs = await fetchOrganizationsByCode(code); // Fetch from Firebase
+      const orgs = await fetchOrganizationsByCode(code); // Fetch from Firebase with bars, categories, items
+  
       if (orgs.length === 0) {
         Alert.alert('No organizations found for this code');
       } else {
+        // Prepare separate arrays for bars, categories, and items
+        const allBars = [];
+        const allCategories = [];
+        const allItems = [];
+  
+        // Extract organizations and their related data
+        for (const org of orgs) {
+          // Add bars to the allBars array
+          if (org.bars) {
+            org.bars.forEach(bar => {
+              const barData = {
+                ...bar,
+                orgId: org.id // Link bar to its organization
+              };
+              allBars.push(barData);
+            });
+          } else {
+            console.warn(`Organization ${org.id} has no bars`);
+          }
+  
+          // Add categories to the allCategories array
+          if (org.categories) {
+            org.categories.forEach(category => {
+              const categoryData = {
+                ...category,
+                orgId: org.id // Link category to its organization
+              };
+              allCategories.push(categoryData);
+  
+              // Add items to the allItems array
+              if (category.items) {
+                category.items.forEach(item => {
+                  const itemData = {
+                    ...item,
+                    orgId: org.id, // Link item to its organization
+                    categoryName: category.name // Link item to its category
+                  };
+                  allItems.push(itemData);
+                });
+              } else {
+                console.warn(`Category ${category.id} in Organization ${org.id} has no items`);
+              }
+            });
+          } else {
+            console.warn(`Organization ${org.id} has no categories`);
+          }
+        }
+  
+        // Debugging: Log data before saving to local storage
+        console.log('\n=== ORGANIZATIONS TO BE SAVED TO LOCAL STORAGE ===');
+        console.log(JSON.stringify(orgs, null, 2));
+  
+        console.log('\n=== BARS TO BE SAVED TO LOCAL STORAGE ===');
+        console.log(JSON.stringify(allBars, null, 2));
+  
+        console.log('\n=== CATEGORIES TO BE SAVED TO LOCAL STORAGE ===');
+        console.log(JSON.stringify(allCategories, null, 2));
+  
+        console.log('\n=== ITEMS TO BE SAVED TO LOCAL STORAGE ===');
+        console.log(JSON.stringify(allItems, null, 2));
+  
+        // Save organizations to local storage
+        await AsyncStorage.setItem('organizations', JSON.stringify(orgs));
+  
+        // Save bars, categories, and items separately to local storage
+        if (allBars.length > 0) {
+          await AsyncStorage.setItem('bars', JSON.stringify(allBars));
+        } else {
+          console.warn('No bars to save to local storage');
+        }
+  
+        if (allCategories.length > 0) {
+          await AsyncStorage.setItem('categories', JSON.stringify(allCategories));
+        } else {
+          console.warn('No categories to save to local storage');
+        }
+  
+        if (allItems.length > 0) {
+          await AsyncStorage.setItem('items', JSON.stringify(allItems));
+        } else {
+          console.warn('No items to save to local storage');
+        }
+  
+        // Debugging: Verify saved data in local storage
+        logLocalStorage(); // Use the function to log the current state of local storage
+  
+        // Set the fetched data to state for display in UI
         setOrganizations(orgs);
-        await AsyncStorage.setItem('organizations', JSON.stringify(orgs)); // Save to local storage
-        console.log('Fetched organizations:', orgs); // Console log the fetched data
+  
+        console.log('Fetched organizations with all related data:', JSON.stringify(orgs, null, 2));
+        Alert.alert('Organizations and related data have been saved to local storage');
       }
     } catch (error) {
       console.error('Error fetching organizations by code:', error);
@@ -103,6 +211,75 @@ const SettingsScreen = ({ navigation }) => {
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text, marginBottom: 20 }}>Settings</Text>
+
+      {/* Choose Organization from Local Storage */}
+      <TouchableOpacity
+        style={{
+          padding: 15,
+          backgroundColor: theme.colors.primary,
+          borderRadius: 10,
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+        onPress={() => setIsModalVisible(true)}
+      >
+        <Text style={{ color: theme.colors.background, fontSize: 16 }}>Choose Organization from Local Storage</Text>
+      </TouchableOpacity>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isModalVisible}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <View style={{ width: '80%', backgroundColor: theme.colors.card, padding: 20, borderRadius: 10 }}>
+            <View style={{ backgroundColor: theme.colors.background, padding: 15, borderRadius: 10 }}>
+              <Text style={{ fontSize: 18, color: theme.colors.text, marginBottom: 20 }}>Select Active Organization:</Text>
+              <FlatList
+                data={organizations}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{
+                      padding: 10,
+                      backgroundColor: item.id === selectedOrgId ? theme.colors.primary : theme.colors.card,
+                      marginBottom: 10,
+                      borderRadius: 5,
+                    }}
+                    onPress={() => setSelectedOrgId(item.id)}
+                  >
+                    <Text style={{ color: theme.colors.text }}>{item.name}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <TouchableOpacity
+                style={{
+                  padding: 15,
+                  backgroundColor: theme.colors.primary,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  marginTop: 15,
+                }}
+                onPress={handleSetActiveOrganization}
+                disabled={!selectedOrgId}
+              >
+                <Text style={{ color: theme.colors.background, fontSize: 16 }}>Set Active Organization</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  padding: 10,
+                  marginTop: 10,
+                  alignItems: 'center',
+                }}
+                onPress={() => setIsModalVisible(false)}
+              >
+                <Text style={{ color: theme.colors.primary, fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {user && (
         <View style={{ marginBottom: 20 }}>

@@ -112,13 +112,22 @@ const AdminFeaturesScreen = ({ navigation }) => {
 
   const handleClearLocalStorage = async () => {
     try {
+      // Clear all data in AsyncStorage
       await AsyncStorage.clear();
+  
+      // Reset component state to clear the UI
+      setOrganizations([]);
+      setActiveOrgId(null);
+      setSelectedOrgId(null);
+  
       Alert.alert('Success', 'Local storage has been cleared successfully.');
     } catch (error) {
       console.error('Error clearing local storage:', error);
       Alert.alert('Error', 'Failed to clear local storage.');
     }
   };
+  
+  
 
   const handleAddOrganization = async () => {
     if (newOrgName.trim() === '') {

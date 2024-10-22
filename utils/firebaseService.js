@@ -331,16 +331,68 @@ export const checkAndAssignUserCode = async (userId) => {
   return userData?.code || uniqueCode;
 };
 
+// Fetch all bars for this organization
 export const fetchOrganizationsByCode = async (code) => {
   try {
-    const organizationsRef = collection(db, 'organizations'); // Reference to 'organizations' collection
-    const q = query(organizationsRef, where('code', '==', code)); // Query where 'code' matches
-    const querySnapshot = await getDocs(q); // Fetch documents based on the query
+    // Fetch organizations matching the given code
+    const orgQuery = query(collection(db, 'organizations'), where('code', '==', code));
+    const organizationsSnapshot = await getDocs(orgQuery);
+
+    if (organizationsSnapshot.empty) {
+      console.log('No organizations found with the provided code.');
+      return [];
+    }
 
     const organizations = [];
-    querySnapshot.forEach((doc) => {
-      organizations.push({ id: doc.id, ...doc.data() }); // Push each organization into the array
-    });
+
+    for (const orgDoc of organizationsSnapshot.docs) {
+      const orgData = { id: orgDoc.id, ...orgDoc.data() };
+      console.log('\n=== ORGANIZATION FETCHED FROM DATABASE ===');
+      console.log(JSON.stringify(orgData, null, 2));
+
+      // Fetch all bars for this organization
+      const barsSnapshot = await getDocs(collection(db, 'organizations', orgData.id, 'bars'));
+      const bars = [];
+
+      for (const barDoc of barsSnapshot.docs) {
+        const barData = { id: barDoc.id, ...barDoc.data() };
+        console.log('\n--- BAR FETCHED FROM DATABASE ---');
+        console.log(JSON.stringify(barData, null, 2));
+        bars.push(barData);
+      }
+
+      orgData.bars = bars;
+
+      // Fetch all categories for this organization (not per bar)
+      const categoriesSnapshot = await getDocs(collection(db, 'organizations', orgData.id, 'categories'));
+      const categories = [];
+
+      for (const categoryDoc of categoriesSnapshot.docs) {
+        const categoryData = { id: categoryDoc.id, ...categoryDoc.data() };
+        console.log('\n>>> CATEGORY FETCHED FROM DATABASE <<<');
+        console.log(JSON.stringify(categoryData, null, 2));
+
+        // Fetch all items for this category
+        const itemsSnapshot = await getDocs(collection(db, 'organizations', orgData.id, 'categories', categoryData.id, 'items'));
+        const items = [];
+
+        for (const itemDoc of itemsSnapshot.docs) {
+          const itemData = { id: itemDoc.id, ...itemDoc.data() };
+          console.log('\n*** ITEM FETCHED FROM DATABASE ***');
+          console.log(JSON.stringify(itemData, null, 2));
+          items.push(itemData);
+        }
+
+        categoryData.items = items;
+        categories.push(categoryData);
+      }
+
+      orgData.categories = categories;
+      organizations.push(orgData);
+    }
+
+    console.log('\n=== COMPLETE ORGANIZATION DATA FETCHED FROM DATABASE ===');
+    console.log(JSON.stringify(organizations, null, 2));
 
     return organizations;
   } catch (error) {
@@ -348,6 +400,11 @@ export const fetchOrganizationsByCode = async (code) => {
     throw error;
   }
 };
+
+
+
+
+
 
 
 
