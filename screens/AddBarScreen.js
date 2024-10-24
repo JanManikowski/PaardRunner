@@ -24,10 +24,10 @@ const AddBarScreen = ({ navigation }) => {
         return;
       }
   
-      // Retrieve all bars from storage
-      const allBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
+      // Retrieve bars for the active organization
+      const allBars = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
   
-      // Create a new bar object with orgId attached
+      // Create a new bar object
       const newBar = {
         name: barName,
         numShelves: parseInt(numShelves),
@@ -39,7 +39,7 @@ const AddBarScreen = ({ navigation }) => {
   
       // Save the updated bars list back to storage
       const updatedBars = [...allBars, newBar];
-      await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
+      await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
       Alert.alert('Success', 'Bar added successfully');
   
       // Reset form fields and navigate back
@@ -52,6 +52,7 @@ const AddBarScreen = ({ navigation }) => {
       console.error(error);
     }
   };
+  
   
 
   return (

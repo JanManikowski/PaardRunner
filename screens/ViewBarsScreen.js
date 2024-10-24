@@ -48,14 +48,14 @@ const ViewBarsScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       const loadOrganizationAndBars = async () => {
-        const organizationId = await AsyncStorage.getItem('activeOrgId');
+        const organizationId = await AsyncStorage.getItem('activeOrgId'); // Ensure you fetch activeOrgId correctly
         if (organizationId) {
           console.log(`Loading bars for organization ID: ${organizationId}`);
           setSelectedOrganization(organizationId);
   
-          // Fetch all bars globally and filter them by orgId
-          const allBars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
-          const filteredBars = allBars.filter(bar => bar.orgId === organizationId);
+          // Fetch bars linked to the active organization
+          const storedBars = await AsyncStorage.getItem(`bars_${organizationId}`);
+          const filteredBars = storedBars ? JSON.parse(storedBars) : [];
           setBars(filteredBars);
         } else {
           console.log('No organization selected');
@@ -64,7 +64,7 @@ const ViewBarsScreen = ({ navigation }) => {
       loadOrganizationAndBars();
     }, [])
   );
-  
+
 
   const handleColorChange = async () => {
     if (!selectedOrganization) return;
