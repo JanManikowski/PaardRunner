@@ -1,30 +1,56 @@
 import React, { useContext, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ThemeContext } from '../contexts/ThemeContext';        // Use ThemeContext
-import * as ImagePicker from 'expo-image-picker';  // To handle image uploads
-// import { v4 as uuidv4 } from 'uuid'; (removed due to compatibility issue) // Import uuid for generating unique IDs
+import { ThemeContext } from '../contexts/ThemeContext';
+import * as ImagePicker from 'expo-image-picker';
 
 const ItemEditorScreen = ({ route, navigation }) => {
-  const { categoryName, item } = route.params || {};  // Get categoryName and item if passed (item is optional for adding)
+  const { categoryName, item } = route.params || {}; // Get categoryName and item if passed (item is optional for adding)
   const { theme } = useContext(ThemeContext);
 
-  const [itemName, setItemName] = useState(item ? item.name : '');  // Pre-populate if editing
+  const [itemName, setItemName] = useState(item ? item.name : ''); // Pre-populate if editing
   const [maxAmount, setMaxAmount] = useState(item ? item.maxAmount.toString() : '');
-  const [image, setImage] = useState(item ? item.image : null);  // Pre-populate image if editing
+  const [image, setImage] = useState(item ? item.image : null); // Pre-populate image if editing
 
-  // Handle image picking
-  const pickImage = async () => {
+  // Handle image picking from gallery
+  const pickImageFromGallery = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
-      aspect: [4, 3],
+      aspect: [1, 1], // Set aspect ratio to 1:1 for square image
       quality: 1,
     });
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);  // Set image to the selected file
+      setImage(result.assets[0].uri); // Set image to the selected file
     }
+  };
+
+  // Handle image picking from camera
+  const pickImageFromCamera = async () => {
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1], // Set aspect ratio to 1:1 for square image
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri); // Set image to the captured file
+    }
+  };
+
+  // Show options to either take a picture or choose from gallery
+  const pickImage = () => {
+    Alert.alert(
+      'Select Image',
+      'Choose an option',
+      [
+        { text: 'Camera', onPress: pickImageFromCamera },
+        { text: 'Gallery', onPress: pickImageFromGallery },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handleSaveItem = async () => {
@@ -40,7 +66,6 @@ const ItemEditorScreen = ({ route, navigation }) => {
         return;
       }
   
-      // Fetch all items globally
       const storedItems = await AsyncStorage.getItem('items');
       const allItems = storedItems ? JSON.parse(storedItems) : [];
   
@@ -49,29 +74,30 @@ const ItemEditorScreen = ({ route, navigation }) => {
         name: itemName,
         maxAmount: parseInt(maxAmount, 10),
         image: image || null,
-        categoryName: categoryName,  // Attach categoryName instead of categoryId
-        orgId: activeOrgId  // Attach organization ID
+        categoryName: categoryName,  // Attach categoryName
+        orgId: activeOrgId,          // Attach organization ID
       };
   
       let updatedItems;
       if (item) {
-        // Update existing item
         updatedItems = allItems.map(i => (i.id === item.id ? newItem : i));
       } else {
-        // Add new item
         updatedItems = [...allItems, newItem];
       }
   
-      // Save the updated items list
       await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
       Alert.alert('Success', item ? 'Item updated successfully' : 'Item added successfully');
   
-      navigation.navigate('CategoryDetail', { refresh: true });
+      // Navigate back to the CategoryDetail screen and pass orgId and categoryName
+      navigation.navigate('CategoryDetail', { categoryName, orgId: activeOrgId, refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to save item');
       console.error(error);
     }
   };
+  
+  
+  
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>

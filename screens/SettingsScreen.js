@@ -35,16 +35,20 @@ const SettingsScreen = ({ navigation }) => {
   // Load organizations from local storage first and then fetch from database
   useEffect(() => {
     const loadOrganizationsFromLocalStorage = async () => {
-      const storedOrganizations = await AsyncStorage.getItem('organizations');
-      if (storedOrganizations) {
-        setOrganizations(JSON.parse(storedOrganizations));
-      }
-      if (user) {
-        await loadOrganizationsFromDatabase();
+      const storedActiveOrg = await AsyncStorage.getItem('activeOrgId');
+      
+      if (storedActiveOrg) {
+        setActiveOrgId(storedActiveOrg);
+      } else {
+        // Clear bars, categories, and items if no active organization is found
+        await AsyncStorage.removeItem('bars');
+        await AsyncStorage.removeItem('categories');
+        await AsyncStorage.removeItem('items');
       }
     };
     loadOrganizationsFromLocalStorage();
-  }, [user]);
+  }, []);
+  
 
   useEffect(() => {
     const loadOrganizationsFromLocalStorage = async () => {

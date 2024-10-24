@@ -1,5 +1,5 @@
 // ViewBarsScreen.js
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef  } from 'react';
 import { View, TouchableOpacity, Animated } from 'react-native';
 import { Text, Button, Icon } from 'react-native-elements';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,7 +18,9 @@ const ViewBarsScreen = ({ navigation }) => {
   const { theme } = useContext(ThemeContext);
   const [selectedOrganization, setSelectedOrganization] = useState(null);
   const [iconOpacity] = useState(new Animated.Value(1));
-
+  const isInitialLoad = useRef(true);
+  const [isLoading, setIsLoading] = useState(true);
+  
   useEffect(() => {
     // Create a loop with a 5-second delay before the flashing effect
     Animated.loop(
@@ -48,19 +50,26 @@ const ViewBarsScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       const loadOrganizationAndBars = async () => {
-        const organizationId = await AsyncStorage.getItem('activeOrgId'); // Ensure you fetch activeOrgId correctly
+        const organizationId = await AsyncStorage.getItem('activeOrgId'); 
+        
         if (organizationId) {
           console.log(`Loading bars for organization ID: ${organizationId}`);
           setSelectedOrganization(organizationId);
-  
-          // Fetch bars linked to the active organization
+
           const storedBars = await AsyncStorage.getItem(`bars_${organizationId}`);
           const filteredBars = storedBars ? JSON.parse(storedBars) : [];
           setBars(filteredBars);
         } else {
-          console.log('No organization selected');
+          // Clear bars if no active organization is selected
+          if (!isInitialLoad.current) { // Ensure this doesn't run during the initial load
+            console.log('No organization selected, clearing bars');
+            setBars([]); 
+          }
         }
+
+        isInitialLoad.current = false; // Mark the initial load as done
       };
+      
       loadOrganizationAndBars();
     }, [])
   );

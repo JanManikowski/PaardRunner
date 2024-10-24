@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback } from 'react';
+import React, { useContext, useState, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
@@ -6,7 +6,7 @@ import { ThemeContext } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CategoryDetailScreen = ({ route, navigation }) => {
-  const { categoryName } = route.params;
+  const { categoryName, orgId, refresh } = route.params;
   const { theme } = useContext(ThemeContext);
   const [items, setItems] = useState([]);
 
@@ -19,29 +19,37 @@ const CategoryDetailScreen = ({ route, navigation }) => {
   // UseFocusEffect to refresh the items every time the screen is focused
   useFocusEffect(
     useCallback(() => {
-      fetchItems();
+      fetchItems(); // Fetch items whenever the screen is focused
     }, [categoryName])
   );
+
+  useEffect(() => {
+    if (refresh) {
+      fetchItems(); // Also refresh if the refresh param is passed
+    }
+  }, [refresh]);
 
   const fetchItems = async () => {
     try {
       // Retrieve active organization ID
-      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      const activeOrgId = orgId || await AsyncStorage.getItem('activeOrgId');  // Default to passed orgId or activeOrgId
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
   
       // Fetch all items from AsyncStorage
-      const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
-      
+      const storedItems = await AsyncStorage.getItem('items');
+      const allItems = storedItems ? JSON.parse(storedItems) : [];
+  
       // Filter items for the active organization and category
-      const filteredItems = storedItems.filter(item => item.categoryName === categoryName && item.orgId === activeOrgId);
-      setItems(filteredItems);
+      const filteredItems = allItems.filter(item => item.categoryName === categoryName && item.orgId === activeOrgId);
+      setItems(filteredItems); // Update state with the filtered items
     } catch (error) {
       console.error('Failed to load items from storage', error);
     }
   };
+  
   
 
   const saveItemsToStorage = async (items) => {
@@ -62,13 +70,25 @@ const CategoryDetailScreen = ({ route, navigation }) => {
 
   const removeItem = async (itemName) => {
     try {
-      const filteredItems = items.filter(item => item.name !== itemName);
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      const storedItems = await AsyncStorage.getItem('items');
+      const allItems = storedItems ? JSON.parse(storedItems) : [];
+  
+      // Remove the item globallys
+      const updatedItems = allItems.filter(item => item.name !== itemName || item.orgId !== activeOrgId || item.categoryName !== categoryName);
+      
+      // Save the updated list back to AsyncStorage
+      await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
+      
+      // Update the filtered items for the current view
+      const filteredItems = updatedItems.filter(item => item.orgId === activeOrgId && item.categoryName === categoryName);
       setItems(filteredItems);
-      await saveItemsToStorage(filteredItems);
+  
     } catch (error) {
       console.error('Failed to remove item', error);
     }
   };
+  
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
