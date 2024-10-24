@@ -81,13 +81,12 @@ const ManageBarsScreen = ({ navigation, route }) => {
 
   const saveBarDetails = async () => {
     try {
-      // Retrieve the active organization ID
-      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId'); // Ensure activeOrgId is retrieved
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
-
+  
       const updatedBars = bars.map(bar => {
         if (bar.name === editBar.name) {
           return { ...bar, name: editName, fridges: parseInt(editFridges) || 0, shelves: parseInt(editShelves) || 0 };
@@ -95,6 +94,8 @@ const ManageBarsScreen = ({ navigation, route }) => {
         return bar;
       });
       setBars(updatedBars);
+  
+      // Ensure you save the updated list of bars for the specific organization
       await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
       setEditModalVisible(false);
       navigation.navigate('ViewBars', { refresh: true });
@@ -102,6 +103,7 @@ const ManageBarsScreen = ({ navigation, route }) => {
       console.error('Failed to save bar details', error);
     }
   };
+  
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, backgroundColor: theme.colors.background, flexGrow: 1 }}>
