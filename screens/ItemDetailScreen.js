@@ -19,16 +19,18 @@ const ItemDetailScreen = ({ route, navigation }) => {
     if (items.length > 0 && currentIndex < items.length) {
       setCurrentItem(items[currentIndex]);
     }
-    console.log('Current item:', currentItem); // Log current item for debugging
   }, [items, currentIndex]);
 
   useEffect(() => {
-    // Fetch missing data if it changes
+    // Fetch missing data whenever currentItem changes
     const loadData = async () => {
-      if (currentItem && currentItem.id) {
-        const savedMissing = await AsyncStorage.getItem(`item_${currentItem.id}_missing`);
+      if (currentItem && currentItem.id && bar) {
+        const missingKey = `missing_${currentItem.id}_${bar.orgId}_${bar.name}`;
+        const savedMissing = await AsyncStorage.getItem(missingKey);
         if (savedMissing !== null) {
           setMissing(parseInt(savedMissing, 10));
+        } else {
+          setMissing(0); // Reset to 0 if no saved value found
         }
       }
     };
@@ -38,8 +40,9 @@ const ItemDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     // Save missing data whenever it changes
     const saveMissing = async () => {
-      if (currentItem && currentItem.id) {
-        await AsyncStorage.setItem(`item_${currentItem.id}_missing`, missing.toString());
+      if (currentItem && currentItem.id && bar) {
+        const missingKey = `missing_${currentItem.id}_${bar.orgId}_${bar.name}`;
+        await AsyncStorage.setItem(missingKey, missing.toString());
       }
     };
     saveMissing();
@@ -88,13 +91,13 @@ const ItemDetailScreen = ({ route, navigation }) => {
       {/* Arrow Buttons for navigating between items */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
         <Button
-          icon={<Icon name="arrow-back" size={30} color={currentIndex === 0 ? '#ccc' : '#00796b'} />}
+          icon={<Icon name="arrow-back" size={30} color={currentIndex === 0 ? '#ccc' : theme.colors.primary} />}
           type="clear"
           onPress={goToPreviousItem}
           disabled={currentIndex === 0}
         />
         <Button
-          icon={<Icon name="arrow-forward" size={30} color={currentIndex === items.length - 1 ? '#ccc' : '#00796b'} />}
+          icon={<Icon name="arrow-forward" size={30} color={currentIndex === items.length - 1 ? '#ccc' : theme.colors.primary} />}
           type="clear"
           onPress={goToNextItem}
           disabled={currentIndex === items.length - 1}

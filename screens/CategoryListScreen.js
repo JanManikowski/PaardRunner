@@ -10,12 +10,25 @@ const CategoryListScreen = ({ route, navigation }) => {
   const { theme } = useContext(ThemeContext);
   const [items, setItems] = useState([]);
 
-  // Fetch items for the selected category
+  // Fetch items for the selected category, including their missing amounts
   const fetchItems = async () => {
     const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
     const filteredItems = storedItems.filter(item => item.categoryName === categoryName && item.orgId === bar.orgId);
-    setItems(filteredItems);
-    console.log('Items for category:', categoryName, filteredItems); // Log items for debugging
+
+    // Fetch missing amounts for each item
+    const updatedItems = await Promise.all(
+      filteredItems.map(async (item) => {
+        const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
+        const savedMissing = await AsyncStorage.getItem(missingKey);
+        return {
+          ...item,
+          missing: savedMissing ? parseInt(savedMissing, 10) : 0,
+        };
+      })
+    );
+
+    setItems(updatedItems);
+    console.log('Items for category:', categoryName, updatedItems); // Log items for debugging
   };
 
   useFocusEffect(
@@ -55,7 +68,9 @@ const CategoryListScreen = ({ route, navigation }) => {
             />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: 'bold', color: theme.colors.text }}>{item.name}</Text>
-              <Text style={{ color: theme.colors.text }}>Max Amount: {item.maxAmount}</Text>
+              {item.missing > 0 && (
+                <Text style={{ color: 'red' }}>Missing Amount: {item.missing}</Text>
+              )}
             </View>
             <Icon name="chevron-right" size={30} color={theme.colors.onSurface} />
           </TouchableOpacity>
