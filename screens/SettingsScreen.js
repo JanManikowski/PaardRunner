@@ -450,36 +450,6 @@ const SettingsScreen = ({ navigation }) => {
         <Text style={{ color: theme.colors.background, fontSize: 16 }}>Admin</Text>
       </TouchableOpacity>
 
-      {user && (
-        <TouchableOpacity
-          style={{
-            padding: 15,
-            backgroundColor: theme.colors.primary,
-            borderRadius: 10,
-            alignItems: 'center',
-          }}
-          onPress={() => {
-            auth.signOut().then(() => Alert.alert('Logged out')).catch((error) => Alert.alert('Error logging out', error.message));
-          }}
-        >
-          <Text style={{ color: theme.colors.background, fontSize: 16 }}>Logout</Text>
-        </TouchableOpacity>
-      )}
-
-      {!user && (
-        <TouchableOpacity
-          style={{
-            padding: 15,
-            backgroundColor: theme.colors.primary,
-            borderRadius: 10,
-            marginTop: 30,
-            alignItems: 'center',
-          }}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={{ color: theme.colors.background, fontSize: 16 }}>Login</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 };

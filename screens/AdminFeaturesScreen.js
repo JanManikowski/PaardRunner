@@ -1,23 +1,19 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, FlatList, TextInput, Button } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, FlatList, TextInput, ScrollView } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { db, auth } from '../utils/firebaseConfig';
+import { auth } from '../utils/firebaseConfig';
 import {
   createOrUpdateOrganization,
-  addCategory,
-  addItem,
-  createBarInFirebase,
   fetchUserOrganizations,
-  fetchBars,
-  fetchCategories,
   logLocalStorage,
-  deleteAllOrganizations,
   deleteAllBars,
   deleteAllCategories,
   deleteAllItems,
+  createBarInFirebase,
+  addCategory,
+  addItem,
 } from '../utils/firebaseService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc } from 'firebase/firestore';
 
 const AdminFeaturesScreen = ({ navigation }) => {
   const { theme } = useContext(ThemeContext);
@@ -43,15 +39,58 @@ const AdminFeaturesScreen = ({ navigation }) => {
       console.error('Error loading organizations:', error);
     }
   };
-  
 
-  const getLocalStorageData = async (key) => {
+  const handleAddOrganization = async () => {
+    if (newOrgName.trim() === '') {
+      Alert.alert('Error', 'Organization name cannot be empty.');
+      return;
+    }
+
     try {
-      const jsonValue = await AsyncStorage.getItem(key);
-      return jsonValue != null ? JSON.parse(jsonValue) : null;
-    } catch (e) {
-      console.error('Error reading local storage data:', e);
-      return null;
+      await createOrUpdateOrganization(newOrgName, user.email);
+      Alert.alert('Success', 'Organization added successfully.');
+      setNewOrgName('');
+      loadOrganizations();
+    } catch (error) {
+      console.error('Error adding organization:', error);
+      Alert.alert('Error', 'Failed to add organization.');
+    }
+  };
+
+  const handleDeleteAllData = async () => {
+    try {
+      Alert.alert(
+        'Warning',
+        'Are you sure you want to delete all organizations, bars, categories, and items from the database? This action cannot be undone.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'OK',
+            onPress: async () => {
+              const organizations = await fetchUserOrganizations();
+              for (let org of organizations) {
+                await deleteAllBars(org.id);
+                const bars = await fetchBars(org.id);
+                for (let bar of bars) {
+                  await deleteAllCategories(bar.id);
+                  const categories = await fetchCategories(bar.id);
+                  for (let category of categories) {
+                    await deleteAllItems(category.id);
+                  }
+                }
+              }
+              Alert.alert('Success', 'All data deleted successfully');
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    } catch (error) {
+      console.error('Error deleting all data:', error);
+      Alert.alert('Error', 'Failed to delete data');
     }
   };
 
@@ -70,10 +109,10 @@ const AdminFeaturesScreen = ({ navigation }) => {
         return;
       }
   
-      console.log('Uploading organization:', org.name);  // Add a log here
+      console.log('Uploading organization:', org.name);
   
-      const orgId = await createOrUpdateOrganization(org.name);  // Only pass organization name
-      console.log('Organization created with ID:', orgId);  // Debugging log
+      const orgId = await createOrUpdateOrganization(org.name);
+      console.log('Organization created with ID:', orgId);
   
       // Retrieve and filter bars for the active organization
       const bars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
@@ -82,19 +121,19 @@ const AdminFeaturesScreen = ({ navigation }) => {
       for (let bar of barsForOrg) {
         const barId = await createBarInFirebase(orgId, bar);
   
-        // Retrieve and filter categories for the current organization (shared across bars)
+        // Retrieve and filter categories for the current organization
         const categories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
         const categoriesForOrg = categories.filter(category => category.orgId === activeOrgId);
   
         for (let category of categoriesForOrg) {
-          const categoryId = await addCategory(orgId, category.name);  // Categories are now under orgId
+          const categoryId = await addCategory(orgId, category.name);
   
           // Retrieve and filter items for the current category
           const items = JSON.parse(await AsyncStorage.getItem('items')) || [];
           const itemsForCategory = items.filter(item => item.categoryName === category.name);
   
           for (let item of itemsForCategory) {
-            await addItem(orgId, category.name, item.name, item.maxAmount, item.image);  // Items linked by categoryName
+            await addItem(orgId, category.name, item.name, item.maxAmount, item.image);
           }
         }
       }
@@ -102,185 +141,90 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Upload Complete', 'Local storage data uploaded to Firebase successfully.');
     } catch (error) {
       console.error('Error uploading data to Firebase:', error);
-    Alert.alert('Error', 'Failed to upload data to Firebase.');
-    }
-  };
-  
-  
-  
-    
-
-  const handleClearLocalStorage = async () => {
-    try {
-      // Clear all data in AsyncStorage
-      await AsyncStorage.clear();
-  
-      // Reset component state to clear the UI
-      setOrganizations([]);
-      setActiveOrgId(null);
-      setSelectedOrgId(null);
-  
-      Alert.alert('Success', 'Local storage has been cleared successfully.');
-    } catch (error) {
-      console.error('Error clearing local storage:', error);
-      Alert.alert('Error', 'Failed to clear local storage.');
-    }
-  };
-  
-  
-
-  const handleAddOrganization = async () => {
-    if (newOrgName.trim() === '') {
-      Alert.alert('Error', 'Organization name cannot be empty.');
-      return;
-    }
-  
-    try {
-      // Fetch the current authenticated user from Firebase Authentication
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('No authenticated user.');
-      }
-  
-      // Reference the user's document in Firestore
-      const userRef = doc(db, 'users', currentUser.uid);  // Use the current user's UID
-      const userDoc = await getDoc(userRef);  // Fetch the document
-  
-      if (!userDoc.exists()) {
-        throw new Error('User document does not exist.');
-      }
-  
-      // Log the user code from Firestore
-      const userCode = userDoc.data().code;
-      console.log('User Code:', userCode);  // This will log the user’s code in the console
-  
-      if (!userCode) {
-        throw new Error('User code is missing.');
-      }
-  
-      // Now create or update the organization with the user code
-      await createOrUpdateOrganization(newOrgName, currentUser.email);
-      Alert.alert('Success', 'Organization added successfully.');
-      setNewOrgName('');
-      loadOrganizations();
-    } catch (error) {
-      console.error('Error adding organization:', error);
-      Alert.alert('Error', 'Failed to add organization.');
-    }
-  };
-  
-
-  const handleLogLocalStorage = async () => {
-    await logLocalStorage();
-  };
-
-  const handleDeleteAllData = async () => {
-    try {
-      Alert.alert(
-        'Warning',
-        'Are you sure you want to delete all organizations, bars, categories, and items from the database? This action cannot be undone.',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'OK',
-            onPress: async () => {
-
-              // Fetch all organizations, then delete related bars, categories, and items
-              const organizations = await fetchUserOrganizations();
-              for (let org of organizations) {
-                // Delete all bars for this organization
-                await deleteAllBars(org.id);
-
-                // Fetch bars for this organization, then delete related categories
-                const bars = await fetchBars(org.id);
-                for (let bar of bars) {
-                  await deleteAllCategories(bar.id);
-
-                  // Fetch categories for this bar, then delete related items
-                  const categories = await fetchCategories(bar.id);
-                  for (let category of categories) {
-                    await deleteAllItems(category.id);
-                  }
-                }
-              }
-
-              Alert.alert('Success', 'All data deleted successfully');
-            },
-          },
-        ],
-        { cancelable: true }
-      );
-    } catch (error) {
-      console.error('Error deleting all data:', error);
-      Alert.alert('Error', 'Failed to delete data');
+      Alert.alert('Error', 'Failed to upload data to Firebase.');
     }
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text, marginBottom: 20 }}>
-        Admin Features
+    <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
+      <Text style={{ fontSize: 28, fontWeight: 'bold', color: theme.colors.text, marginBottom: 20, alignSelf: 'center' }}>
+        Admin Dashboard
       </Text>
+
+      {!user && (
+        <TouchableOpacity
+          style={{
+            padding: 15,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 10,
+            marginVertical: 30,
+            alignItems: 'center',
+          }}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text style={{ color: theme.colors.background, fontSize: 18, fontWeight: 'bold' }}>Login</Text>
+        </TouchableOpacity>
+      )}
 
       {user && (
         <>
-          {/* Upload Local Storage to Firebase Button */}
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-            <Button
-              title="Upload Organization to Firebase"
-              onPress={handleUploadLocalStorageToFirebase}
-              color={theme.colors.primary}
+          <View style={{ marginBottom: 30 }}>
+            <Text style={{ fontSize: 22, color: theme.colors.text, marginBottom: 15, fontWeight: '600' }}>
+              Add New Organization
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TextInput
+                style={{
+                  flex: 1,
+                  padding: 10,
+                  borderColor: theme.colors.outline,
+                  borderWidth: 1,
+                  borderRadius: 5,
+                  marginRight: 10,
+                  color: theme.colors.text,
+                  backgroundColor: theme.colors.surfaceVariant,
+                }}
+                placeholder="Enter organization name"
+                placeholderTextColor={theme.colors.onSurface}
+                value={newOrgName}
+                onChangeText={setNewOrgName}
+              />
+              <TouchableOpacity
+                style={{
+                  padding: 15,
+                  backgroundColor: theme.colors.primary,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                }}
+                onPress={handleAddOrganization}
+              >
+                <Text style={{ color: theme.colors.background, fontSize: 16 }}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={{ marginBottom: 30 }}>
+            <Text style={{ fontSize: 22, color: theme.colors.text, marginBottom: 10, fontWeight: '600' }}>
+              Organizations
+            </Text>
+            <FlatList
+              data={organizations}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View
+                  style={{
+                    padding: 20,
+                    backgroundColor: theme.colors.card,
+                    borderRadius: 10,
+                    marginBottom: 10,
+                  }}
+                >
+                  <Text style={{ fontSize: 18, color: theme.colors.text, fontWeight: '500' }}>{item.name}</Text>
+                </View>
+              )}
             />
           </View>
 
-          {/* Clear Local Storage Button */}
-          <TouchableOpacity
-            style={{
-              padding: 15,
-              backgroundColor: theme.colors.error,
-              borderRadius: 10,
-              alignItems: 'center',
-              marginBottom: 15,
-            }}
-            onPress={handleClearLocalStorage}
-          >
-            <Text style={{ color: theme.colors.onError, fontSize: 16 }}>Clear Local Storage</Text>
-          </TouchableOpacity>
-
-          {/* Add Organization Section */}
-          <View style={{ marginBottom: 20 }}>
-            <TextInput
-              style={{
-                padding: 10,
-                borderColor: theme.colors.outline,
-                borderWidth: 1,
-                borderRadius: 5,
-                marginBottom: 10,
-                color: theme.colors.text,
-                backgroundColor: theme.colors.surfaceVariant,
-              }}
-              placeholder="Enter organization name"
-              placeholderTextColor={theme.colors.onSurface}
-              value={newOrgName}
-              onChangeText={setNewOrgName}
-            />
-            <TouchableOpacity
-              style={{
-                padding: 15,
-                backgroundColor: theme.colors.primary,
-                borderRadius: 10,
-                alignItems: 'center',
-              }}
-              onPress={handleAddOrganization}
-            >
-              <Text style={{ color: theme.colors.background, fontSize: 16 }}>Add Organization</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Log Local Storage Button */}
           <TouchableOpacity
             style={{
               padding: 15,
@@ -289,60 +233,57 @@ const AdminFeaturesScreen = ({ navigation }) => {
               alignItems: 'center',
               marginBottom: 15,
             }}
-            onPress={handleLogLocalStorage}
+            onPress={logLocalStorage}
           >
             <Text style={{ color: theme.colors.background, fontSize: 16 }}>Log Local Storage</Text>
           </TouchableOpacity>
 
-          {/* List of Organizations */}
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ fontSize: 18, color: theme.colors.text, marginBottom: 10 }}>List of Organizations:</Text>
-            <FlatList
-              data={organizations}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View
-                  style={{
-                    padding: 15,
-                    backgroundColor: theme.colors.card,
-                    borderRadius: 10,
-                    marginBottom: 10,
-                  }}
-                >
-                  <Text style={{ fontSize: 16, color: theme.colors.text }}>{item.name}</Text>
-                </View>
-              )}
-            />
-          </View>
+          <TouchableOpacity
+            style={{
+              padding: 15,
+              backgroundColor: theme.colors.primary,
+              borderRadius: 10,
+              alignItems: 'center',
+              marginBottom: 15,
+            }}
+            onPress={handleUploadLocalStorageToFirebase}
+          >
+            <Text style={{ color: theme.colors.background, fontSize: 16 }}>Upload Organization to Firebase</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              padding: 15,
+              backgroundColor: theme.colors.error,
+              borderRadius: 10,
+              alignItems: 'center',
+              marginBottom: 15,
+            }}
+            onPress={handleDeleteAllData}
+          >
+            <Text style={{ color: theme.colors.onError, fontSize: 16 }}>Delete All Data</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              padding: 15,
+              backgroundColor: theme.colors.primary,
+              borderRadius: 10,
+              alignItems: 'center',
+              marginBottom: 15,
+            }}
+            onPress={() => {
+              auth
+                .signOut()
+                .then(() => Alert.alert('Logged out'))
+                .catch((error) => Alert.alert('Error logging out', error.message));
+            }}
+          >
+            <Text style={{ color: theme.colors.background, fontSize: 16 }}>Logout</Text>
+          </TouchableOpacity>
         </>
       )}
-      {/* Delete All Data Button */}
-      <TouchableOpacity
-        style={{
-          padding: 15,
-          backgroundColor: theme.colors.error,
-          borderRadius: 10,
-          alignItems: 'center',
-          marginBottom: 15,
-        }}
-        onPress={handleDeleteAllData}
-      >
-        <Text style={{ color: theme.colors.onError, fontSize: 16 }}>Delete All Data</Text>
-      </TouchableOpacity>
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={{
-          padding: 15,
-          backgroundColor: theme.colors.primary,
-          borderRadius: 10,
-          alignItems: 'center',
-        }}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={{ color: theme.colors.background, fontSize: 16 }}>Back</Text>
-      </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 };
 

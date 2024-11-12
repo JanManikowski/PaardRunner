@@ -21,14 +21,16 @@ const ItemManagerScreen = ({ navigation }) => {
         return;
       }
   
-      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];  // Ensure it's an array
       const filteredCategories = allCategories.filter(category => category.orgId === activeOrgId);
   
-      setCategories(filteredCategories);
+      setCategories(filteredCategories);  // Always set an array, even if empty
     } catch (error) {
       console.error('Failed to load categories', error);
+      setCategories([]);  // Set categories to an empty array in case of error
     }
   };
+  
 
   const handleAddCategory = async () => {
     if (newCategoryName.trim() === '') {
@@ -75,21 +77,27 @@ const ItemManagerScreen = ({ navigation }) => {
 
   const deleteCategory = async (categoryName) => {
     try {
-      // Retrieve active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
-
-      const updatedCategories = { ...categories };
-      delete updatedCategories[categoryName];
-      setCategories(updatedCategories);
-      await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
+  
+      // Filter out the category to delete
+      const updatedCategories = categories.filter(category => category.name !== categoryName);
+      
+      // Update AsyncStorage with the remaining categories
+      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+      const newAllCategories = allCategories.filter(category => !(category.name === categoryName && category.orgId === activeOrgId));
+      
+      await AsyncStorage.setItem('categories', JSON.stringify(newAllCategories));
+  
+      setCategories(updatedCategories);  // Update state with filtered categories
     } catch (error) {
       console.error('Failed to delete category', error);
     }
   };
+  
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
