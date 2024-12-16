@@ -83,20 +83,15 @@ const MissingItemsScreen = ({ route }) => {
   );
 
   const generateMissingItemsMessage = () => {
-    const header = `*${bar.name} is missing these items:*
-
-`;
+    const header = `*${bar.name} is missing these items:*`;
 
     let message = header;
     if (missingItems) {
       for (const [category, items] of Object.entries(missingItems)) {
         if (items.length > 0) {
-          message += `*${category}:*
-\n\`\`\`
-`;
+          message += `*${category}:*\n\`\`\``;
           items.forEach(item => {
-            message += `- ${item.type.padEnd(20, ' ')}: ${String(item.missing).padStart(3, ' ')}
-`;
+            message += `- ${item.type.padEnd(20, ' ')}: ${String(item.missing).padStart(3, ' ')}`;
           });
           message += '```';
         }

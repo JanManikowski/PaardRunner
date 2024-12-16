@@ -42,49 +42,38 @@ const BarDetailScreen = ({ route, navigation }) => {
   );
 
   // Handle adding a custom item
-  const handleAddCustomItem = async () => {
+  const handleAddCustomItem = async (categoryName) => {
     if (customItem.trim()) {
       try {
-        // Retrieve active organization ID
         const activeOrgId = await AsyncStorage.getItem('activeOrgId');
         if (!activeOrgId) {
           Alert.alert('Error', 'No active organization selected');
           return;
         }
-
-        // Fetch custom items for the bar from AsyncStorage
-        const storedCustomItems = await AsyncStorage.getItem(`customItems_${activeOrgId}_${bar.id}`);
+  
+        const storedCustomItemsKey = `customItems_${activeOrgId}_${bar.id}`;
+        const storedCustomItems = await AsyncStorage.getItem(storedCustomItemsKey);
         const customItems = storedCustomItems ? JSON.parse(storedCustomItems) : [];
-
-        // Add the new custom item
-        const updatedCustomItems = [...customItems, customItem];
-        await AsyncStorage.setItem(`customItems_${activeOrgId}_${bar.id}`, JSON.stringify(updatedCustomItems));
-
+  
+        const newItem = { name: customItem, categoryName, missing: 0 };
+        const updatedCustomItems = [...customItems, newItem];
+        await AsyncStorage.setItem(storedCustomItemsKey, JSON.stringify(updatedCustomItems));
+  
         Toast.show({
           type: 'success',
           text1: 'Success',
-          text2: `${customItem} has been added`,
+          text2: `${customItem} has been added to ${categoryName}`,
           position: 'top',
         });
-        setCustomItem('');  // Clear the input field after adding the item
+        setCustomItem('');
       } catch (error) {
         console.error('Failed to add custom item', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Failed to add custom item.',
-          position: 'top',
-        });
       }
     } else {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please enter a valid item name.',
-        position: 'top',
-      });
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Please enter a valid item name.' });
     }
   };
+  
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>

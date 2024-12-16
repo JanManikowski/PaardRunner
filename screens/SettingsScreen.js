@@ -402,7 +402,7 @@ const SettingsScreen = ({ navigation }) => {
           color: theme.colors.text,
         }}
         placeholder="Enter 6-digit code"
-        placeholderTextColor={theme.colors.textSecondary}
+        placeholderTextColor={theme.colors.text}
         value={code}
         onChangeText={setCode}
         keyboardType="numeric"
