@@ -14,12 +14,14 @@ import CategoryListScreen from '../screens/CategoryListScreen';
 import ItemEditorScreen from '../screens/ItemEditorScreen';
 import LoginScreen from '../screens/LoginScreen';
 import AdminFeaturesScreen from '../screens/AdminFeaturesScreen';
+import { NativeBaseProvider } from 'native-base';
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
   return (
-    <FridgeProvider>
+    <NativeBaseProvider>
+<FridgeProvider>
       <Stack.Navigator initialRouteName="ViewBars">
         <Stack.Screen name="ViewBars" component={ViewBarsScreen} />
         <Stack.Screen name="ManageBars" component={ManageBarsScreen} />
@@ -36,6 +38,8 @@ const AppNavigator = () => {
         <Stack.Screen name="AdminFeatures" component={AdminFeaturesScreen} />
       </Stack.Navigator>
     </FridgeProvider>
+    </NativeBaseProvider>
+    
   );
 };
 

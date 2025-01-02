@@ -373,6 +373,34 @@ export const fetchOrganizationsByCode = async (code) => {
   }
 };
 
+export const deleteOrganization = async (orgId) => {
+  try {
+    // Delete all bars, categories, and items under the organization
+    const barsSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars'));
+    for (const bar of barsSnapshot.docs) {
+      const categoriesSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars', bar.id, 'categories'));
+      for (const category of categoriesSnapshot.docs) {
+        const itemsSnapshot = await getDocs(
+          collection(db, 'organizations', orgId, 'bars', bar.id, 'categories', category.id, 'items')
+        );
+        for (const item of itemsSnapshot.docs) {
+          await deleteDoc(item.ref); // Delete each item
+        }
+        await deleteDoc(category.ref); // Delete each category
+      }
+      await deleteDoc(bar.ref); // Delete each bar
+    }
+
+    // Delete organization document itself
+    await deleteDoc(doc(db, 'organizations', orgId));
+
+    console.log(`Organization with ID ${orgId} and all associated data deleted.`);
+  } catch (error) {
+    console.error('Error deleting organization:', error);
+    throw error;
+  }
+};
+
 
 
 

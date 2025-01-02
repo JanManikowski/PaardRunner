@@ -22,7 +22,7 @@ const LoginScreen = () => {
           // Ensure the user document and unique code are set
           await checkAndAssignUserCode(userCredential.user.uid);
 
-          navigation.navigate('Settings');  // Navigate back to Settings screen after login
+          navigation.navigate('AdminFeatures');  // Navigate back to Settings screen after login
         })
         .catch((error) => {
           Alert.alert('Login error', error.message);
