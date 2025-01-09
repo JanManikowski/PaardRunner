@@ -28,6 +28,9 @@
       "eas": {
         "projectId": "d414d91c-ab12-4d3e-b5bf-32f101526ae6"
       }
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

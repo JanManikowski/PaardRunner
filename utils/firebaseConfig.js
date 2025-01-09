@@ -1,21 +1,25 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAOE360zecctwh8-pduD4Dcte2L53qSHRU",
-    authDomain: "paardrunner.firebaseapp.com",
-    projectId: "paardrunner",
-    storageBucket: "paardrunner.appspot.com",
-    messagingSenderId: "454825331070",
-    appId: "1:454825331070:web:6f559197096cdf9ed2cb2f",
-    measurementId: "G-MQ151H6G04"
+  apiKey: "AIzaSyAOE360zecctwh8-pduD4Dcte2L53qSHRU",
+  authDomain: "paardrunner.firebaseapp.com",
+  projectId: "paardrunner",
+  storageBucket: "paardrunner.appspot.com",
+  messagingSenderId: "454825331070",
+  appId: "1:454825331070:web:6f559197096cdf9ed2cb2f",
+  measurementId: "G-MQ151H6G04"
 };
 
-// Initialize Firebase
+// Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase services
-export const auth = getAuth(app);
+// Initialize Firebase Auth with persistence
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
+
+// Initialize Firestore
 export const db = getFirestore(app);
