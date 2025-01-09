@@ -204,10 +204,6 @@ export const logLocalStorage = async () => {
   }
 };
 
-
-
-
-
 export const uploadBarsToFirebase = async (orgId, bars) => {
   try {
     for (const bar of bars) {
@@ -331,6 +327,11 @@ export const fetchOrganizationsByCode = async (code) => {
         console.log('\n--- BAR FETCHED FROM DATABASE ---');
         console.log(JSON.stringify(barData, null, 2));
         bars.push(barData);
+      }
+
+      if (bars.length > 0) {
+        await AsyncStorage.setItem(`bars_${orgData.id}`, JSON.stringify(bars));
+        console.log(`Bars saved to AsyncStorage for organization ID: ${orgData.id}`);
       }
 
       orgData.bars = bars;

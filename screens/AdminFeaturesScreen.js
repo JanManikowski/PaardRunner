@@ -104,64 +104,62 @@ const AdminFeaturesScreen = ({ navigation }) => {
   };
 
   const handleUploadLocalStorageToFirebase = async () => {
-    console.log("CURRENT ORG NAME", activeOrgId);
+    console.log("CURRENT ORG NAME:", activeOrgId);
     try {
       console.log("Starting upload of local storage data to Firebase...");
-
+  
+      // Fetch the active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error("No active organization selected");
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-
+  
+      // Fetch the active organization details
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
-      console.log("Organizations in local storage:", organizations);
-
       const org = organizations.find(org => org.id === activeOrgId);
       if (!org) {
         console.error("No matching organization found in local storage for activeOrgId", activeOrgId);
         return;
       }
-
+  
       console.log("Uploading organization:", org);
-
+  
+      // Create or update the organization in Firebase
       const orgId = await createOrUpdateOrganization(org.name);
       console.log("Organization created/updated in Firebase with ID:", orgId);
-
-      const bars = JSON.parse(await AsyncStorage.getItem('bars')) || [];
-      console.log("Bars in local storage:", bars);
-
-      const barsForOrg = bars.filter(bar => bar.orgId === activeOrgId);
+  
+      // Fetch bars for the active organization
+      const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
       console.log(`Bars matching active organization (ID: ${activeOrgId}):`, barsForOrg);
-
+  
+      // Upload each bar to Firebase
       for (let bar of barsForOrg) {
         const barId = await createBarInFirebase(orgId, bar);
         console.log(`Bar created/updated in Firebase: ${bar.name}, ID: ${barId}`);
-
+  
+        // Fetch and upload categories associated with the bar
         const categories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
-        console.log("Categories in local storage:", categories);
-
         const categoriesForOrg = categories.filter(category => category.orgId === activeOrgId);
         console.log(`Categories matching active organization (ID: ${activeOrgId}):`, categoriesForOrg);
-
+  
         for (let category of categoriesForOrg) {
           const categoryId = await addCategory(orgId, category.name);
           console.log(`Category created/updated in Firebase: ${category.name}, ID: ${categoryId}`);
-
+  
+          // Fetch and upload items associated with the category
           const items = JSON.parse(await AsyncStorage.getItem('items')) || [];
-          console.log("Items in local storage:", items);
-
           const itemsForCategory = items.filter(item => item.categoryName === category.name);
           console.log(`Items matching category ${category.name}:`, itemsForCategory);
-
+  
           for (let item of itemsForCategory) {
             await addItem(orgId, category.name, item.name, item.maxAmount, item.image);
             console.log(`Item created/updated in Firebase: ${item.name}`);
           }
         }
       }
-
+  
       Alert.alert('Upload Complete', 'Local storage data uploaded to Firebase successfully.');
       console.log("Upload process completed successfully.");
     } catch (error) {
@@ -169,6 +167,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to upload data to Firebase.');
     }
   };
+  
 
   const renderOrganizations = () => {
     return organizations.map((org) => (
@@ -212,41 +211,87 @@ const AdminFeaturesScreen = ({ navigation }) => {
             />
           </View>
         );
-      case 'debugging':
-        return (
-          <View>
-            <AdminActionButton
-              title="Log Local Storage"
-              onPress={logLocalStorage}
-              style={{ backgroundColor: theme.colors.secondary }}
-            />
-            <AdminActionButton
-              title="Delete All Data"
-              onPress={() => {
-                Alert.alert(
-                  'Confirm Delete',
-                  'Are you sure you want to delete all data? This action cannot be undone.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'OK',
-                      onPress: async () => {
-                        try {
-                          await deleteAllBars(); // Adjust this to handle all deletions
-                          Alert.alert('Success', 'All data deleted.');
-                        } catch (error) {
-                          console.error(error);
-                          Alert.alert('Error', 'Failed to delete data.');
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
-              style={{ backgroundColor: theme.colors.error }}
-            />
-          </View>
-        );
+        case 'debugging':
+  return (
+    <View>
+      {/* Log All Bars Across Organizations */}
+      <AdminActionButton
+        title="Log All Bars in Local Storage"
+        onPress={async () => {
+          try {
+            // Retrieve all organizations
+            const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
+            console.log("Organizations in Local Storage:", organizations);
+
+            // Retrieve bars for each organization
+            let allBars = [];
+            for (let org of organizations) {
+              const orgBars = JSON.parse(await AsyncStorage.getItem(`bars_${org.id}`)) || [];
+              console.log(`Bars for Organization (${org.id}):`, orgBars);
+              allBars = [...allBars, ...orgBars];
+            }
+
+            console.log("All Bars in Local Storage Across All Organizations:", allBars);
+          } catch (error) {
+            console.error("Error logging all bars:", error);
+          }
+        }}
+        style={{ backgroundColor: theme.colors.secondary }}
+      />
+
+      {/* Log Bars for Active Organization */}
+      <AdminActionButton
+        title="Log Bars from Active Org"
+        onPress={async () => {
+          try {
+            const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+            if (!activeOrgId) {
+              console.log("No active organization selected.");
+              return;
+            }
+
+            const barsForActiveOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
+            console.log(`Bars for Active Organization (${activeOrgId}):`, barsForActiveOrg);
+          } catch (error) {
+            console.error("Error logging bars for active organization:", error);
+          }
+        }}
+        style={{ backgroundColor: theme.colors.secondary }}
+      />
+
+      {/* Delete All Bars Across All Organizations */}
+      <AdminActionButton
+        title="Delete All Bars"
+        onPress={() => {
+          Alert.alert(
+            'Confirm Delete',
+            'Are you sure you want to delete all bars? This action cannot be undone.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'OK',
+                onPress: async () => {
+                  try {
+                    const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
+                    for (let org of organizations) {
+                      await AsyncStorage.removeItem(`bars_${org.id}`);
+                    }
+                    Alert.alert('Success', 'All bars deleted.');
+                  } catch (error) {
+                    console.error("Error deleting bars:", error);
+                    Alert.alert('Error', 'Failed to delete bars.');
+                  }
+                },
+              },
+            ]
+          );
+        }}
+        style={{ backgroundColor: theme.colors.error }}
+      />
+    </View>
+  );
+
+        
       case 'organizations':
         return (
           <View>
