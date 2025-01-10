@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import AppNavigator from './navigation/AppNavigator';
 import { CategoryProvider } from './contexts/CategoryContext';
 import interopRequireDefault from '@babel/runtime/helpers/interopRequireDefault';
+import Toast from 'react-native-toast-message';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
             <PaperProvider theme={theme}>
               <NavigationContainer theme={theme}>
                 <AppNavigator />
+                <Toast />
               </NavigationContainer>
             </PaperProvider>
           </CategoryProvider>

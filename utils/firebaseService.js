@@ -1,5 +1,5 @@
 import { db } from './firebaseConfig';
-import { collection, addDoc, getDocs, query, where, setDoc, doc, getDoc, Firestore } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, setDoc, doc, getDoc, Firestore, deleteDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebaseConfig';
 import firebase from 'firebase/app';
@@ -374,32 +374,70 @@ export const fetchOrganizationsByCode = async (code) => {
   }
 };
 
+
 export const deleteOrganization = async (orgId) => {
-  try {
-    // Delete all bars, categories, and items under the organization
-    const barsSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars'));
-    for (const bar of barsSnapshot.docs) {
-      const categoriesSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars', bar.id, 'categories'));
-      for (const category of categoriesSnapshot.docs) {
-        const itemsSnapshot = await getDocs(
-          collection(db, 'organizations', orgId, 'bars', bar.id, 'categories', category.id, 'items')
-        );
-        for (const item of itemsSnapshot.docs) {
-          await deleteDoc(item.ref); // Delete each item
+    try {
+        // Delete all associated bars, categories, and items under the organization
+        const barsSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars'));
+        for (const bar of barsSnapshot.docs) {
+            const categoriesSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars', bar.id, 'categories'));
+            for (const category of categoriesSnapshot.docs) {
+                const itemsSnapshot = await getDocs(
+                    collection(db, 'organizations', orgId, 'bars', bar.id, 'categories', category.id, 'items')
+                );
+                for (const item of itemsSnapshot.docs) {
+                    await deleteDoc(item.ref); // Delete each item
+                }
+                await deleteDoc(category.ref); // Delete each category
+            }
+            await deleteDoc(bar.ref); // Delete each bar
         }
-        await deleteDoc(category.ref); // Delete each category
-      }
-      await deleteDoc(bar.ref); // Delete each bar
+
+        // Delete the organization document itself
+        await deleteDoc(doc(db, 'organizations', orgId));
+        console.log(`Organization with ID ${orgId} and all associated data deleted.`);
+    } catch (error) {
+        console.error('Error deleting organization:', error);
+        throw error;
     }
+};
 
-    // Delete organization document itself
-    await deleteDoc(doc(db, 'organizations', orgId));
 
-    console.log(`Organization with ID ${orgId} and all associated data deleted.`);
-  } catch (error) {
-    console.error('Error deleting organization:', error);
-    throw error;
-  }
+export const handleDeleteOrganization = async (orgId) => {
+  Alert.alert(
+    'Confirm Delete',
+    'Are you sure you want to delete this organization? This action cannot be undone.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'OK',
+        onPress: async () => {
+          try {
+            // Delete from Firebase
+            await deleteOrganization(orgId);
+
+            // Delete from local storage
+            const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
+            const updatedOrganizations = organizations.filter((org) => org.id !== orgId);
+            await AsyncStorage.setItem('organizations', JSON.stringify(updatedOrganizations));
+
+            // Clear activeOrgId if it matches the deleted org
+            const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+            if (activeOrgId === orgId) {
+              await AsyncStorage.removeItem('activeOrgId');
+              setActiveOrgId(null);
+            }
+
+            Alert.alert('Success', 'Organization deleted successfully.');
+            loadOrganizations(); // Refresh the list of organizations
+          } catch (error) {
+            console.error('Error deleting organization:', error);
+            Alert.alert('Error', 'Failed to delete organization.');
+          }
+        },
+      },
+    ]
+  );
 };
 
 export const addCrateToFirebase = async (orgId, crate) => {
@@ -422,14 +460,42 @@ export const addCrateToFirebase = async (orgId, crate) => {
   }
 };
 
+export const deleteAllDataUnderOrganization = async (orgId) => {
+  try {
+    // Delete all bars
+    const barsSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars'));
+    for (const barDoc of barsSnapshot.docs) {
+      const barId = barDoc.id;
 
+      // Delete all categories under this bar
+      const categoriesSnapshot = await getDocs(collection(db, 'organizations', orgId, 'categories'));
+      for (const categoryDoc of categoriesSnapshot.docs) {
+        const categoryId = categoryDoc.id;
 
+        // Delete all items under this category
+        const itemsSnapshot = await getDocs(collection(db, 'organizations', orgId, 'categories', categoryId, 'items'));
+        for (const itemDoc of itemsSnapshot.docs) {
+          await deleteDoc(itemDoc.ref); // Delete each item
+        }
 
+        await deleteDoc(categoryDoc.ref); // Delete the category
+      }
 
+      await deleteDoc(barDoc.ref); // Delete the bar
+    }
 
+    // Optionally: Delete crates if your app uses them
+    const cratesSnapshot = await getDocs(collection(db, 'organizations', orgId, 'crates'));
+    for (const crateDoc of cratesSnapshot.docs) {
+      await deleteDoc(crateDoc.ref); // Delete each crate
+    }
 
-
-
+    console.log(`All data under organization ${orgId} has been deleted.`);
+  } catch (error) {
+    console.error(`Error deleting data under organization ${orgId}:`, error);
+    throw error;
+  }
+};
 
 
 

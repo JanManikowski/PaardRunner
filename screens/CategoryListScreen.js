@@ -69,7 +69,7 @@ const CategoryListScreen = ({ route, navigation }) => {
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: 'bold', color: theme.colors.text }}>{item.name}</Text>
               {item.missing > 0 && (
-                <Text style={{ color: 'red' }}>Missing Amount: {item.missing}</Text>
+                <Text style={{ color: theme.colors.error }}>Missing Amount: {item.missing}</Text>
               )}
             </View>
             <Icon name="chevron-right" size={30} color={theme.colors.onSurface} />

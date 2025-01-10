@@ -11,7 +11,8 @@ import {
   createBarInFirebase,
   addItem,
   addCategory,
-  addCrateToFirebase
+  addCrateToFirebase,
+  deleteAllDataUnderOrganization
 } from '../utils/firebaseService';
 import AdminActionButton from '../components/AdminActionButton';
 import OrganizationList from '../components/OrganizationList';
@@ -116,6 +117,10 @@ const AdminFeaturesScreen = ({ navigation }) => {
         return;
       }
   
+      // Delete all data under the organization in Firebase
+      await deleteAllDataUnderOrganization(activeOrgId);
+      console.log(`All data under organization ${activeOrgId} deleted.`);
+  
       // Fetch organization details from AsyncStorage
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
       const org = organizations.find((org) => org.id === activeOrgId);
@@ -175,29 +180,49 @@ const AdminFeaturesScreen = ({ navigation }) => {
   };
   
   
+  
 
   const renderOrganizations = () => {
     return organizations.map((org) => (
-      <TouchableOpacity
+      <View
         key={org.id}
         style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           padding: 10,
           marginVertical: 5,
           backgroundColor: activeOrgId === org.id ? theme.colors.primary : theme.colors.surfaceVariant,
           borderRadius: 5,
         }}
-        onPress={() => handleSetActiveOrganization(org.id)}
       >
-        <Text
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          onPress={() => handleSetActiveOrganization(org.id)}
+        >
+          <Text
+            style={{
+              color: activeOrgId === org.id ? theme.colors.background : theme.colors.text,
+            }}
+          >
+            {org.name}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => handleDeleteOrganization(org.id)}
           style={{
-            color: activeOrgId === org.id ? theme.colors.background : theme.colors.text,
+            padding: 5,
+            backgroundColor: theme.colors.error,
+            borderRadius: 5,
+            marginLeft: 10,
           }}
         >
-          {org.name}
-        </Text>
-      </TouchableOpacity>
+          <Text style={{ color: theme.colors.background, fontWeight: 'bold' }}>Delete</Text>
+        </TouchableOpacity>
+      </View>
     ));
   };
+  
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -336,7 +361,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
 
   return (
     <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
+      <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: "white" }}>
         Admin Dashboard
       </Text>
 

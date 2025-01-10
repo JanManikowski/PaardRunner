@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TextInput, Alert } from 'react-native';
+import { View, Text, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { auth } from '../utils/firebaseConfig';
 import {
@@ -43,95 +44,132 @@ const SettingsScreen = ({ navigation }) => {
   }, []);
 
   const handleSetActiveOrganization = async (orgId) => {
-    if (!orgId) return Alert.alert('Error', 'Please select an organization.');
+    if (!orgId) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please select an organization.',
+      });
+      return;
+    }
     await AsyncStorage.setItem('activeOrgId', orgId);
     setActiveOrgId(orgId);
     setIsModalVisible(false);
-    Alert.alert('Success', 'Active organization set successfully!');
+
+    Toast.show({
+      type: 'success',
+      text1: 'Success',
+      text2: 'Active organization set successfully!',
+    });
   };
 
   const handleFetchByCode = async () => {
-    if (!code) return Alert.alert('Error', 'Enter a valid 6-digit code.');
+    if (!code) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Enter a valid 6-digit code.',
+      });
+      return;
+    }
     try {
       const orgs = await fetchOrganizationsByCode(code);
-      if (orgs.length === 0) return Alert.alert('No organizations found.');
+      if (orgs.length === 0) {
+        Toast.show({
+          type: 'info',
+          text1: 'No Organizations Found',
+          text2: 'No organizations match the entered code.',
+        });
+        return;
+      }
       await AsyncStorage.setItem('organizations', JSON.stringify(orgs));
       setOrganizations(orgs);
       logLocalStorage();
-      Alert.alert('Success', 'Organizations fetched and stored.');
+
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Organizations fetched and stored.',
+      });
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Failed to fetch organizations.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch organizations.',
+      });
     }
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text, marginBottom: 20 }}>
-        Settings
-      </Text>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={{ flex: 1, padding: 16 }}>
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text, marginBottom: 20 }}>
+          Settings
+        </Text>
 
-      {/* Choose Organization Button */}
-      <StyledButton
-        title="Choose Organization"
-        onPress={() => setIsModalVisible(true)}
-        style={{ backgroundColor: theme.colors.primary }}
-        textStyle={{ color: theme.colors.background }}
-      />
+        {/* Choose Organization Button */}
+        <StyledButton
+          title="Choose Organization"
+          onPress={() => setIsModalVisible(true)}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
 
-      {/* Modal for Selecting Organization */}
-      <ModalSelector
-        visible={isModalVisible}
-        items={organizations}
-        selectedId={selectedOrgId}
-        activeId={activeOrgId}
-        onSelect={setSelectedOrgId}
-        onSetActive={handleSetActiveOrganization}
-        onClose={() => setIsModalVisible(false)}
-      />
+        {/* Modal for Selecting Organization */}
+        <ModalSelector
+          visible={isModalVisible}
+          items={organizations}
+          selectedId={selectedOrgId}
+          activeId={activeOrgId}
+          onSelect={setSelectedOrgId}
+          onSetActive={handleSetActiveOrganization}
+          onClose={() => setIsModalVisible(false)}
+        />
 
-      {/* Input for 6-digit Code */}
-      <Text style={{ color: theme.colors.text, fontSize: 16 }}>Enter 6-digit Code:</Text>
-      <TextInput
-        style={{
-          borderColor: theme.colors.text,
-          borderWidth: 1,
-          padding: 10,
-          borderRadius: 5,
-          marginBottom: 20,
-          color: theme.colors.text,
-        }}
-        placeholder="Enter 6-digit code"
-        placeholderTextColor={theme.colors.text}
-        value={code}
-        onChangeText={setCode}
-        keyboardType="numeric"
-        maxLength={6}
-      />
+        {/* Switch Theme Button */}
+        <StyledButton
+          title={`Switch to ${theme.dark ? 'Light Mode' : 'Dark Mode'}`}
+          onPress={toggleTheme}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
 
-      {/* Fetch Organizations Button */}
-      <StyledButton
-        title="Fetch Organizations"
-        onPress={handleFetchByCode}
-        style={{ backgroundColor: theme.colors.primary }}
-        textStyle={{ color: theme.colors.background }}
-      />
+        {/* Admin Features Button */}
+        <StyledButton
+          title="Admin"
+          onPress={() => navigation.navigate('AdminFeatures')}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
+      </View>
 
-      {/* Switch Theme Button */}
-      <StyledButton
-        title={`Switch to ${theme.dark ? 'Light Mode' : 'Dark Mode'}`}
-        onPress={toggleTheme}
-        style={{ backgroundColor: theme.colors.primary }}
-        textStyle={{ color: theme.colors.background }}
-      />
-
-      {/* Admin Features Button */}
-      <StyledButton
-        title="Admin"
-        onPress={() => navigation.navigate('AdminFeatures')}
-        style={{ backgroundColor: theme.colors.primary }}
-        textStyle={{ color: theme.colors.background }}
-      />
+      {/* Input and Fetch Button at Bottom */}
+      <View style={{ padding: 16 }}>
+        <Text style={{ color: theme.colors.text, fontSize: 16 }}>Enter 6-digit Code:</Text>
+        <TextInput
+          style={{
+            borderColor: theme.colors.text,
+            borderWidth: 1,
+            padding: 10,
+            borderRadius: 5,
+            marginBottom: 10,
+            color: theme.colors.text,
+          }}
+          placeholder="Enter 6-digit code"
+          placeholderTextColor={theme.colors.text}
+          value={code}
+          onChangeText={setCode}
+          keyboardType="numeric"
+          maxLength={6}
+        />
+        <StyledButton
+          title="Fetch Organizations"
+          onPress={handleFetchByCode}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
+      </View>
     </View>
   );
 };
