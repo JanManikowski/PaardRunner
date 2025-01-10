@@ -13,7 +13,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
   // Function to handle drag-and-drop reorder
   const handleDragEnd = async ({ data }) => {
     setItems(data);
-    await saveItemsToStorage(data);
+    await saveItemsToStorage(data); // Save re-ordered items
   };
 
   // UseFocusEffect to refresh the items every time the screen is focused
@@ -32,37 +32,49 @@ const CategoryDetailScreen = ({ route, navigation }) => {
   const fetchItems = async () => {
     try {
       // Retrieve active organization ID
-      const activeOrgId = orgId || await AsyncStorage.getItem('activeOrgId');  // Default to passed orgId or activeOrgId
+      const activeOrgId = orgId || (await AsyncStorage.getItem('activeOrgId')); // Default to passed orgId or activeOrgId
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
-  
+
       // Fetch all items from AsyncStorage
       const storedItems = await AsyncStorage.getItem('items');
       const allItems = storedItems ? JSON.parse(storedItems) : [];
-  
+
       // Filter items for the active organization and category
-      const filteredItems = allItems.filter(item => item.categoryName === categoryName && item.orgId === activeOrgId);
+      const filteredItems = allItems.filter(
+        (item) => item.categoryName === categoryName && item.orgId === activeOrgId
+      );
       setItems(filteredItems); // Update state with the filtered items
     } catch (error) {
       console.error('Failed to load items from storage', error);
     }
   };
-  
-  
 
-  const saveItemsToStorage = async (items) => {
+  const saveItemsToStorage = async (updatedItems) => {
     try {
+      // Retrieve all global items
+      const storedItems = await AsyncStorage.getItem('items');
+      const allItems = storedItems ? JSON.parse(storedItems) : [];
+
       // Retrieve active organization ID
-      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      const activeOrgId = orgId || (await AsyncStorage.getItem('activeOrgId'));
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
 
+      // Update the global `items` array with the new order for the current category
+      const updatedGlobalItems = allItems
+        .filter(
+          (item) =>
+            !(item.categoryName === categoryName && item.orgId === activeOrgId)
+        ) // Remove old items for this category
+        .concat(updatedItems); // Add the updated items in the new order
+
       // Save updated items list to AsyncStorage
-      await AsyncStorage.setItem(`items_${activeOrgId}_${categoryName}`, JSON.stringify(items));
+      await AsyncStorage.setItem('items', JSON.stringify(updatedGlobalItems));
     } catch (error) {
       console.error('Failed to save items to storage', error);
     }
@@ -73,22 +85,28 @@ const CategoryDetailScreen = ({ route, navigation }) => {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       const storedItems = await AsyncStorage.getItem('items');
       const allItems = storedItems ? JSON.parse(storedItems) : [];
-  
-      // Remove the item globallys
-      const updatedItems = allItems.filter(item => item.name !== itemName || item.orgId !== activeOrgId || item.categoryName !== categoryName);
-      
+
+      // Remove the item globally
+      const updatedItems = allItems.filter(
+        (item) =>
+          item.name !== itemName ||
+          item.orgId !== activeOrgId ||
+          item.categoryName !== categoryName
+      );
+
       // Save the updated list back to AsyncStorage
       await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
-      
+
       // Update the filtered items for the current view
-      const filteredItems = updatedItems.filter(item => item.orgId === activeOrgId && item.categoryName === categoryName);
+      const filteredItems = updatedItems.filter(
+        (item) =>
+          item.orgId === activeOrgId && item.categoryName === categoryName
+      );
       setItems(filteredItems);
-  
     } catch (error) {
       console.error('Failed to remove item', error);
     }
   };
-  
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>

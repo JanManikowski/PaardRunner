@@ -7,6 +7,8 @@ import DraggableFlatList from 'react-native-draggable-flatlist';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
+import WheelColorPicker  from 'react-native-wheel-color-picker';
+
 
 const ViewBarsScreen = ({ navigation }) => {
   const [bars, setBars] = useState([]);
@@ -260,12 +262,11 @@ const ViewBarsScreen = ({ navigation }) => {
 
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
             <WheelColorPicker
-              color={pickedColor}
+              initialColor={pickedColor}
               onColorChange={(color) => {
                 setPickedColor(color);
                 setTextColor(getContrastingTextColor(color));
               }}
-              thumbStyle={{ height: 30, width: 30, backgroundColor: 'white' }}
               style={{ width: 300, height: 300 }}
             />
           </View>

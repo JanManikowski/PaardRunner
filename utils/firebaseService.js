@@ -402,6 +402,29 @@ export const deleteOrganization = async (orgId) => {
   }
 };
 
+export const addCrateToFirebase = async (orgId, crate) => {
+  try {
+    // Use the crate name as the document ID
+    const crateId = crate.name.replace(/\s+/g, '_'); // Replace spaces with underscores to make it Firestore-compatible
+    const crateRef = doc(db, 'organizations', orgId, 'crates', crateId);
+
+    await setDoc(crateRef, {
+      name: crate.name,
+      category: crate.category,
+      maxItems: crate.maxItems,
+    }, { merge: true });
+
+    console.log(`Crate added to Firebase under organization ${orgId}:`, crate);
+    return crateRef.id;
+  } catch (error) {
+    console.error('Error adding crate:', error);
+    throw error;
+  }
+};
+
+
+
+
 
 
 

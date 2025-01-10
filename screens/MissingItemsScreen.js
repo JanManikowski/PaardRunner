@@ -15,7 +15,16 @@ const MissingItemsScreen = ({ route }) => {
   const [circleMode, setCircleMode] = useState(false);
   const [checkedItems, setCheckedItems] = useState([]);
 
-
+  useFocusEffect(
+    useCallback(() => {
+      const fetchMissingItemsOnFocus = async () => {
+        await fetchMissingItems(); // Re-fetch missing items when the screen is focused
+      };
+  
+      fetchMissingItemsOnFocus();
+    }, [bar.name])
+  );
+  
   const handleLongPressItem = () => {
     setCircleMode(!circleMode); // Toggle circle mode
   };
@@ -144,11 +153,11 @@ const MissingItemsScreen = ({ route }) => {
     if (missingItems) {
       for (const [category, items] of Object.entries(missingItems)) {
         if (items.length > 0) {
-          message += `*${category}:*\n\`\`\``;
+          message += `*${category}:*\n`;
           items.forEach(item => {
-            message += `- ${item.type.padEnd(20, ' ')}: ${String(item.missing).padStart(3, ' ')}`;
+            message += `- ${item.type.padEnd(20, ' ')}: ${String(item.missing).padStart(3, ' ')}\n`;
           });
-          message += '```';
+          message += '';
         }
       }
     } else {
@@ -268,8 +277,6 @@ const MissingItemsScreen = ({ route }) => {
     );
   };
 
-  
-
   return (
     <View
     style={{
@@ -305,15 +312,12 @@ const MissingItemsScreen = ({ route }) => {
     >
       {missingItems ? (
         Object.entries(missingItems).map(([category, items]) => {
-          // Separate checked and unchecked items
           const uncheckedItems = items.filter(
             (_, index) => !checkedItems.includes(`${category}-${index}`)
           );
           const checkedItemsInCategory = items.filter((_, index) =>
             checkedItems.includes(`${category}-${index}`)
           );
-
-          // Combine unchecked and checked items
           const reorderedItems = [...uncheckedItems, ...checkedItemsInCategory];
 
           return (
@@ -329,7 +333,7 @@ const MissingItemsScreen = ({ route }) => {
                 {category}
               </Text>
               {reorderedItems.map((item, itemIndex) => {
-                const actualIndex = items.indexOf(item); // Get original index for tracking
+                const actualIndex = items.indexOf(item);
                 return (
                   <View
                     key={actualIndex}
@@ -352,7 +356,7 @@ const MissingItemsScreen = ({ route }) => {
                           backgroundColor: checkedItems.includes(
                             `${category}-${actualIndex}`
                           )
-                            ? theme.colors.primary // Highlight if checked
+                            ? theme.colors.primary
                             : 'transparent',
                           marginRight: 10,
                         }}
@@ -450,6 +454,16 @@ const MissingItemsScreen = ({ route }) => {
         </Text>
       )}
     </ScrollView>
+
+    {circleMode && (
+      <View style={{ marginBottom: 10 }}>
+        <Button
+          title="Delete Selected Items"
+          onPress={deleteCheckedItems}
+          color="#FF3B30"
+        />
+      </View>
+    )}
 
     <View style={{ marginBottom: 10 }}>
       <Button

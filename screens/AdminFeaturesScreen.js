@@ -11,6 +11,7 @@ import {
   createBarInFirebase,
   addItem,
   addCategory,
+  addCrateToFirebase
 } from '../utils/firebaseService';
 import AdminActionButton from '../components/AdminActionButton';
 import OrganizationList from '../components/OrganizationList';
@@ -104,7 +105,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
   };
 
   const handleUploadLocalStorageToFirebase = async () => {
-    console.log("CURRENT ORG NAME:", activeOrgId);
     try {
       console.log("Starting upload of local storage data to Firebase...");
   
@@ -116,9 +116,9 @@ const AdminFeaturesScreen = ({ navigation }) => {
         return;
       }
   
-      // Fetch the active organization details
+      // Fetch organization details from AsyncStorage
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
-      const org = organizations.find(org => org.id === activeOrgId);
+      const org = organizations.find((org) => org.id === activeOrgId);
       if (!org) {
         console.error("No matching organization found in local storage for activeOrgId", activeOrgId);
         return;
@@ -130,34 +130,40 @@ const AdminFeaturesScreen = ({ navigation }) => {
       const orgId = await createOrUpdateOrganization(org.name);
       console.log("Organization created/updated in Firebase with ID:", orgId);
   
-      // Fetch bars for the active organization
+      // Fetch and upload bars
       const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
-      console.log(`Bars matching active organization (ID: ${activeOrgId}):`, barsForOrg);
+      console.log(`Bars for active organization (ID: ${activeOrgId}):`, barsForOrg);
   
-      // Upload each bar to Firebase
       for (let bar of barsForOrg) {
         const barId = await createBarInFirebase(orgId, bar);
         console.log(`Bar created/updated in Firebase: ${bar.name}, ID: ${barId}`);
   
         // Fetch and upload categories associated with the bar
         const categories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
-        const categoriesForOrg = categories.filter(category => category.orgId === activeOrgId);
-        console.log(`Categories matching active organization (ID: ${activeOrgId}):`, categoriesForOrg);
+        const categoriesForOrg = categories.filter((category) => category.orgId === activeOrgId);
   
         for (let category of categoriesForOrg) {
           const categoryId = await addCategory(orgId, category.name);
           console.log(`Category created/updated in Firebase: ${category.name}, ID: ${categoryId}`);
   
-          // Fetch and upload items associated with the category
+          // Fetch and upload items for each category
           const items = JSON.parse(await AsyncStorage.getItem('items')) || [];
-          const itemsForCategory = items.filter(item => item.categoryName === category.name);
-          console.log(`Items matching category ${category.name}:`, itemsForCategory);
+          const itemsForCategory = items.filter((item) => item.categoryName === category.name);
   
           for (let item of itemsForCategory) {
             await addItem(orgId, category.name, item.name, item.maxAmount, item.image);
             console.log(`Item created/updated in Firebase: ${item.name}`);
           }
         }
+      }
+  
+      // Fetch and upload custom crates
+      const customCrates = JSON.parse(await AsyncStorage.getItem('customCrates')) || [];
+      console.log(`Custom crates for active organization:`, customCrates);
+  
+      for (let crate of customCrates) {
+        const crateId = await addCrateToFirebase(orgId, crate);
+        console.log(`Crate created/updated in Firebase: ${crate.name}, ID: ${crateId}`);
       }
   
       Alert.alert('Upload Complete', 'Local storage data uploaded to Firebase successfully.');
@@ -167,6 +173,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to upload data to Firebase.');
     }
   };
+  
   
 
   const renderOrganizations = () => {
@@ -208,6 +215,10 @@ const AdminFeaturesScreen = ({ navigation }) => {
             <AdminActionButton
               title="Item Manager"
               onPress={() => navigation.navigate('ItemManager')}
+            />
+            <AdminActionButton
+              title="Custom Crates"
+              onPress={() => navigation.navigate('CustomCrates')}
             />
           </View>
         );
