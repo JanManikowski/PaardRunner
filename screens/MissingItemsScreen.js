@@ -4,6 +4,8 @@ import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
+import { Animated, Easing } from 'react-native';
+
 
 const MissingItemsScreen = ({ route }) => {
   const { bar } = route.params;
@@ -14,6 +16,20 @@ const MissingItemsScreen = ({ route }) => {
   const { theme } = useContext(ThemeContext);
   const [circleMode, setCircleMode] = useState(false);
   const [checkedItems, setCheckedItems] = useState([]);
+  const [animatedValues, setAnimatedValues] = useState({});
+
+  useEffect(() => {
+    if (missingItems) {
+      const initialValues = {};
+      Object.entries(missingItems).forEach(([category, items]) => {
+        items.forEach((_, index) => {
+          initialValues[`${category}-${index}`] = new Animated.Value(0);
+        });
+      });
+      setAnimatedValues(initialValues);
+    }
+  }, [missingItems]);
+  
 
   useFocusEffect(
     useCallback(() => {
