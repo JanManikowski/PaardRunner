@@ -151,7 +151,7 @@ const ViewBarsScreen = ({ navigation }) => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.backgroundVariant, padding: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-      <Text h4 style={{ color: theme.colors.text }}>ViewBars - {selectedOrganization || 'Unknown'}</Text>
+      <Text h4 style={{ color: theme.colors.text }}>Bars - {selectedOrganization || 'Unknown'}</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
           <MaterialIcons name="settings" size={28} color={theme.colors.text} />
         </TouchableOpacity>

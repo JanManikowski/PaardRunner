@@ -94,10 +94,10 @@ const BarDetailScreen = ({ route, navigation }) => {
                 backgroundColor: theme.colors.surfaceVariant,
                 alignItems: 'center',
               }}
-              onPress={() => navigation.navigate('CategoryList', { categoryName: category.name, bar })}
+              onPress={() => navigation.navigate('CategoryList', { categoryName: category.name, bar, categories })}
             >
               <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
-                View {category.name} {/* Use the category's name */}
+                {category.name} {/* Use the category's name */}
               </Text>
             </TouchableOpacity>
           ))

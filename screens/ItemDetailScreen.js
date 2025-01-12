@@ -108,7 +108,7 @@ const ItemDetailScreen = ({ route, navigation }) => {
         {/* Item Details */}
         <View style={{ alignItems: 'center', marginBottom: 20 }}>
           <Text h4 style={{ color: theme.colors.primary, marginBottom: 10 }}>{currentItem.name || 'Unnamed Item'}</Text>
-          <Text style={{ fontSize: 16, color: '#d32f2f', fontWeight: 'bold' }}>Missing Items: {missing}</Text>
+          <Text style={{ fontSize: 16, color: theme.colors.error, fontWeight: 'bold' }}>Missing Items: {missing}</Text>
           <Text style={{ color: theme.colors.text, fontSize: 16 }}>Max Allowed: {currentItem.maxAmount || 'N/A'}</Text>
         </View>
 
@@ -188,16 +188,7 @@ const ItemDetailScreen = ({ route, navigation }) => {
         onPress={clearMissing}
         containerStyle={{ alignItems: 'center' }}
       />
-
-      <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginTop: 20 }}>
-        {/* Navigation Button */}
-        <Button
-          title="Go to Category List"
-          buttonStyle={{ backgroundColor: '#00796b', borderRadius: 10 }}
-          onPress={() => navigation.navigate('CategoryList', { categoryName: currentItem.categoryName, bar })}
-        />
-      </View>
-
+      
       <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );

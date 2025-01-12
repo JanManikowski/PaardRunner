@@ -1,5 +1,5 @@
 import React, { useContext, useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, TextInput, BackHandler, Share, Button } from 'react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity, TextInput, BackHandler, Share, Button, Image } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -74,7 +74,6 @@ const MissingItemsScreen = ({ route }) => {
       ]
     );
   };
-  
   
   useEffect(() => {
     const backAction = () => {
@@ -279,209 +278,221 @@ const MissingItemsScreen = ({ route }) => {
 
   return (
     <View
-    style={{
-      padding: 16,
-      backgroundColor: theme.colors.background,
-      flex: 1,
-      paddingBottom: -10,
-    }}
-  >
-    <Text
       style={{
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
-        color: theme.colors.onBackground,
+        padding: 16,
+        backgroundColor: theme.colors.background,
+        flex: 1,
+        paddingBottom: -10,
       }}
     >
-      Missing Items for {bar.name}
-    </Text>
-    <ScrollView
-      style={{
-        backgroundColor: theme.colors.surfaceVariant,
-        padding: 15,
-        borderRadius: 8,
-        shadowColor: theme.colors.shadow,
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        shadowOffset: { width: 0, height: 2 },
-        marginBottom: 20,
-      }}
-      contentContainerStyle={{ paddingBottom: 15 }}
-    >
-      {missingItems ? (
-        Object.entries(missingItems).map(([category, items]) => {
-          const uncheckedItems = items.filter(
-            (_, index) => !checkedItems.includes(`${category}-${index}`)
-          );
-          const checkedItemsInCategory = items.filter((_, index) =>
-            checkedItems.includes(`${category}-${index}`)
-          );
-          const reorderedItems = [...uncheckedItems, ...checkedItemsInCategory];
-
-          return (
-            <View key={category} style={{ marginBottom: 20 }}>
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: 'bold',
-                  marginBottom: 10,
-                  color: theme.colors.primary,
-                }}
-              >
-                {category}
-              </Text>
-              {reorderedItems.map((item, itemIndex) => {
-                const actualIndex = items.indexOf(item);
-                return (
-                  <View
-                    key={actualIndex}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 10,
-                    }}
-                  >
-                    {circleMode && (
-                      <TouchableOpacity
-                        onPress={() => handleCirclePress(category, actualIndex)}
-                        style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 10,
-                          borderWidth: 1,
-                          borderColor: theme.colors.primary,
-                          backgroundColor: checkedItems.includes(
-                            `${category}-${actualIndex}`
-                          )
-                            ? theme.colors.primary
-                            : 'transparent',
-                          marginRight: 10,
-                        }}
-                      />
-                    )}
-
-                    <TouchableOpacity
-                      onLongPress={handleLongPressItem}
-                      style={{ flex: 2 }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 16,
-                          color: theme.colors.text,
-                        }}
-                      >
-                        {item.name}
-                      </Text>
-                    </TouchableOpacity>
-
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: 'bold',
+          marginBottom: 20,
+          textAlign: 'center',
+          color: theme.colors.onBackground,
+        }}
+      >
+        Missing Items for {bar.name}
+      </Text>
+      <ScrollView
+        style={{
+          backgroundColor: theme.colors.surfaceVariant,
+          padding: 15,
+          borderRadius: 8,
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: 0.1,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 2 },
+          marginBottom: 20,
+        }}
+        contentContainerStyle={{ paddingBottom: 15 }}
+      >
+        {missingItems ? (
+          Object.entries(missingItems).map(([category, items]) => {
+            const reorderedItems = items; // No reordering, use original order
+  
+            return (
+              <View key={category} style={{ marginBottom: 20 }}>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    marginBottom: 10,
+                    color: theme.colors.primary,
+                  }}
+                >
+                  {category}
+                </Text>
+                {reorderedItems.map((item, itemIndex) => {
+                  const actualIndex = items.indexOf(item);
+                  return (
                     <View
+                      key={actualIndex}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        flex: 1,
+                        justifyContent: 'space-between',
+                        marginBottom: 10,
                       }}
                     >
-                      <TouchableOpacity
-                        onPress={() => decrementCount(category, actualIndex)}
-                      >
-                        <Text
+                      {circleMode && (
+                        <TouchableOpacity
+                          onPress={() => handleCirclePress(category, actualIndex)}
                           style={{
-                            fontSize: 24,
-                            marginHorizontal: 10,
-                            color: theme.colors.primary,
+                            width: 20,
+                            height: 20,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: theme.colors.primary,
+                            backgroundColor: checkedItems.includes(
+                              `${category}-${actualIndex}`
+                            )
+                              ? theme.colors.primary
+                              : 'transparent',
+                            marginRight: 10,
                           }}
-                        >
-                          -
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TextInput
+                        />
+                      )}
+  
+                      <TouchableOpacity
+                        onLongPress={handleLongPressItem}
                         style={{
-                          fontSize: 16,
-                          fontWeight: 'bold',
-                          borderColor: theme.colors.border,
-                          borderWidth: 1,
-                          borderRadius: 5,
-                          width: 50,
-                          textAlign: 'center',
-                          color: theme.colors.text,
+                          flex: 2,
+                          flexDirection: 'row',
+                          alignItems: 'center',
                         }}
-                        value={
-                          inputValues[`${category}-${actualIndex}`] !== undefined
-                            ? inputValues[`${category}-${actualIndex}`]
-                            : String(item.missing)
-                        }
-                        keyboardType="numeric"
-                        onChangeText={(text) =>
-                          handleInputChange(category, actualIndex, text)
-                        }
-                        onBlur={() => handleInputBlur(category, actualIndex)}
-                        onFocus={() => setIsEditing(true)}
-                      />
-
-                      <TouchableOpacity
-                        onPress={() => incrementCount(category, actualIndex)}
                       >
+                        <Image
+                          source={{ uri: item.image || 'placeholder.jpg' }}
+                          style={{
+                            width: 40,
+                            height: 40,
+                            marginRight: 10,
+                            borderRadius: 100,
+                            backgroundColor: "white"
+                          }}
+                        />
                         <Text
                           style={{
-                            fontSize: 24,
-                            marginHorizontal: 10,
-                            color: theme.colors.primary,
+                            fontSize: 16,
+                            color: theme.colors.text,
                           }}
                         >
-                          +
+                          {item.name}
                         </Text>
                       </TouchableOpacity>
+  
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          flex: 1,
+                        }}
+                      >
+                        <TouchableOpacity
+                          onPress={() => decrementCount(category, actualIndex)}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 24,
+                              marginHorizontal: 10,
+                              color: theme.colors.primary,
+                            }}
+                          >
+                            -
+                          </Text>
+                        </TouchableOpacity>
+  
+                        <TextInput
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 'bold',
+                            borderColor: theme.colors.border,
+                            borderWidth: 1,
+                            borderRadius: 5,
+                            width: 50,
+                            textAlign: 'center',
+                            color: theme.colors.text,
+                          }}
+                          value={
+                            inputValues[`${category}-${actualIndex}`] !== undefined
+                              ? inputValues[`${category}-${actualIndex}`]
+                              : String(item.missing)
+                          }
+                          keyboardType="numeric"
+                          onChangeText={(text) =>
+                            handleInputChange(category, actualIndex, text)
+                          }
+                          onBlur={() => handleInputBlur(category, actualIndex)}
+                          onFocus={() => setIsEditing(true)}
+                        />
+  
+                        <TouchableOpacity
+                          onPress={() => incrementCount(category, actualIndex)}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 24,
+                              marginHorizontal: 10,
+                              color: theme.colors.primary,
+                            }}
+                          >
+                            +
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
-          );
-        })
-      ) : (
-        <Text
-          style={{
-            fontSize: 18,
-            textAlign: 'center',
-            color: theme.colors.onSurface,
-          }}
-        >
-          No missing items found.
-        </Text>
+                  );
+                })}
+              </View>
+            );
+          })
+        ) : (
+          <Text
+            style={{
+              fontSize: 18,
+              textAlign: 'center',
+              color: theme.colors.onSurface,
+            }}
+          >
+            No missing items found.
+          </Text>
+        )}
+      </ScrollView>
+  
+      {circleMode && (
+        <View style={{ marginBottom: 10 }}>
+          <Button
+            title="Delete Selected Items"
+            onPress={deleteCheckedItems}
+            color="#FF3B30"
+          />
+        </View>
       )}
-    </ScrollView>
-
-    {circleMode && (
+  
       <View style={{ marginBottom: 10 }}>
         <Button
-          title="Delete Selected Items"
-          onPress={deleteCheckedItems}
+          title="Show Recommended Crates"
+          onPress={() => navigation.navigate('RecommendedCrates', { bar })}
+          color="#FFA500"
+        />
+      </View>
+  
+      <View style={{ marginBottom: 10 }}>
+        <Button title="Share List" onPress={shareList} color="#4CAF50" />
+      </View>
+  
+      <View style={{ marginBottom: 10 }}>
+        <Button
+          title="Delete All Items"
+          onPress={deleteAllItemsForBar}
           color="#FF3B30"
         />
       </View>
-    )}
-
-    <View style={{ marginBottom: 10 }}>
-      <Button
-        title="Show Recommended Crates"
-        onPress={() => navigation.navigate('RecommendedCrates', { bar })}
-        color="#FFA500"
-      />
     </View>
-
-    <View style={{ marginBottom: 10 }}>
-      <Button title="Share List" onPress={shareList} color="#4CAF50" />
-    </View>
-
-    <View style={{ marginBottom: 10 }}>
-      <Button title="Delete All Items" onPress={deleteAllItemsForBar} color="#FF3B30" />
-    </View>
-  </View>
-  );
+  );  
 };
 
 export default MissingItemsScreen;

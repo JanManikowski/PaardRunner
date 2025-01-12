@@ -52,8 +52,6 @@ export const createBarInFirebase = async (orgId, bar) => {
     const barRef = doc(db, 'organizations', orgId, 'bars', bar.name);
     await setDoc(barRef, {
       name: bar.name,
-      numShelves: bar.numShelves,
-      numFridges: bar.numFridges,
       orgId: bar.orgId,
       color: bar.color || '#FFFFFF',
     }, { merge: true });
