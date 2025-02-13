@@ -243,31 +243,50 @@ const MissingItemsScreen = ({ route }) => {
     setInputValues(prev => ({ ...prev, [`${category}-${index}`]: value }));
   };
 
-  const handleInputBlur = (category, index) => {
-    const updatedItems = [...missingItems[category]];
-    const newCount = parseInt(inputValues[`${category}-${index}`], 10);
-    if (!isNaN(newCount)) {
-      updatedItems[index].missing = newCount;
-    }
-    setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
-    setIsEditing(false);
-  };
+  const handleInputBlur = async (category, index) => {
+  const updatedItems = [...missingItems[category]];
+  const newCount = parseInt(inputValues[`${category}-${index}`], 10);
+  if (!isNaN(newCount)) {
+    updatedItems[index].missing = newCount;
+    // Update AsyncStorage with the new missing value.
+    const missingKey = `missing_${updatedItems[index].id}_${bar.orgId}_${bar.name}`;
+    await AsyncStorage.setItem(missingKey, newCount.toString());
+  }
+  setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
+  setIsEditing(false);
+};
 
-  const incrementCount = (category, index) => {
-    const currentValue =
-      parseInt(inputValues[`${category}-${index}`], 10) ||
-      missingItems[category][index].missing;
-    const updatedValue = currentValue + 1;
-    handleInputChange(category, index, String(updatedValue));
-  };
 
-  const decrementCount = (category, index) => {
-    const currentValue =
-      parseInt(inputValues[`${category}-${index}`], 10) ||
-      missingItems[category][index].missing;
-    const updatedValue = currentValue > 0 ? currentValue - 1 : 0;
-    handleInputChange(category, index, String(updatedValue));
-  };
+const updateMissingValue = async (category, index, newValue) => {
+  // Update local state
+  const updatedItems = [...missingItems[category]];
+  updatedItems[index].missing = newValue;
+  setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
+  
+  // Save the new missing count in AsyncStorage using the expected key
+  const missingKey = `missing_${updatedItems[index].id}_${bar.orgId}_${bar.name}`;
+  await AsyncStorage.setItem(missingKey, newValue.toString());
+  
+  // Also update the input value state
+  setInputValues(prev => ({ ...prev, [`${category}-${index}`]: newValue.toString() }));
+};
+
+const incrementCount = async (category, index) => {
+  const currentValue =
+    parseInt(inputValues[`${category}-${index}`], 10) ||
+    missingItems[category][index].missing;
+  const updatedValue = currentValue + 1;
+  await updateMissingValue(category, index, updatedValue);
+};
+
+const decrementCount = async (category, index) => {
+  const currentValue =
+    parseInt(inputValues[`${category}-${index}`], 10) ||
+    missingItems[category][index].missing;
+  const updatedValue = currentValue > 0 ? currentValue - 1 : 0;
+  await updateMissingValue(category, index, updatedValue);
+};
+
 
   const deleteItem = async (category, index) => {
     Alert.alert(
@@ -375,6 +394,7 @@ const MissingItemsScreen = ({ route }) => {
         {missingItems ? (
           Object.entries(missingItems).map(([category, items]) => (
             <View key={category} style={{ marginBottom: 20 }}>
+              <TouchableOpacity onLongPress={() => deleteCategory(category)}>
               <Text
                 style={{
                   fontSize: 20,
@@ -385,6 +405,7 @@ const MissingItemsScreen = ({ route }) => {
               >
                 {category}
               </Text>
+              </TouchableOpacity>
               {items.map((item, index) => (
                 <Animated.View
                   key={item.id}

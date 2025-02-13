@@ -44,15 +44,27 @@ const BarDetailScreen = ({ route, navigation }) => {
           Alert.alert('Error', 'No active organization selected');
           return;
         }
-
-        const storedCustomItemsKey = `customItems_${activeOrgId}_${bar.id}`;
-        const storedCustomItems = await AsyncStorage.getItem(storedCustomItemsKey);
-        const customItems = storedCustomItems ? JSON.parse(storedCustomItems) : [];
-
-        const newItem = { name: customItem, categoryName, missing: 0 };
-        const updatedCustomItems = [...customItems, newItem];
-        await AsyncStorage.setItem(storedCustomItemsKey, JSON.stringify(updatedCustomItems));
-
+  
+        // Get existing items from AsyncStorage (stored under "items")
+        const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
+  
+        // Create a new item with a unique id
+        const newItem = { 
+          id: Date.now().toString(), // or use a UUID generator for more uniqueness
+          name: customItem, 
+          categoryName, 
+          orgId: activeOrgId,
+          missing: 1  // set to 1 so it appears in the missing items list
+        };
+  
+        // Add the new item to the list and store it back in AsyncStorage
+        const updatedItems = [...storedItems, newItem];
+        await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
+  
+        // ALSO store the missing count using the same key pattern as MissingItemsScreen expects
+        const missingKey = `missing_${newItem.id}_${bar.orgId}_${bar.name}`;
+        await AsyncStorage.setItem(missingKey, newItem.missing.toString());
+  
         Toast.show({
           type: 'success',
           text1: 'Success',
@@ -67,6 +79,8 @@ const BarDetailScreen = ({ route, navigation }) => {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Please enter a valid item name.' });
     }
   };
+
+  
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
@@ -146,7 +160,7 @@ const BarDetailScreen = ({ route, navigation }) => {
             borderRadius: 5,
             alignItems: 'center',
           }}
-          onPress={handleAddCustomItem}
+          onPress={() => handleAddCustomItem('Custom')}
         >
           <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>
             Add Custom Item

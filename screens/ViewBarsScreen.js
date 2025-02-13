@@ -284,6 +284,19 @@ const ViewBarsScreen = ({ navigation }) => {
           />
         </View>
       )}
+      <TouchableOpacity
+  style={{
+    padding: 15,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+    marginTop: 20,
+    alignItems: 'center',
+  }}
+  onPress={() => navigation.navigate('AllMissingItems')}
+>
+  <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>View All Missing Items</Text>
+</TouchableOpacity>
+
     </View>
   );
 };

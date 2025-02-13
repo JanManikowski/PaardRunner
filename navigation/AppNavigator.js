@@ -17,6 +17,7 @@ import AdminFeaturesScreen from '../screens/AdminFeaturesScreen';
 import { NativeBaseProvider } from 'native-base';
 import CustomCratesScreen from '../screens/CustomCrateScreen';
 import RecommendedCratesScreen from '../screens/RecommendedCratesScreen';
+import AllMissingItemsScreen from '../screens/old paard hardcoded/AllMissingItemsScreen';
 
 const Stack = createStackNavigator();
 
@@ -40,6 +41,7 @@ const AppNavigator = () => {
         <Stack.Screen name="AdminFeatures" component={AdminFeaturesScreen} />
         <Stack.Screen name="CustomCrates" component={CustomCratesScreen} />
         <Stack.Screen name="RecommendedCrates" component={RecommendedCratesScreen} />
+        <Stack.Screen name="AllMissingItems" component={AllMissingItemsScreen} />
       </Stack.Navigator>
     </FridgeProvider>
     </NativeBaseProvider>

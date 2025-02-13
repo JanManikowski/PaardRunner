@@ -6,7 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 const CategoryListScreen = ({ route, navigation }) => {
   const { categories, bar, categoryName } = route.params; // Receive `categories` and `bar` via route.params
-  const { theme } = useContext(ThemeContext);
+  const { theme } = useContext(ThemeContext)
   const [items, setItems] = useState([]);
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
 
