@@ -5,10 +5,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
 const CategoryListScreen = ({ route, navigation }) => {
-  const { categories, bar } = route.params; // Receive `categories` and `bar` via route.params
+  const { categories, bar, categoryName } = route.params; // Receive `categories` and `bar` via route.params
   const { theme } = useContext(ThemeContext);
   const [items, setItems] = useState([]);
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
+
+  useEffect(() => {
+    if (categoryName && categories?.length) {
+      const index = categories.findIndex((cat) => cat.name === categoryName);
+      if (index !== -1) {
+        setCurrentCategoryIndex(index);
+      }
+    }
+  }, [categoryName, categories]);
 
   const currentCategoryName = categories[currentCategoryIndex]?.name;
 

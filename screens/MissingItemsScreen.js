@@ -1,11 +1,28 @@
 import React, { useContext, useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, TextInput, BackHandler, Share, Button, Image } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+  TextInput,
+  BackHandler,
+  Share,
+  Button,
+  Image,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  Animated,
+  Easing,
+} from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { Animated, Easing } from 'react-native';
 
+// Adjust this constant to match your list item’s approximate height (including margins)
+const ITEM_HEIGHT = 60;
 
 const MissingItemsScreen = ({ route }) => {
   const { bar } = route.params;
@@ -16,46 +33,78 @@ const MissingItemsScreen = ({ route }) => {
   const { theme } = useContext(ThemeContext);
   const [circleMode, setCircleMode] = useState(false);
   const [checkedItems, setCheckedItems] = useState([]);
+  // We store an Animated.Value for each item, keyed by the item id.
   const [animatedValues, setAnimatedValues] = useState({});
 
+  // Enable LayoutAnimation on Android
+  useEffect(() => {
+    if (
+      Platform.OS === 'android' &&
+      UIManager.setLayoutAnimationEnabledExperimental
+    ) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  // Initialize or update animated values whenever missingItems change.
   useEffect(() => {
     if (missingItems) {
-      const initialValues = {};
+      const newValues = {};
       Object.entries(missingItems).forEach(([category, items]) => {
-        items.forEach((_, index) => {
-          initialValues[`${category}-${index}`] = new Animated.Value(0);
+        items.forEach(item => {
+          // Use an existing value if available; otherwise create a new Animated.Value.
+          newValues[item.id] = animatedValues[item.id] || new Animated.Value(0);
         });
       });
-      setAnimatedValues(initialValues);
+      setAnimatedValues(newValues);
     }
   }, [missingItems]);
-  
 
+  // Fetch missing items whenever the screen is focused.
   useFocusEffect(
     useCallback(() => {
       const fetchMissingItemsOnFocus = async () => {
-        await fetchMissingItems(); // Re-fetch missing items when the screen is focused
+        await fetchMissingItems();
       };
-  
       fetchMissingItemsOnFocus();
     }, [bar.name])
   );
-  
+
+  // Toggle circle mode on long press.
   const handleLongPressItem = () => {
-    setCircleMode(!circleMode); // Toggle circle mode
+    setCircleMode(!circleMode);
   };
 
-  const handleCirclePress = (category, itemIndex) => {
-    const itemKey = `${category}-${itemIndex}`;
-    setCheckedItems((prev) =>
-      prev.includes(itemKey)
-        ? prev.filter((key) => key !== itemKey) // Uncheck item
-        : [...prev, itemKey] // Check item
-    );
+  // When a circle is tapped, animate the item downward before reordering.
+  const handleToggleCompleted = (category, index, item) => {
+    const animatedVal = animatedValues[item.id] || new Animated.Value(0);
+    const items = missingItems[category];
+    // Calculate how far down the tapped item should travel.
+    const offset = (items.length - 1 - index) * ITEM_HEIGHT;
+
+    Animated.timing(animatedVal, {
+      toValue: offset,
+      duration: 300,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      // After the animation, animate the layout reordering.
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      const updatedItems = [...items];
+      // Remove the tapped item.
+      const [toggledItem] = updatedItems.splice(index, 1);
+      // Toggle its "completed" flag.
+      toggledItem.completed = !toggledItem.completed;
+      // Append it to the end of the category list.
+      updatedItems.push(toggledItem);
+      setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
+      // Reset the animated value for next time.
+      animatedVal.setValue(0);
+    });
   };
 
+  // Delete all items that have been checked (if using multi-select).
   const deleteCheckedItems = async () => {
-    // Confirm deletion with the user
     Alert.alert(
       'Delete Checked Items',
       'Are you sure you want to delete all selected items?',
@@ -66,57 +115,53 @@ const MissingItemsScreen = ({ route }) => {
           style: 'destructive',
           onPress: async () => {
             const updatedMissingItems = { ...missingItems };
-  
             for (const key of checkedItems) {
               const [category, index] = key.split('-');
               const itemIndex = parseInt(index, 10);
-  
-              // Remove from local storage
               const item = updatedMissingItems[category][itemIndex];
               const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
               await AsyncStorage.removeItem(missingKey);
-  
-              // Remove from the local state
               updatedMissingItems[category].splice(itemIndex, 1);
               if (updatedMissingItems[category].length === 0) {
-                delete updatedMissingItems[category]; // Remove empty categories
+                delete updatedMissingItems[category];
               }
             }
-  
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setMissingItems(updatedMissingItems);
-            setCheckedItems([]); // Reset checked items
+            setCheckedItems([]);
           },
         },
       ]
     );
   };
-  
+
+  // Prevent navigating back when editing.
   useEffect(() => {
     const backAction = () => {
       if (isEditing) {
         Alert.alert(
           'Finish Editing',
           'Please finish editing before navigating back.',
-          [{ text: 'OK', onPress: () => {} }],
+          [{ text: 'OK' }],
           { cancelable: false }
         );
         return true;
       }
       return false;
     };
-    
 
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
 
-    const beforeRemoveListener = navigation.addListener('beforeRemove', (e) => {
-      if (!isEditing) {
-        return;
-      }
+    const beforeRemoveListener = navigation.addListener('beforeRemove', e => {
+      if (!isEditing) return;
       e.preventDefault();
       Alert.alert(
         'Finish Editing',
         'Please finish editing before leaving this screen.',
-        [{ text: 'OK', onPress: () => {} }],
+        [{ text: 'OK' }],
         { cancelable: false }
       );
     });
@@ -127,52 +172,47 @@ const MissingItemsScreen = ({ route }) => {
     };
   }, [isEditing, navigation]);
 
-  // Fetch missing items from all categories for the given bar
+  // Fetch missing items from AsyncStorage and organize them by category.
   const fetchMissingItems = async () => {
     let categorizedItems = {};
-
     const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
-    const filteredItems = storedItems.filter(item => item.orgId === bar.orgId);
+    const filteredItems = storedItems.filter(
+      item => item.orgId === bar.orgId
+    );
 
-    // Fetch missing amounts for each item
     for (const item of filteredItems) {
       const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
       const savedMissing = await AsyncStorage.getItem(missingKey);
       const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
-
       if (missingAmount > 0) {
         if (!categorizedItems[item.categoryName]) {
           categorizedItems[item.categoryName] = [];
         }
-        categorizedItems[item.categoryName].push({ ...item, missing: missingAmount });
+        categorizedItems[item.categoryName].push({
+          ...item,
+          missing: missingAmount,
+          completed: false,
+        });
       }
     }
-
-    if (Object.keys(categorizedItems).length === 0) {
-      setMissingItems(null);
-    } else {
-      setMissingItems(categorizedItems);
-    }
+    setMissingItems(
+      Object.keys(categorizedItems).length ? categorizedItems : null
+    );
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchMissingItems();
-    }, [bar.name])
-  );
-
+  // Generate a formatted message of missing items.
   const generateMissingItemsMessage = () => {
     const header = `*${bar.name} is missing these items:*`;
-
     let message = header;
     if (missingItems) {
       for (const [category, items] of Object.entries(missingItems)) {
         if (items.length > 0) {
           message += `*${category}:*\n`;
           items.forEach(item => {
-            message += `- ${item.type.padEnd(20, ' ')}: ${String(item.missing).padStart(3, ' ')}\n`;
+            message += `- ${item.type.padEnd(20, ' ')}: ${String(
+              item.missing
+            ).padStart(3, ' ')}\n`;
           });
-          message += '';
         }
       }
     } else {
@@ -190,46 +230,49 @@ const MissingItemsScreen = ({ route }) => {
   const shareList = async () => {
     const message = generateMissingItemsMessage();
     try {
-      await Share.share({
-        message: message,
-      });
+      await Share.share({ message });
     } catch (error) {
       alert(error.message);
     }
   };
 
-  const handleInputChange = (category, itemIndex, value) => {
+  // Update the missing count in the state and input field.
+  const handleInputChange = (category, index, value) => {
     const updatedItems = [...missingItems[category]];
-    updatedItems[itemIndex].missing = value;
-    setInputValues(prev => ({ ...prev, [`${category}-${itemIndex}`]: value }));
+    updatedItems[index].missing = value;
+    setInputValues(prev => ({ ...prev, [`${category}-${index}`]: value }));
   };
 
-  const handleInputBlur = (category, itemIndex) => {
+  const handleInputBlur = (category, index) => {
     const updatedItems = [...missingItems[category]];
-    const newCount = parseInt(inputValues[`${category}-${itemIndex}`], 10);
+    const newCount = parseInt(inputValues[`${category}-${index}`], 10);
     if (!isNaN(newCount)) {
-      updatedItems[itemIndex].missing = newCount;
+      updatedItems[index].missing = newCount;
     }
     setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
     setIsEditing(false);
   };
 
-  const incrementCount = (category, itemIndex) => {
-    const currentValue = parseInt(inputValues[`${category}-${itemIndex}`], 10) || missingItems[category][itemIndex].missing;
+  const incrementCount = (category, index) => {
+    const currentValue =
+      parseInt(inputValues[`${category}-${index}`], 10) ||
+      missingItems[category][index].missing;
     const updatedValue = currentValue + 1;
-    handleInputChange(category, itemIndex, String(updatedValue));
+    handleInputChange(category, index, String(updatedValue));
   };
 
-  const decrementCount = (category, itemIndex) => {
-    const currentValue = parseInt(inputValues[`${category}-${itemIndex}`], 10) || missingItems[category][itemIndex].missing;
+  const decrementCount = (category, index) => {
+    const currentValue =
+      parseInt(inputValues[`${category}-${index}`], 10) ||
+      missingItems[category][index].missing;
     const updatedValue = currentValue > 0 ? currentValue - 1 : 0;
-    handleInputChange(category, itemIndex, String(updatedValue));
+    handleInputChange(category, index, String(updatedValue));
   };
 
-  const deleteItem = async (category, itemIndex) => {
+  const deleteItem = async (category, index) => {
     Alert.alert(
       'Delete Item',
-      `Are you sure you want to delete ${missingItems[category][itemIndex].name}?`,
+      `Are you sure you want to delete ${missingItems[category][index].name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -237,9 +280,14 @@ const MissingItemsScreen = ({ route }) => {
           style: 'destructive',
           onPress: async () => {
             const updatedItems = [...missingItems[category]];
-            const item = updatedItems[itemIndex];
-            updatedItems.splice(itemIndex, 1);
-            await AsyncStorage.removeItem(`missing_${item.id}_${bar.orgId}_${bar.name}`);
+            const item = updatedItems[index];
+            updatedItems.splice(index, 1);
+            await AsyncStorage.removeItem(
+              `missing_${item.id}_${bar.orgId}_${bar.name}`
+            );
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut
+            );
             setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
           },
         },
@@ -247,7 +295,7 @@ const MissingItemsScreen = ({ route }) => {
     );
   };
 
-  const deleteCategory = async (category) => {
+  const deleteCategory = async category => {
     Alert.alert(
       'Delete Category',
       `Are you sure you want to delete all items in ${category}?`,
@@ -259,10 +307,15 @@ const MissingItemsScreen = ({ route }) => {
           onPress: async () => {
             const items = missingItems[category];
             for (const item of items) {
-              await AsyncStorage.removeItem(`missing_${item.id}_${bar.orgId}_${bar.name}`);
+              await AsyncStorage.removeItem(
+                `missing_${item.id}_${bar.orgId}_${bar.name}`
+              );
             }
             const updatedMissingItems = { ...missingItems };
             delete updatedMissingItems[category];
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut
+            );
             setMissingItems(updatedMissingItems);
           },
         },
@@ -282,9 +335,14 @@ const MissingItemsScreen = ({ route }) => {
           onPress: async () => {
             for (const [category, items] of Object.entries(missingItems)) {
               for (const item of items) {
-                await AsyncStorage.removeItem(`missing_${item.id}_${bar.orgId}_${bar.name}`);
+                await AsyncStorage.removeItem(
+                  `missing_${item.id}_${bar.orgId}_${bar.name}`
+                );
               }
             }
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut
+            );
             setMissingItems(null);
           },
         },
@@ -293,14 +351,7 @@ const MissingItemsScreen = ({ route }) => {
   };
 
   return (
-    <View
-      style={{
-        padding: 16,
-        backgroundColor: theme.colors.background,
-        flex: 1,
-        paddingBottom: -10,
-      }}
-    >
+    <View style={{ padding: 16, backgroundColor: theme.colors.background, flex: 1 }}>
       <Text
         style={{
           fontSize: 24,
@@ -317,167 +368,115 @@ const MissingItemsScreen = ({ route }) => {
           backgroundColor: theme.colors.surfaceVariant,
           padding: 15,
           borderRadius: 8,
-          shadowColor: theme.colors.shadow,
-          shadowOpacity: 0.1,
-          shadowRadius: 5,
-          shadowOffset: { width: 0, height: 2 },
           marginBottom: 20,
         }}
         contentContainerStyle={{ paddingBottom: 15 }}
       >
         {missingItems ? (
-          Object.entries(missingItems).map(([category, items]) => {
-            const reorderedItems = items; // No reordering, use original order
-  
-            return (
-              <View key={category} style={{ marginBottom: 20 }}>
-                <Text
+          Object.entries(missingItems).map(([category, items]) => (
+            <View key={category} style={{ marginBottom: 20 }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  marginBottom: 10,
+                  color: theme.colors.primary,
+                }}
+              >
+                {category}
+              </Text>
+              {items.map((item, index) => (
+                <Animated.View
+                  key={item.id}
                   style={{
-                    fontSize: 20,
-                    fontWeight: 'bold',
+                    transform: [{ translateY: animatedValues[item.id] || 0 }],
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     marginBottom: 10,
-                    color: theme.colors.primary,
                   }}
                 >
-                  {category}
-                </Text>
-                {reorderedItems.map((item, itemIndex) => {
-                  const actualIndex = items.indexOf(item);
-                  return (
-                    <View
-                      key={actualIndex}
+                  {circleMode && (
+                    <TouchableOpacity
+                      onPress={() => handleToggleCompleted(category, index, item)}
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: 10,
+                        marginRight: 10,
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: theme.colors.primary,
+                        backgroundColor: item.completed
+                          ? theme.colors.primary
+                          : 'transparent',
                       }}
-                    >
-                      {circleMode && (
-                        <TouchableOpacity
-                          onPress={() => handleCirclePress(category, actualIndex)}
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 10,
-                            borderWidth: 1,
-                            borderColor: theme.colors.primary,
-                            backgroundColor: checkedItems.includes(
-                              `${category}-${actualIndex}`
-                            )
-                              ? theme.colors.primary
-                              : 'transparent',
-                            marginRight: 10,
-                          }}
-                        />
-                      )}
-  
-                      <TouchableOpacity
-                        onLongPress={handleLongPressItem}
-                        style={{
-                          flex: 2,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Image
-                          source={{ uri: item.image || 'placeholder.jpg' }}
-                          style={{
-                            width: 40,
-                            height: 40,
-                            marginRight: 10,
-                            borderRadius: 100,
-                            backgroundColor: "white"
-                          }}
-                        />
-                        <Text
-                          style={{
-                            fontSize: 16,
-                            color: theme.colors.text,
-                          }}
-                        >
-                          {item.name}
-                        </Text>
-                      </TouchableOpacity>
-  
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          flex: 1,
-                        }}
-                      >
-                        <TouchableOpacity
-                          onPress={() => decrementCount(category, actualIndex)}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 24,
-                              marginHorizontal: 10,
-                              color: theme.colors.primary,
-                            }}
-                          >
-                            -
-                          </Text>
-                        </TouchableOpacity>
-  
-                        <TextInput
-                          style={{
-                            fontSize: 16,
-                            fontWeight: 'bold',
-                            borderColor: theme.colors.border,
-                            borderWidth: 1,
-                            borderRadius: 5,
-                            width: 50,
-                            textAlign: 'center',
-                            color: theme.colors.text,
-                          }}
-                          value={
-                            inputValues[`${category}-${actualIndex}`] !== undefined
-                              ? inputValues[`${category}-${actualIndex}`]
-                              : String(item.missing)
-                          }
-                          keyboardType="numeric"
-                          onChangeText={(text) =>
-                            handleInputChange(category, actualIndex, text)
-                          }
-                          onBlur={() => handleInputBlur(category, actualIndex)}
-                          onFocus={() => setIsEditing(true)}
-                        />
-  
-                        <TouchableOpacity
-                          onPress={() => incrementCount(category, actualIndex)}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 24,
-                              marginHorizontal: 10,
-                              color: theme.colors.primary,
-                            }}
-                          >
-                            +
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            );
-          })
+                    />
+                  )}
+                  <TouchableOpacity
+                    onLongPress={handleLongPressItem}
+                    style={{
+                      flex: 2,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Image
+                      source={{ uri: item.image || 'placeholder.jpg' }}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        marginRight: 10,
+                        borderRadius: 100,
+                        backgroundColor: 'white',
+                      }}
+                    />
+                    <Text style={{ fontSize: 16, color: theme.colors.text }}>
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <TouchableOpacity onPress={() => decrementCount(category, index)}>
+                      <Text style={{ fontSize: 24, marginHorizontal: 10, color: theme.colors.primary }}>
+                        -
+                      </Text>
+                    </TouchableOpacity>
+                    <TextInput
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 'bold',
+                        borderColor: theme.colors.border,
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        width: 50,
+                        textAlign: 'center',
+                        color: theme.colors.text,
+                      }}
+                      value={
+                        inputValues[`${category}-${index}`] !== undefined
+                          ? inputValues[`${category}-${index}`]
+                          : String(item.missing)
+                      }
+                      keyboardType="numeric"
+                      onChangeText={text => handleInputChange(category, index, text)}
+                      onBlur={() => handleInputBlur(category, index)}
+                      onFocus={() => setIsEditing(true)}
+                    />
+                    <TouchableOpacity onPress={() => incrementCount(category, index)}>
+                      <Text style={{ fontSize: 24, marginHorizontal: 10, color: theme.colors.primary }}>
+                        +
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              ))}
+            </View>
+          ))
         ) : (
-          <Text
-            style={{
-              fontSize: 18,
-              textAlign: 'center',
-              color: theme.colors.onSurface,
-            }}
-          >
+          <Text style={{ fontSize: 18, textAlign: 'center', color: theme.colors.onSurface }}>
             No missing items found.
           </Text>
         )}
       </ScrollView>
-  
       {circleMode && (
         <View style={{ marginBottom: 10 }}>
           <Button
@@ -487,7 +486,6 @@ const MissingItemsScreen = ({ route }) => {
           />
         </View>
       )}
-  
       <View style={{ marginBottom: 10 }}>
         <Button
           title="Show Recommended Crates"
@@ -495,20 +493,14 @@ const MissingItemsScreen = ({ route }) => {
           color="#FFA500"
         />
       </View>
-  
       <View style={{ marginBottom: 10 }}>
         <Button title="Share List" onPress={shareList} color="#4CAF50" />
       </View>
-  
       <View style={{ marginBottom: 10 }}>
-        <Button
-          title="Delete All Items"
-          onPress={deleteAllItemsForBar}
-          color="#FF3B30"
-        />
+        <Button title="Delete All Items" onPress={deleteAllItemsForBar} color="#FF3B30" />
       </View>
     </View>
-  );  
+  );
 };
 
 export default MissingItemsScreen;

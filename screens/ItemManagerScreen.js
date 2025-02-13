@@ -120,6 +120,10 @@ const ItemManagerScreen = ({ navigation }) => {
         <Text style={{ color: theme.colors.onPrimary }}>Add New Category</Text>
       </TouchableOpacity>
 
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 10, color: theme.colors.text }}>
+        Categories:
+      </Text>
+
       {/* Modal for Adding New Category */}
       <Modal
         animationType="slide"
