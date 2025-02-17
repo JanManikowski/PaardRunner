@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { View, ScrollView, TouchableOpacity, Image, Text, StyleSheet } from 'react-native';
+import { Icon } from 'react-native-elements';
 import { ThemeContext } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -68,8 +69,10 @@ const CategoryListScreen = ({ route, navigation }) => {
           onPress={() => navigateToCategory('previous')}
           style={[styles.navButton, { backgroundColor: theme.colors.primary }]}
         >
+          <Icon name="arrow-back-ios" type="material" size={12} color={theme.colors.onPrimary} />
           <Text style={[styles.navButtonText, { color: theme.colors.onPrimary }]}>
-            {`< ${previousCategoryName.slice(0, 10)}${previousCategoryName.length > 10 ? '...' : ''}`}
+            {previousCategoryName.slice(0, 10)}
+            {previousCategoryName.length > 10 ? '...' : ''}
           </Text>
         </TouchableOpacity>
 
@@ -86,8 +89,10 @@ const CategoryListScreen = ({ route, navigation }) => {
           style={[styles.navButton, { backgroundColor: theme.colors.primary }]}
         >
           <Text style={[styles.navButtonText, { color: theme.colors.onPrimary }]}>
-            {`${nextCategoryName.slice(0, 10)}${nextCategoryName.length > 10 ? '...' : ''} >`}
+            {nextCategoryName.slice(0, 10)}
+            {nextCategoryName.length > 10 ? '...' : ''}
           </Text>
+          <Icon name="arrow-forward-ios" type="material" size={12} color={theme.colors.onPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -115,7 +120,9 @@ const CategoryListScreen = ({ route, navigation }) => {
             {/* Left side: Image + Name */}
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Image
-                source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
+                source={
+                  item.image ? { uri: item.image } : require('../assets/placeholder.jpg')
+                }
                 style={{
                   width: 50,
                   height: 50,
@@ -131,7 +138,7 @@ const CategoryListScreen = ({ route, navigation }) => {
 
             {/* Right side: Missing amount (if any) */}
             {item.missing > 0 && (
-              <Text style={{ color: theme.colors.error, fontSize: 16, paddingRight:"10" }}>
+              <Text style={{ color: theme.colors.error, fontSize: 16, paddingRight: 10 }}>
                 Missing: {item.missing}
               </Text>
             )}
@@ -151,15 +158,16 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   navButton: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 5,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 10,
+    borderRadius: 5,
     maxWidth: 120,
   },
   navButtonText: {
     fontSize: 14,
+    marginHorizontal: 5,
     textAlign: 'center',
   },
   currentCategory: {

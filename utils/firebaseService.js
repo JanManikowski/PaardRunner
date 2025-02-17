@@ -305,72 +305,100 @@ export const fetchOrganizationsByCode = async (code) => {
     const organizationsSnapshot = await getDocs(orgQuery);
 
     if (organizationsSnapshot.empty) {
-      console.log('No organizations found with the provided code.');
+      console.log("No organizations found with the provided code.");
       return [];
     }
-
+    
     const organizations = [];
-
+    
     for (const orgDoc of organizationsSnapshot.docs) {
+      console.log("Processing organization document with id:", orgDoc.id);
       const orgData = { id: orgDoc.id, ...orgDoc.data() };
-      console.log('\n=== ORGANIZATION FETCHED FROM DATABASE ===');
-      console.log(JSON.stringify(orgData, null, 2));
-
-      // Fetch all bars for this organization
-      const barsSnapshot = await getDocs(collection(db, 'organizations', orgData.id, 'bars'));
+      console.log("Fetched organization:", orgData);
+    
+      // Fetch bars for this organization
+      const barsRef = collection(db, 'organizations', orgData.id, 'bars');
+      console.log("Fetching bars from path:", barsRef.path);
+      const barsSnapshot = await getDocs(barsRef);
+      console.log("Bars snapshot size:", barsSnapshot.size);
       const bars = [];
-
       for (const barDoc of barsSnapshot.docs) {
         const barData = { id: barDoc.id, ...barDoc.data() };
-        console.log('\n--- BAR FETCHED FROM DATABASE ---');
-        console.log(JSON.stringify(barData, null, 2));
+        console.log("Bar fetched:", barData);
         bars.push(barData);
       }
-
       if (bars.length > 0) {
         await AsyncStorage.setItem(`bars_${orgData.id}`, JSON.stringify(bars));
         console.log(`Bars saved to AsyncStorage for organization ID: ${orgData.id}`);
+      } else {
+        console.log(`No bars found for organization ID: ${orgData.id}`);
       }
-
       orgData.bars = bars;
-
-      // Fetch all categories for this organization (not per bar)
-      const categoriesSnapshot = await getDocs(collection(db, 'organizations', orgData.id, 'categories'));
+    
+      // Fetch crates for this organization
+      const cratesRef = collection(db, 'organizations', orgData.id, 'crates');
+      console.log("Fetching crates from path:", cratesRef.path);
+      const cratesSnapshot = await getDocs(cratesRef);
+      console.log("Crates snapshot size:", cratesSnapshot.size);
+      const crates = [];
+      cratesSnapshot.forEach((crateDoc) => {
+        const crateData = { id: crateDoc.id, ...crateDoc.data() };
+        console.log("Crate fetched:", crateData);
+        crates.push(crateData);
+      });
+      orgData.crates = crates;
+      if (crates.length > 0) {
+        await AsyncStorage.setItem(`crates_${orgData.id}`, JSON.stringify(crates));
+        console.log(`Crates saved to AsyncStorage for organization ID: ${orgData.id}`);
+      } else {
+        console.log(`No crates found for organization ID: ${orgData.id}`);
+      }
+    
+      // Fetch categories (and items) for this organization
+      const categoriesRef = collection(db, 'organizations', orgData.id, 'categories');
+      console.log("Fetching categories from path:", categoriesRef.path);
+      const categoriesSnapshot = await getDocs(categoriesRef);
+      console.log("Categories snapshot size:", categoriesSnapshot.size);
       const categories = [];
-
       for (const categoryDoc of categoriesSnapshot.docs) {
         const categoryData = { id: categoryDoc.id, ...categoryDoc.data() };
-        console.log('\n>>> CATEGORY FETCHED FROM DATABASE <<<');
-        console.log(JSON.stringify(categoryData, null, 2));
-
-        // Fetch all items for this category
-        const itemsSnapshot = await getDocs(collection(db, 'organizations', orgData.id, 'categories', categoryData.id, 'items'));
+        console.log("Category fetched:", categoryData);
+    
+        // Use the category name (or fallback to id) for the items collection path
+        const categoryIdentifier = categoryData.name || categoryData.id;
+        const itemsRef = collection(db, 'organizations', orgData.id, 'categories', categoryIdentifier, 'items');
+        console.log("Fetching items from path:", itemsRef.path);
+        const itemsSnapshot = await getDocs(itemsRef);
+        console.log("Items snapshot size for category", categoryIdentifier, ":", itemsSnapshot.size);
         const items = [];
-
-        for (const itemDoc of itemsSnapshot.docs) {
+        itemsSnapshot.forEach((itemDoc) => {
           const itemData = { id: itemDoc.id, ...itemDoc.data() };
-          console.log('\n*** ITEM FETCHED FROM DATABASE ***');
-          console.log(JSON.stringify(itemData, null, 2));
+          console.log("Item fetched:", itemData);
           items.push(itemData);
-        }
-
+        });
         categoryData.items = items;
         categories.push(categoryData);
       }
-
       orgData.categories = categories;
+      if (categories.length > 0) {
+        await AsyncStorage.setItem(`categories_${orgData.id}`, JSON.stringify(categories));
+        console.log(`Categories saved to AsyncStorage for organization ID: ${orgData.id}`);
+      } else {
+        console.log(`No categories found for organization ID: ${orgData.id}`);
+      }
+    
       organizations.push(orgData);
     }
-
-    console.log('\n=== COMPLETE ORGANIZATION DATA FETCHED FROM DATABASE ===');
-    console.log(JSON.stringify(organizations, null, 2));
-
+    
+    console.log("Complete organization data fetched:", JSON.stringify(organizations, null, 2));
     return organizations;
+    
   } catch (error) {
     console.error('Error fetching organizations by code:', error);
     throw error;
   }
 };
+
 
 
 export const deleteOrganization = async (orgId) => {

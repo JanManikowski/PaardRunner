@@ -15,14 +15,15 @@ const ItemDetailScreen = ({ route, navigation }) => {
   const [missing, setMissing] = useState(currentItem?.missing || 0);
   const [customValue, setCustomValue] = useState('');
 
+  // On mount or when currentIndex changes, update currentItem
   useEffect(() => {
     if (items.length > 0 && currentIndex < items.length) {
       setCurrentItem(items[currentIndex]);
     }
   }, [items, currentIndex]);
 
+  // Load missing from AsyncStorage whenever currentItem changes
   useEffect(() => {
-    // Fetch missing data whenever currentItem changes
     const loadData = async () => {
       if (currentItem && currentItem.id && bar) {
         const missingKey = `missing_${currentItem.id}_${bar.orgId}_${bar.name}`;
@@ -30,15 +31,15 @@ const ItemDetailScreen = ({ route, navigation }) => {
         if (savedMissing !== null) {
           setMissing(parseInt(savedMissing, 10));
         } else {
-          setMissing(0); // Reset to 0 if no saved value found
+          setMissing(0);
         }
       }
     };
     loadData();
-  }, [currentItem]);
+  }, [currentItem, bar]);
 
+  // Save missing to AsyncStorage whenever missing changes
   useEffect(() => {
-    // Save missing data whenever it changes
     const saveMissing = async () => {
       if (currentItem && currentItem.id && bar) {
         const missingKey = `missing_${currentItem.id}_${bar.orgId}_${bar.name}`;
@@ -46,19 +47,33 @@ const ItemDetailScreen = ({ route, navigation }) => {
       }
     };
     saveMissing();
-  }, [missing, currentItem]);
+  }, [missing, currentItem, bar]);
 
+  // Only allow missing to be between 0 and 999
   const updateMissing = (value) => {
     setMissing((prevMissing) => {
-      const newMissing = Math.max(0, prevMissing + value);
+      const newMissing = Math.max(0, Math.min(999, prevMissing + value));
       return newMissing;
     });
   };
 
+  // Handle numeric input only, with a max of 999
+  const handleChangeCustomValue = (text) => {
+    // Remove any non-digit characters
+    let numericText = text.replace(/[^0-9]/g, '');
+    // If user typed above 999, clamp to 999
+    if (parseInt(numericText, 10) > 999) {
+      numericText = '999';
+    }
+    setCustomValue(numericText);
+  };
+
+  // Called on submit or when pressing enter
   const handleCustomValue = (isAdd) => {
     const value = parseInt(customValue, 10);
     if (!isNaN(value)) {
       updateMissing(isAdd ? value : -value);
+      setCustomValue('');
     }
   };
 
@@ -66,21 +81,25 @@ const ItemDetailScreen = ({ route, navigation }) => {
     setMissing(0);
   };
 
+  // Circular next/previous logic
   const goToNextItem = () => {
-    if (currentIndex < items.length - 1) {
-      setCurrentIndex((prevIndex) => prevIndex + 1);
-    }
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % items.length);
   };
 
   const goToPreviousItem = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((prevIndex) => prevIndex - 1);
-    }
+    setCurrentIndex((prevIndex) => (prevIndex - 1 + items.length) % items.length);
   };
 
   if (!currentItem || items.length === 0) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: theme.colors.background,
+        }}
+      >
         <Text style={{ color: theme.colors.text }}>No items available</Text>
       </View>
     );
@@ -88,107 +107,175 @@ const ItemDetailScreen = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      {/* Arrow Buttons for navigating between items */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+      {/* Top navigation arrows */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, paddingTop: 100 }}>
         <Button
-          icon={<Icon name="arrow-back" size={30} color={currentIndex === 0 ? '#ccc' : theme.colors.primary} />}
+          icon={
+            <Icon
+              name="arrow-back"
+              size={30}
+              color={theme.colors.primary}
+            />
+          }
           type="clear"
           onPress={goToPreviousItem}
-          disabled={currentIndex === 0}
         />
         <Button
-          icon={<Icon name="arrow-forward" size={30} color={currentIndex === items.length - 1 ? '#ccc' : theme.colors.primary} />}
+          icon={
+            <Icon
+              name="arrow-forward"
+              size={30}
+              color={theme.colors.primary}
+            />
+          }
           type="clear"
           onPress={goToNextItem}
-          disabled={currentIndex === items.length - 1}
         />
       </View>
 
-      <View style={{ backgroundColor: theme.colors.surfaceVariant, borderRadius: 10, marginBottom: 25 }}>
-        {/* Item Details */}
+      {/* Main Card */}
+      <View
+        style={{
+          backgroundColor: theme.colors.surfaceVariant,
+          borderRadius: 10,
+          padding: 16,
+          marginBottom: 20,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 3,
+        }}
+      >
+        {/* Item Name and Stats */}
         <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <Text h4 style={{ color: theme.colors.primary, marginBottom: 10 }}>{currentItem.name || 'Unnamed Item'}</Text>
-          <Text style={{ fontSize: 16, color: theme.colors.error, fontWeight: 'bold' }}>Missing Items: {missing}</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 16 }}>Max Allowed: {currentItem.maxAmount || 'N/A'}</Text>
+          <Text
+            style={{
+              color: theme.colors.primary,
+              fontSize: 22,
+              fontWeight: 'bold',
+              marginBottom: 8,
+            }}
+          >
+            {currentItem.name || 'Unnamed Item'}
+          </Text>
+          <Text style={{ fontSize: 16, color: theme.colors.error, fontWeight: 'bold' }}>
+            Missing: {missing}
+          </Text>
+          <Text style={{ color: theme.colors.text, fontSize: 16 }}>
+            Max Allowed: {currentItem.maxAmount || 'N/A'}
+          </Text>
         </View>
 
-        {/* Update Buttons */}
+        {/* Image + +/- Buttons */}
         <View
           style={{
-            backgroundColor: theme.colors.surfaceVariant,
             flexDirection: 'row',
             justifyContent: 'center',
             alignItems: 'center',
             marginBottom: 20,
           }}
         >
-          <View style={{ justifyContent: 'space-between', height: 120 }}>
+          {/* Left Column */}
+          <View style={{ alignItems: 'center', marginRight: 10 }}>
             <Button
               title="-1"
-              buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
+              buttonStyle={{
+                backgroundColor: '#F44336',
+                borderRadius: 10,
+                marginBottom: 30,
+                width: 80,
+                height: 60,
+              }}
               onPress={() => updateMissing(-1)}
-              containerStyle={{ width: 60, marginBottom: 10 }}
             />
             <Button
               title="-5"
-              buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
+              buttonStyle={{
+                backgroundColor: '#F44336',
+                borderRadius: 10,
+                width: 80,
+                height: 60,
+              }}
               onPress={() => updateMissing(-5)}
-              containerStyle={{ width: 60 }}
             />
           </View>
+
+          {/* Center Image */}
           <Image
-            source={currentItem.image ? { uri: currentItem.image } : require('../assets/placeholder.jpg')}
-            style={{ width: 150, height: 150, marginHorizontal: 20, borderRadius: 10, backgroundColor: 'white' }}
+            source={
+              currentItem.image
+                ? { uri: currentItem.image }
+                : require('../assets/placeholder.jpg')
+            }
+            style={{
+              width: 150,
+              height: 150,
+              marginHorizontal: 20,
+              borderRadius: 10,
+              backgroundColor: '#fff',
+            }}
           />
-          <View style={{ justifyContent: 'space-between', height: 120 }}>
+
+          {/* Right Column */}
+          <View style={{ alignItems: 'center', marginLeft: 10 }}>
             <Button
               title="+1"
-              buttonStyle={{ backgroundColor: '#4CAF50', borderRadius: 10 }}
+              buttonStyle={{
+                backgroundColor: '#4CAF50',
+                borderRadius: 10,
+                marginBottom: 30,
+                width: 80,
+                height: 60,
+              }}
               onPress={() => updateMissing(1)}
-              containerStyle={{ width: 60, marginBottom: 10 }}
             />
             <Button
               title="+5"
-              buttonStyle={{ backgroundColor: '#4CAF50', borderRadius: 10 }}
+              buttonStyle={{
+                backgroundColor: '#4CAF50',
+                borderRadius: 10,
+                width: 80,
+                height: 60,
+              }}
               onPress={() => updateMissing(5)}
-              containerStyle={{ width: 60 }}
             />
           </View>
         </View>
 
+        {/* Custom Value Input */}
         <Input
-          placeholder="Custom value"
+          placeholder="Enter a custom value"
+          placeholderTextColor={theme.colors.onSurface}
           keyboardType="numeric"
           value={customValue}
-          onChangeText={setCustomValue}
-          containerStyle={{ marginBottom: 20, width: '80%', alignSelf: 'center' }}
-          inputStyle={{ textAlign: 'center' }}
+          onChangeText={handleChangeCustomValue}  // <--- changed here
+          containerStyle={{ marginBottom: 10 }}
+          inputContainerStyle={{
+            borderWidth: 1,
+            borderColor: theme.colors.outline,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            backgroundColor: theme.colors.surface,
+          }}
+          inputStyle={{ color: theme.colors.text, textAlign: 'center' }}
+          returnKeyType="done"
+          onSubmitEditing={() => handleCustomValue(true)}
         />
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20 }}>
-        <Button
-          title="Retract Value"
-          buttonStyle={{ backgroundColor: '#F44336', borderRadius: 10 }}
-          containerStyle={{ flex: 1, marginRight: 10 }}
-          onPress={() => handleCustomValue(false)}
-        />
-        <Button
-          title="Add Value"
-          buttonStyle={{ backgroundColor: '#4CAF50', borderRadius: 10 }}
-          containerStyle={{ flex: 1, marginLeft: 10 }}
-          onPress={() => handleCustomValue(true)}
-        />
-      </View>
-
+      {/* Clear Missing Items */}
       <Button
         title="Clear Missing Items"
-        buttonStyle={{ backgroundColor: '#B22222', borderRadius: 10, paddingHorizontal: 20 }}
-        titleStyle={{ fontSize: 18, fontWeight: 'bold' }}
+        buttonStyle={{
+          backgroundColor: '#B22222',
+          borderRadius: 10,
+          paddingHorizontal: 20,
+        }}
+        titleStyle={{ fontSize: 16, fontWeight: 'bold' }}
         onPress={clearMissing}
-        containerStyle={{ alignItems: 'center' }}
       />
-      
+
       <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
