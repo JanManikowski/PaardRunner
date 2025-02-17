@@ -1,48 +1,50 @@
-import React, { useState, useContext } from 'react';
-import { View, TextInput, TouchableOpacity, Alert, Text } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FontAwesome } from '@expo/vector-icons';
+import React, { useContext, useState } from 'react';
+import { View, Alert } from 'react-native';
+import { Text, Input, Button, Icon } from 'react-native-elements';
 import { ThemeContext } from '../contexts/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AddBarScreen = ({ navigation }) => {
-  const [barName, setBarName] = useState('');
-  const [focusedField, setFocusedField] = useState('');
   const { theme } = useContext(ThemeContext);
+  const [barName, setBarName] = useState('');
 
-  const addBarToStorage = async () => {
+  const handleAddBar = async () => {
+    // Validate input
     if (!barName.trim()) {
-      Alert.alert('Error', 'Bar name is required');
+      Alert.alert('Error', 'Please enter a bar name.');
       return;
     }
 
     try {
+      // Retrieve the active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
-        Alert.alert('Error', 'No active organization selected');
+        Alert.alert('Error', 'No active organization selected.');
         return;
       }
 
-      const allBars = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
-      const isDuplicate = allBars.some((bar) => bar.name === barName);
-      if (isDuplicate) {
-        Alert.alert('Error', 'A bar with this name already exists');
-        return;
-      }
+      // Fetch existing bars for this organization
+      const storedBars = await AsyncStorage.getItem(`bars_${activeOrgId}`);
+      const bars = storedBars ? JSON.parse(storedBars) : [];
 
+      // Create a new bar object
       const newBar = {
-        name: barName,
+        id: Date.now().toString(), // or use a UUID
+        name: barName.trim(),
         orgId: activeOrgId,
       };
 
-      const updatedBars = [...allBars, newBar];
-      await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
-      Alert.alert('Success', 'Bar added successfully');
+      // Append the new bar
+      bars.push(newBar);
 
-      setBarName('');
-      navigation.navigate('ViewBars', { refresh: true });
+      // Save the updated bars array back to AsyncStorage
+      await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(bars));
+
+      Alert.alert('Success', `${barName} added successfully!`);
+      navigation.goBack();
     } catch (error) {
+      console.error('Failed to add bar:', error);
       Alert.alert('Error', 'Failed to add bar');
-      console.error(error);
     }
   };
 
@@ -50,61 +52,58 @@ const AddBarScreen = ({ navigation }) => {
     <View
       style={{
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 16,
         backgroundColor: theme.colors.background,
+        padding: 20,
+        justifyContent: 'center',
       }}
     >
       <Text
         style={{
-          fontSize: 28,
+          fontSize: 24,
           fontWeight: 'bold',
-          color: theme.colors.text,
-          marginBottom: 30,
           textAlign: 'center',
+          marginBottom: 30,
+          color: theme.colors.text,
         }}
       >
         Add New Bar
       </Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          width: '80%',
-          padding: 12,
-          marginVertical: 10,
-          borderColor: focusedField === 'barName' ? theme.colors.primary : theme.colors.border,
+
+      <Input
+        placeholder="Enter bar name"
+        placeholderTextColor={theme.colors.onSurface}
+        value={barName}
+        onChangeText={setBarName}
+        containerStyle={{ marginBottom: 20 }}
+        inputContainerStyle={{
           borderWidth: 1,
-          borderRadius: 10,
+          borderColor: theme.colors.outline,
+          borderRadius: 8,
+          paddingHorizontal: 10,
           backgroundColor: theme.colors.surfaceVariant,
         }}
-      >
-        <FontAwesome name="glass" size={18} color={theme.colors.icon} style={{ marginRight: 10 }} />
-        <TextInput
-          style={{ flex: 1, fontSize: 16, padding: 12, color: theme.colors.text }}
-          placeholder="Enter bar name"
-          placeholderTextColor={theme.colors.placeholder}
-          value={barName}
-          onChangeText={setBarName}
-          onFocus={() => setFocusedField('barName')}
-          onBlur={() => setFocusedField('')}
-        />
-      </View>
-      <TouchableOpacity
-        style={{
-          width: '80%',
-          padding: 15,
-          marginVertical: 20,
+        inputStyle={{ color: theme.colors.text }}
+        leftIcon={
+          <Icon
+            name="local-bar"
+            type="material"
+            size={24}
+            color={theme.colors.primary}
+            style={{ marginRight: 10 }}
+          />
+        }
+      />
+
+      <Button
+        title="Add Bar"
+        buttonStyle={{
           backgroundColor: theme.colors.primary,
-          borderRadius: 10,
-          alignItems: 'center',
+          borderRadius: 8,
+          paddingVertical: 12,
         }}
-        onPress={addBarToStorage}
-        activeOpacity={0.8}
-      >
-        <Text style={{ color: theme.colors.background, fontSize: 16, fontWeight: 'bold' }}>Add Bar</Text>
-      </TouchableOpacity>
+        titleStyle={{ color: theme.colors.onPrimary, fontSize: 18 }}
+        onPress={handleAddBar}
+      />
     </View>
   );
 };

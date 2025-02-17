@@ -1,45 +1,55 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  Image, 
+  Alert, 
+  Switch, 
+  FlatList 
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
 
 const ItemEditorScreen = ({ route, navigation }) => {
-  const { categoryName, item } = route.params || {}; // Get categoryName and item if passed (item is optional for adding)
+  const { categoryName, item } = route.params || {}; // Possibly editing an existing item
   const { theme } = useContext(ThemeContext);
 
-  const [itemName, setItemName] = useState(item ? item.name : ''); // Pre-populate if editing
-  const [maxAmount, setMaxAmount] = useState(item ? item.maxAmount.toString() : '');
-  const [image, setImage] = useState(item ? item.image : null); // Pre-populate image if editing
+  // ------------------------------
+  // Single-item mode state/logic
+  // ------------------------------
+  const [itemName, setItemName] = useState(item ? item.name : '');
+  const [maxAmount, setMaxAmount] = useState(item ? item.maxAmount?.toString() : '');
+  const [image, setImage] = useState(item ? item.image : null);
 
-  // Handle image picking from gallery
+  // Single: pick image from gallery
   const pickImageFromGallery = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
-      aspect: [1, 1], // Set aspect ratio to 1:1 for square image
+      aspect: [1, 1],
       quality: 1,
     });
-
     if (!result.canceled) {
-      setImage(result.assets[0].uri); // Set image to the selected file
+      setImage(result.assets[0].uri);
     }
   };
 
-  // Handle image picking from camera
+  // Single: pick image from camera
   const pickImageFromCamera = async () => {
     let result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: [1, 1], // Set aspect ratio to 1:1 for square image
+      aspect: [1, 1],
       quality: 1,
     });
-
     if (!result.canceled) {
-      setImage(result.assets[0].uri); // Set image to the captured file
+      setImage(result.assets[0].uri);
     }
   };
 
-  // Show options to either take a picture or choose from gallery
+  // Single: show options for picking
   const pickImage = () => {
     Alert.alert(
       'Select Image',
@@ -53,59 +63,280 @@ const ItemEditorScreen = ({ route, navigation }) => {
     );
   };
 
+  // Single: save or update the item
   const handleSaveItem = async () => {
     if (itemName.trim() === '') {
       Alert.alert('Error', 'Item name is required');
       return;
     }
-  
     try {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-  
       const storedItems = await AsyncStorage.getItem('items');
       const allItems = storedItems ? JSON.parse(storedItems) : [];
-  
+
       const newItem = {
         id: item ? item.id : Date.now().toString(),
         name: itemName,
-        maxAmount: parseInt(maxAmount, 10),
+        maxAmount: parseInt(maxAmount, 10) || 0,
         image: image || null,
-        categoryName: categoryName,  // Attach categoryName
-        orgId: activeOrgId,          // Attach organization ID
+        categoryName: categoryName,
+        orgId: activeOrgId,
       };
-  
+
       let updatedItems;
       if (item) {
-        updatedItems = allItems.map(i => (i.id === item.id ? newItem : i));
+        // Editing existing item
+        updatedItems = allItems.map((i) => (i.id === item.id ? newItem : i));
       } else {
+        // Adding new item
         updatedItems = [...allItems, newItem];
       }
-  
       await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
       Alert.alert('Success', item ? 'Item updated successfully' : 'Item added successfully');
-  
-      // Navigate back to the CategoryDetail screen and pass orgId and categoryName
       navigation.navigate('CategoryDetail', { categoryName, orgId: activeOrgId, refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to save item');
       console.error(error);
     }
   };
-  
-  
-  
 
+  // ------------------------------------
+  // Multiple-items mode state/logic
+  // ------------------------------------
+  const [multipleMode, setMultipleMode] = useState(false);
+  const [multiItems, setMultiItems] = useState([]); 
+  // Each entry in multiItems: { id, name, maxAmount, image }
+
+  // Multi: pick from gallery or camera
+  const pickImageForMultiple = () => {
+    Alert.alert(
+      'Select Image',
+      'Choose an option',
+      [
+        { text: 'Camera', onPress: handleMultiCamera },
+        { text: 'Gallery', onPress: handleMultiGallery },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleMultiGallery = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (!result.canceled) {
+      addMultiItem(result.assets[0].uri);
+    }
+  };
+
+  const handleMultiCamera = async () => {
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (!result.canceled) {
+      addMultiItem(result.assets[0].uri);
+    }
+  };
+
+  // Add a new blank item with a chosen image
+  const addMultiItem = (imgUri) => {
+    const newEntry = {
+      id: Date.now().toString(),
+      name: '',
+      maxAmount: '',
+      image: imgUri,
+    };
+    setMultiItems((prev) => [...prev, newEntry]);
+  };
+
+  // Save all multi items to AsyncStorage
+  const handleSaveAllMultiItems = async () => {
+    if (multiItems.length === 0) {
+      Alert.alert('No Items', 'Please add at least one item.');
+      return;
+    }
+    try {
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        Alert.alert('Error', 'No active organization selected');
+        return;
+      }
+      // Retrieve existing items
+      const storedItems = await AsyncStorage.getItem('items');
+      let allItems = storedItems ? JSON.parse(storedItems) : [];
+
+      // Convert multiItems to the same shape as single items
+      const newEntries = multiItems.map((mi) => ({
+        id: mi.id,
+        name: mi.name || 'Unnamed Item',
+        maxAmount: parseInt(mi.maxAmount, 10) || 0,
+        image: mi.image,
+        categoryName: categoryName,
+        orgId: activeOrgId,
+      }));
+      // Merge with existing items
+      allItems = [...allItems, ...newEntries];
+      await AsyncStorage.setItem('items', JSON.stringify(allItems));
+
+      Alert.alert('Success', 'All items have been saved!');
+      navigation.navigate('CategoryDetail', { categoryName, orgId: activeOrgId, refresh: true });
+    } catch (error) {
+      console.error('Error saving multiple items:', error);
+      Alert.alert('Error', 'Failed to save multiple items');
+    }
+  };
+
+  // Render a single multi-item row
+  const renderMultiItem = ({ item, index }) => (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.surfaceVariant,
+        borderRadius: 8,
+        marginBottom: 10,
+        padding: 10,
+      }}
+    >
+      {/* Preview image */}
+      <Image
+        source={{ uri: item.image }}
+        style={{
+          width: 60,
+          height: 60,
+          borderRadius: 8,
+          backgroundColor: '#fff',
+          marginRight: 10,
+        }}
+      />
+      {/* Name / Max Amount inputs */}
+      <View style={{ flex: 1 }}>
+        <TextInput
+          placeholder="Name"
+          placeholderTextColor={theme.colors.onSurface}
+          value={item.name}
+          onChangeText={(val) => {
+            const updated = [...multiItems];
+            updated[index].name = val;
+            setMultiItems(updated);
+          }}
+          style={{
+            borderWidth: 1,
+            borderColor: theme.colors.outline,
+            borderRadius: 5,
+            padding: 8,
+            marginBottom: 5,
+            color: theme.colors.text,
+          }}
+        />
+        <TextInput
+          placeholder="Max Amount"
+          placeholderTextColor={theme.colors.onSurface}
+          keyboardType="numeric"
+          value={item.maxAmount}
+          onChangeText={(val) => {
+            const updated = [...multiItems];
+            updated[index].maxAmount = val;
+            setMultiItems(updated);
+          }}
+          style={{
+            borderWidth: 1,
+            borderColor: theme.colors.outline,
+            borderRadius: 5,
+            padding: 8,
+            color: theme.colors.text,
+          }}
+        />
+      </View>
+    </View>
+  );
+
+  // If multipleMode is true, show the multi-items UI
+  if (multipleMode) {
+    return (
+      <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
+        {/* Switch row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <Text style={{ color: theme.colors.text, fontSize: 16, marginRight: 10 }}>
+            Upload Multiple Items
+          </Text>
+          <Switch
+            trackColor={{ false: '#767577', true: theme.colors.primary }}
+            thumbColor={multipleMode ? '#f5dd4b' : '#f4f3f4'}
+            onValueChange={(val) => setMultipleMode(val)}
+            value={multipleMode}
+          />
+        </View>
+
+        {/* Button to pick a new image/item */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: theme.colors.primary,
+            padding: 10,
+            borderRadius: 5,
+            alignItems: 'center',
+            marginBottom: 20,
+          }}
+          onPress={pickImageForMultiple}
+        >
+          <Text style={{ color: theme.colors.onPrimary }}>Add New Image</Text>
+        </TouchableOpacity>
+
+        {/* List of multi-items */}
+        <FlatList
+          data={multiItems}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMultiItem}
+          style={{ marginBottom: 20 }}
+        />
+
+        {/* Button to save all multi-items */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: theme.colors.primary,
+            padding: 10,
+            borderRadius: 5,
+            alignItems: 'center',
+          }}
+          onPress={handleSaveAllMultiItems}
+        >
+          <Text style={{ color: theme.colors.onPrimary }}>Save All Items</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Otherwise, show the single-item UI
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
+      {/* Switch row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+        <Text style={{ color: theme.colors.text, fontSize: 16, marginRight: 10 }}>
+          Upload Multiple Items
+        </Text>
+        <Switch
+          trackColor={{ false: '#767577', true: theme.colors.primary }}
+          thumbColor={multipleMode ? '#f5dd4b' : '#f4f3f4'}
+          onValueChange={(val) => setMultipleMode(val)}
+          value={multipleMode}
+        />
+      </View>
+
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.colors.text }}>
-        {item ? `Edit Item` : `Add New Item`}
+        {item ? 'Edit Item' : 'Add New Item'}
       </Text>
 
-      {/* Item Name Input */}
+      {/* Single: item name input */}
       <TextInput
         style={{
           borderColor: theme.colors.border,
@@ -117,11 +348,12 @@ const ItemEditorScreen = ({ route, navigation }) => {
           color: theme.colors.text,
         }}
         placeholder="Item Name"
+        placeholderTextColor={theme.colors.onSurface}
         value={itemName}
         onChangeText={setItemName}
       />
 
-      {/* Max Amount Input */}
+      {/* Single: max amount input */}
       <TextInput
         style={{
           borderColor: theme.colors.border,
@@ -133,12 +365,13 @@ const ItemEditorScreen = ({ route, navigation }) => {
           color: theme.colors.text,
         }}
         placeholder="Max Amount"
+        placeholderTextColor={theme.colors.onSurface}
         value={maxAmount}
         onChangeText={setMaxAmount}
         keyboardType="numeric"
       />
 
-      {/* Pick Image Button */}
+      {/* Single: pick/change image */}
       <TouchableOpacity
         style={{
           backgroundColor: theme.colors.primary,
@@ -149,10 +382,12 @@ const ItemEditorScreen = ({ route, navigation }) => {
         }}
         onPress={pickImage}
       >
-        <Text style={{ color: theme.colors.onPrimary }}>{image ? 'Change Image' : 'Pick Image'}</Text>
+        <Text style={{ color: theme.colors.onPrimary }}>
+          {image ? 'Change Image' : 'Pick Image'}
+        </Text>
       </TouchableOpacity>
 
-      {/* Display Selected Image */}
+      {/* Single: display chosen image */}
       {image && (
         <Image
           source={{ uri: image }}
@@ -162,12 +397,12 @@ const ItemEditorScreen = ({ route, navigation }) => {
             borderRadius: 10,
             alignSelf: 'center',
             marginBottom: 20,
-            backgroundColor: '#ccc', // Fallback background color for preview
+            backgroundColor: '#ccc',
           }}
         />
       )}
 
-      {/* Save Button */}
+      {/* Single: save button */}
       <TouchableOpacity
         style={{
           backgroundColor: theme.colors.primary,
@@ -177,7 +412,9 @@ const ItemEditorScreen = ({ route, navigation }) => {
         }}
         onPress={handleSaveItem}
       >
-        <Text style={{ color: theme.colors.onPrimary }}>{item ? 'Save Changes' : 'Add Item'}</Text>
+        <Text style={{ color: theme.colors.onPrimary }}>
+          {item ? 'Save Changes' : 'Add Item'}
+        </Text>
       </TouchableOpacity>
     </View>
   );

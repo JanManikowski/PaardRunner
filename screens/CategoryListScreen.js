@@ -5,8 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
 const CategoryListScreen = ({ route, navigation }) => {
-  const { categories, bar, categoryName } = route.params; // Receive `categories` and `bar` via route.params
-  const { theme } = useContext(ThemeContext)
+  const { categories, bar, categoryName } = route.params;
+  const { theme } = useContext(ThemeContext);
   const [items, setItems] = useState([]);
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
 
@@ -20,12 +20,11 @@ const CategoryListScreen = ({ route, navigation }) => {
   }, [categoryName, categories]);
 
   const currentCategoryName = categories[currentCategoryIndex]?.name;
+  const previousCategoryName =
+    categories[(currentCategoryIndex - 1 + categories.length) % categories.length]?.name || 'No Category';
+  const nextCategoryName =
+    categories[(currentCategoryIndex + 1) % categories.length]?.name || 'No Category';
 
-  // Calculate the previous and next category names
-  const previousCategoryName = categories[(currentCategoryIndex - 1 + categories.length) % categories.length]?.name || 'No Category';
-  const nextCategoryName = categories[(currentCategoryIndex + 1) % categories.length]?.name || 'No Category';
-
-  // Fetch items for the selected category
   const fetchItems = async () => {
     const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
     const filteredItems = storedItems.filter(
@@ -50,7 +49,7 @@ const CategoryListScreen = ({ route, navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchItems();
-    }, [currentCategoryName]) // Re-fetch items when category changes
+    }, [currentCategoryName])
   );
 
   const navigateToCategory = (direction) => {
@@ -109,19 +108,33 @@ const CategoryListScreen = ({ route, navigation }) => {
               padding: 10,
               flexDirection: 'row',
               alignItems: 'center',
+              justifyContent: 'space-between', // push name left, missing right
             }}
-            onPress={() => navigation.navigate('ItemDetail', { items, itemIndex: index, bar })} // Navigate to ItemDetail
+            onPress={() => navigation.navigate('ItemDetail', { items, itemIndex: index, bar })}
           >
-            <Image
-              source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
-              style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10, backgroundColor: 'white' }}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: 'bold', color: theme.colors.text }}>{item.name}</Text>
-              {item.missing > 0 && (
-                <Text style={{ color: theme.colors.error }}>Missing Amount: {item.missing}</Text>
-              )}
+            {/* Left side: Image + Name */}
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Image
+                source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 25,
+                  marginRight: 10,
+                  backgroundColor: 'white',
+                }}
+              />
+              <Text style={{ fontWeight: 'bold', fontSize: 18, color: theme.colors.text }}>
+                {item.name}
+              </Text>
             </View>
+
+            {/* Right side: Missing amount (if any) */}
+            {item.missing > 0 && (
+              <Text style={{ color: theme.colors.error, fontSize: 16, paddingRight:"10" }}>
+                Missing: {item.missing}
+              </Text>
+            )}
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -138,7 +151,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   navButton: {
-    flex: 1, // Ensure equal spacing for navigation buttons
+    flex: 1,
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
@@ -150,7 +163,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   currentCategory: {
-    flex: 2, // Allow the current category name to take up more space
+    flex: 2,
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',

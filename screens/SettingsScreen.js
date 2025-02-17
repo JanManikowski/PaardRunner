@@ -129,7 +129,7 @@ const SettingsScreen = ({ navigation }) => {
 
         {/* Switch Theme Button */}
         <StyledButton
-          title={`Switch to ${theme.dark ? 'Light Mode' : 'Dark Mode'}`}
+          title={`Change Theme`}
           onPress={toggleTheme}
           style={{ backgroundColor: theme.colors.primary }}
           textStyle={{ color: theme.colors.background }}

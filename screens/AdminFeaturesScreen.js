@@ -1,11 +1,18 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  ScrollView, 
+  Alert, 
+  TouchableOpacity, 
+  Modal 
+} from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { auth } from '../utils/firebaseConfig';
 import {
   fetchUserOrganizations,
   deleteOrganization,
-  logLocalStorage,
   deleteAllBars,
   createOrUpdateOrganization,
   createBarInFirebase,
@@ -25,6 +32,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
   const [newOrgName, setNewOrgName] = useState('');
   const [activeOrgId, setActiveOrgId] = useState(null);
   const [activeTab, setActiveTab] = useState('manageBars'); // Default tab: Manage Bars
+  const [orgModalVisible, setOrgModalVisible] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -74,6 +82,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
     try {
       await createOrUpdateOrganization(newOrgName);
       setNewOrgName('');
+      setOrgModalVisible(false);
       loadOrganizations();
       Alert.alert('Success', 'Organization added successfully.');
     } catch (error) {
@@ -109,7 +118,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
     try {
       console.log("Starting upload of local storage data to Firebase...");
   
-      // Fetch the active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error("No active organization selected");
@@ -117,11 +125,9 @@ const AdminFeaturesScreen = ({ navigation }) => {
         return;
       }
   
-      // Delete all data under the organization in Firebase
       await deleteAllDataUnderOrganization(activeOrgId);
       console.log(`All data under organization ${activeOrgId} deleted.`);
   
-      // Fetch organization details from AsyncStorage
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
       const org = organizations.find((org) => org.id === activeOrgId);
       if (!org) {
@@ -131,11 +137,9 @@ const AdminFeaturesScreen = ({ navigation }) => {
   
       console.log("Uploading organization:", org);
   
-      // Create or update the organization in Firebase
       const orgId = await createOrUpdateOrganization(org.name);
       console.log("Organization created/updated in Firebase with ID:", orgId);
   
-      // Fetch and upload bars
       const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
       console.log(`Bars for active organization (ID: ${activeOrgId}):`, barsForOrg);
   
@@ -143,7 +147,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
         const barId = await createBarInFirebase(orgId, bar);
         console.log(`Bar created/updated in Firebase: ${bar.name}, ID: ${barId}`);
   
-        // Fetch and upload categories associated with the bar
         const categories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
         const categoriesForOrg = categories.filter((category) => category.orgId === activeOrgId);
   
@@ -151,7 +154,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
           const categoryId = await addCategory(orgId, category.name);
           console.log(`Category created/updated in Firebase: ${category.name}, ID: ${categoryId}`);
   
-          // Fetch and upload items for each category
           const items = JSON.parse(await AsyncStorage.getItem('items')) || [];
           const itemsForCategory = items.filter((item) => item.categoryName === category.name);
   
@@ -162,7 +164,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
         }
       }
   
-      // Fetch and upload custom crates
       const customCrates = JSON.parse(await AsyncStorage.getItem('customCrates')) || [];
       console.log(`Custom crates for active organization:`, customCrates);
   
@@ -178,9 +179,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to upload data to Firebase.');
     }
   };
-  
-  
-  
 
   const renderOrganizations = () => {
     return organizations.map((org) => (
@@ -222,7 +220,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
       </View>
     ));
   };
-  
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -247,106 +244,92 @@ const AdminFeaturesScreen = ({ navigation }) => {
             />
           </View>
         );
-        case 'debugging':
-  return (
-    <View>
-      {/* Log All Bars Across Organizations */}
-      <AdminActionButton
-        title="Log All Bars in Local Storage"
-        onPress={async () => {
-          try {
-            // Retrieve all organizations
-            const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
-            console.log("Organizations in Local Storage:", organizations);
-
-            // Retrieve bars for each organization
-            let allBars = [];
-            for (let org of organizations) {
-              const orgBars = JSON.parse(await AsyncStorage.getItem(`bars_${org.id}`)) || [];
-              console.log(`Bars for Organization (${org.id}):`, orgBars);
-              allBars = [...allBars, ...orgBars];
-            }
-
-            console.log("All Bars in Local Storage Across All Organizations:", allBars);
-          } catch (error) {
-            console.error("Error logging all bars:", error);
-          }
-        }}
-        style={{ backgroundColor: theme.colors.secondary }}
-      />
-
-      {/* Log Bars for Active Organization */}
-      <AdminActionButton
-        title="Log Bars from Active Org"
-        onPress={async () => {
-          try {
-            const activeOrgId = await AsyncStorage.getItem('activeOrgId');
-            if (!activeOrgId) {
-              console.log("No active organization selected.");
-              return;
-            }
-
-            const barsForActiveOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
-            console.log(`Bars for Active Organization (${activeOrgId}):`, barsForActiveOrg);
-          } catch (error) {
-            console.error("Error logging bars for active organization:", error);
-          }
-        }}
-        style={{ backgroundColor: theme.colors.secondary }}
-      />
-
-      {/* Delete All Bars Across All Organizations */}
-      <AdminActionButton
-        title="Delete All Bars"
-        onPress={() => {
-          Alert.alert(
-            'Confirm Delete',
-            'Are you sure you want to delete all bars? This action cannot be undone.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'OK',
-                onPress: async () => {
-                  try {
-                    const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
-                    for (let org of organizations) {
-                      await AsyncStorage.removeItem(`bars_${org.id}`);
-                    }
-                    Alert.alert('Success', 'All bars deleted.');
-                  } catch (error) {
-                    console.error("Error deleting bars:", error);
-                    Alert.alert('Error', 'Failed to delete bars.');
+      case 'debugging':
+        return (
+          <View>
+            <AdminActionButton
+              title="Log All Bars in Local Storage"
+              onPress={async () => {
+                try {
+                  const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
+                  console.log("Organizations in Local Storage:", organizations);
+                  let allBars = [];
+                  for (let org of organizations) {
+                    const orgBars = JSON.parse(await AsyncStorage.getItem(`bars_${org.id}`)) || [];
+                    console.log(`Bars for Organization (${org.id}):`, orgBars);
+                    allBars = [...allBars, ...orgBars];
                   }
-                },
-              },
-            ]
-          );
-        }}
-        style={{ backgroundColor: theme.colors.error }}
-      />
-    </View>
-  );
-
-        
+                  console.log("All Bars in Local Storage Across All Organizations:", allBars);
+                } catch (error) {
+                  console.error("Error logging all bars:", error);
+                }
+              }}
+              style={{ backgroundColor: theme.colors.secondary }}
+            />
+            <AdminActionButton
+              title="Log Bars from Active Org"
+              onPress={async () => {
+                try {
+                  const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+                  if (!activeOrgId) {
+                    console.log("No active organization selected.");
+                    return;
+                  }
+                  const barsForActiveOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
+                  console.log(`Bars for Active Organization (${activeOrgId}):`, barsForActiveOrg);
+                } catch (error) {
+                  console.error("Error logging bars for active organization:", error);
+                }
+              }}
+              style={{ backgroundColor: theme.colors.secondary }}
+            />
+            <AdminActionButton
+              title="Delete All Bars"
+              onPress={() => {
+                Alert.alert(
+                  'Confirm Delete',
+                  'Are you sure you want to delete all bars? This action cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'OK',
+                      onPress: async () => {
+                        try {
+                          const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
+                          for (let org of organizations) {
+                            await AsyncStorage.removeItem(`bars_${org.id}`);
+                          }
+                          Alert.alert('Success', 'All bars deleted.');
+                        } catch (error) {
+                          console.error("Error deleting bars:", error);
+                          Alert.alert('Error', 'Failed to delete bars.');
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              style={{ backgroundColor: theme.colors.error }}
+            />
+          </View>
+        );
       case 'organizations':
         return (
           <View>
-            <TextInput
+            <TouchableOpacity
               style={{
+                backgroundColor: theme.colors.primary,
                 padding: 10,
-                borderColor: theme.colors.outline,
-                borderWidth: 1,
                 borderRadius: 5,
                 marginBottom: 15,
-                color: theme.colors.text,
-                backgroundColor: theme.colors.surfaceVariant,
+                alignItems: 'center',
               }}
-              placeholder="Organization Name"
-              placeholderTextColor={theme.colors.onSurface}
-              value={newOrgName}
-              onChangeText={setNewOrgName}
-            />
-            <AdminActionButton title="Add Organization" onPress={handleAddOrganization} />
+              onPress={() => setOrgModalVisible(true)}
+            >
+              <Text style={{ color: theme.colors.background, fontSize: 16 }}>
+                Add Organization
+              </Text>
+            </TouchableOpacity>
             <AdminActionButton
               title="Upload Data to Firebase"
               onPress={handleUploadLocalStorageToFirebase}
@@ -360,13 +343,33 @@ const AdminFeaturesScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      <Text style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: "white" }}>
+    <ScrollView
+      style={{
+        flex: 1,
+        padding: 16,
+        backgroundColor: theme.colors.background,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 28,
+          fontWeight: 'bold',
+          marginBottom: 20,
+          textAlign: 'center',
+          color: "white",
+        }}
+      >
         Admin Dashboard
       </Text>
 
       {/* Tab Navigation */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+          marginBottom: 20,
+        }}
+      >
         <TouchableOpacity
           onPress={() => setActiveTab('manageBars')}
           style={{
@@ -420,8 +423,101 @@ const AdminFeaturesScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Tab Content */}
+      {/* Render Tab Content */}
       {renderTabContent()}
+
+      {/* Organization Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={orgModalVisible}
+        onRequestClose={() => setOrgModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+          }}
+        >
+          <View
+            style={{
+              width: '80%',
+              backgroundColor: theme.colors.surface,
+              borderRadius: 10,
+              padding: 20,
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 5,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: 'bold',
+                marginBottom: 20,
+                color: theme.colors.text,
+              }}
+            >
+              Add Organization
+            </Text>
+            <TextInput
+              style={{
+                width: '100%',
+                height: 40,
+                borderColor: theme.colors.outline,
+                borderWidth: 1,
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                marginBottom: 20,
+                color: theme.colors.text,
+                backgroundColor: theme.colors.surfaceVariant,
+              }}
+              placeholder="Organization Name"
+              placeholderTextColor={theme.colors.onSurface}
+              value={newOrgName}
+              onChangeText={setNewOrgName}
+            />
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                width: '100%',
+              }}
+            >
+              <TouchableOpacity
+                style={{
+                  backgroundColor: theme.colors.primary,
+                  padding: 10,
+                  borderRadius: 8,
+                  flex: 1,
+                  alignItems: 'center',
+                  marginRight: 10,
+                }}
+                onPress={handleAddOrganization}
+              >
+                <Text style={{ color: theme.colors.background, fontSize: 16 }}>Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#F44336',
+                  padding: 10,
+                  borderRadius: 8,
+                  flex: 1,
+                  alignItems: 'center',
+                }}
+                onPress={() => setOrgModalVisible(false)}
+              >
+                <Text style={{ color: '#fff', fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };

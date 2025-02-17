@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, Modal, TextInput } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  ScrollView, 
+  Alert, 
+  Modal, 
+  TextInput 
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 
@@ -8,8 +16,6 @@ const ManageBarsScreen = ({ navigation, route }) => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editBar, setEditBar] = useState(null);
   const [editName, setEditName] = useState('');
-  const [editFridges, setEditFridges] = useState('');
-  const [editShelves, setEditShelves] = useState('');
   const { theme } = useContext(ThemeContext);
 
   useEffect(() => {
@@ -22,14 +28,11 @@ const ManageBarsScreen = ({ navigation, route }) => {
 
   const fetchBars = async () => {
     try {
-      // Retrieve the active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
-
-      // Fetch bars linked to the active organization
       const storedBars = await AsyncStorage.getItem(`bars_${activeOrgId}`);
       if (storedBars) {
         setBars(JSON.parse(storedBars));
@@ -41,7 +44,6 @@ const ManageBarsScreen = ({ navigation, route }) => {
 
   const deleteBar = async (barName) => {
     try {
-      // Retrieve the active organization ID
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error('No active organization selected');
@@ -74,14 +76,12 @@ const ManageBarsScreen = ({ navigation, route }) => {
   const editBarDetails = (bar) => {
     setEditBar(bar);
     setEditName(bar.name);
-    setEditFridges(bar.fridges ? bar.fridges.toString() : '');
-    setEditShelves(bar.shelves ? bar.shelves.toString() : '');
     setEditModalVisible(true);
   };
 
   const saveBarDetails = async () => {
     try {
-      const activeOrgId = await AsyncStorage.getItem('activeOrgId'); // Ensure activeOrgId is retrieved
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
@@ -89,13 +89,12 @@ const ManageBarsScreen = ({ navigation, route }) => {
   
       const updatedBars = bars.map(bar => {
         if (bar.name === editBar.name) {
-          return { ...bar, name: editName, fridges: parseInt(editFridges) || 0, shelves: parseInt(editShelves) || 0 };
+          return { ...bar, name: editName };
         }
         return bar;
       });
       setBars(updatedBars);
   
-      // Ensure you save the updated list of bars for the specific organization
       await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
       setEditModalVisible(false);
       navigation.navigate('ViewBars', { refresh: true });
@@ -103,35 +102,57 @@ const ManageBarsScreen = ({ navigation, route }) => {
       console.error('Failed to save bar details', error);
     }
   };
-  
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, backgroundColor: theme.colors.background, flexGrow: 1 }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.colors.text }}>Manage Bars</Text>
+    <ScrollView
+      contentContainerStyle={{
+        padding: 16,
+        backgroundColor: theme.colors.background,
+        flexGrow: 1,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: 'bold',
+          marginBottom: 20,
+          color: theme.colors.text,
+        }}
+      >
+        Manage Bars
+      </Text>
+
       {bars.map((bar, index) => (
         <View
           key={index}
           style={{
-            flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingVertical: 10,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
             backgroundColor: theme.colors.surfaceVariant,
             borderRadius: 8,
             marginBottom: 10,
-            padding: 15
+            padding: 15,
+            flexDirection: 'row',
           }}
         >
-          <Text style={{ fontSize: 18, color: theme.colors.text }}>{bar.name}</Text>
+          <Text
+            style={{
+              fontSize: 18,
+              color: theme.colors.text,
+            }}
+          >
+            {bar.name}
+          </Text>
+
           <View style={{ flexDirection: 'row' }}>
             <TouchableOpacity
               style={{
                 backgroundColor: theme.colors.primary,
                 padding: 10,
                 marginRight: 10,
-                borderRadius: 5
+                borderRadius: 5,
               }}
               onPress={() => editBarDetails(bar)}
             >
@@ -139,9 +160,9 @@ const ManageBarsScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={{
-                backgroundColor: "#F44336",
+                backgroundColor: '#F44336',
                 padding: 10,
-                borderRadius: 5
+                borderRadius: 5,
               }}
               onPress={() => deleteBar(bar.name)}
             >
@@ -158,104 +179,90 @@ const ManageBarsScreen = ({ navigation, route }) => {
         visible={editModalVisible}
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <View style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        }}>
-          <View style={{
-            margin: 20,
-            backgroundColor: theme.colors.surface,
-            borderRadius: 10,
-            padding: 35,
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
             alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 4,
-            elevation: 5,
-            width: '80%',
-          }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 15, color: theme.colors.text }}>Edit Bar</Text>
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          }}
+        >
+          <View
+            style={{
+              margin: 20,
+              backgroundColor: theme.colors.surface,
+              borderRadius: 15,
+              paddingVertical: 30,
+              paddingHorizontal: 25,
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 5,
+              elevation: 6,
+              width: '80%',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: 'bold',
+                marginBottom: 20,
+                color: theme.colors.text,
+              }}
+            >
+              Edit Bar
+            </Text>
+
             <TextInput
               style={{
                 width: '100%',
-                height: 40,
-                borderColor: theme.colors.border,
+                height: 45,
+                borderColor: theme.colors.primary,
                 borderWidth: 1,
-                marginBottom: 10,
-                paddingHorizontal: 8,
-                borderRadius: 5,
+                marginBottom: 25,
+                paddingHorizontal: 10,
+                borderRadius: 8,
                 color: theme.colors.text,
-                backgroundColor: theme.colors.inputBackground
+                backgroundColor: theme.colors.inputBackground || '#2A2A2A',
               }}
-              placeholder="Name"
-              placeholderTextColor={theme.colors.placeholder}
+              placeholder="Bar Name"
+              placeholderTextColor={theme.colors.placeholder || '#888'}
               value={editName}
               onChangeText={setEditName}
             />
-            <TextInput
+
+            <View
               style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
                 width: '100%',
-                height: 40,
-                borderColor: theme.colors.border,
-                borderWidth: 1,
-                marginBottom: 10,
-                paddingHorizontal: 8,
-                borderRadius: 5,
-                color: theme.colors.text,
-                backgroundColor: theme.colors.inputBackground
               }}
-              placeholder="Fridges"
-              placeholderTextColor={theme.colors.placeholder}
-              value={editFridges}
-              keyboardType="numeric"
-              onChangeText={setEditFridges}
-            />
-            <TextInput
-              style={{
-                width: '100%',
-                height: 40,
-                borderColor: theme.colors.border,
-                borderWidth: 1,
-                marginBottom: 10,
-                paddingHorizontal: 8,
-                borderRadius: 5,
-                color: theme.colors.text,
-                backgroundColor: theme.colors.inputBackground
-              }}
-              placeholder="Shelves"
-              placeholderTextColor={theme.colors.placeholder}
-              value={editShelves}
-              keyboardType="numeric"
-              onChangeText={setEditShelves}
-            />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+            >
               <TouchableOpacity
                 style={{
-                  backgroundColor: theme.colors.primary,
-                  padding: 10,
-                  borderRadius: 5,
+                  backgroundColor: '#00BCD4', // bright cyan
+                  padding: 12,
+                  borderRadius: 8,
                   flex: 1,
                   alignItems: 'center',
-                  marginRight: 10
+                  marginRight: 10,
                 }}
                 onPress={saveBarDetails}
               >
-                <Text style={{ color: '#fff' }}>Save</Text>
+                <Text style={{ color: '#fff', fontSize: 16 }}>Save</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
-                  backgroundColor: "#F44336",
-                  padding: 10,
-                  borderRadius: 5,
+                  backgroundColor: '#FF5252', // bright red
+                  padding: 12,
+                  borderRadius: 8,
                   flex: 1,
                   alignItems: 'center',
                 }}
                 onPress={() => setEditModalVisible(false)}
               >
-                <Text style={{ color: '#fff' }}>Cancel</Text>
+                <Text style={{ color: '#fff', fontSize: 16 }}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>

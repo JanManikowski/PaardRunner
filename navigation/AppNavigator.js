@@ -17,7 +17,7 @@ import AdminFeaturesScreen from '../screens/AdminFeaturesScreen';
 import { NativeBaseProvider } from 'native-base';
 import CustomCratesScreen from '../screens/CustomCrateScreen';
 import RecommendedCratesScreen from '../screens/RecommendedCratesScreen';
-import AllMissingItemsScreen from '../screens/old paard hardcoded/AllMissingItemsScreen';
+import AllMissingItemsScreen from '../screens/NewAllMissingItemsScreen';
 
 const Stack = createStackNavigator();
 

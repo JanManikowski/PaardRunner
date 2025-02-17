@@ -11,7 +11,7 @@ const AdminActionButton = ({ title, onPress, style, textStyle }) => {
         {
           padding: 15,
           backgroundColor: theme.colors.primary, // Use theme.colors.primary
-          borderRadius: 10,
+          borderRadius: 5,
           alignItems: 'center',
           marginBottom: 15,
         },

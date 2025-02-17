@@ -79,26 +79,34 @@ const MissingItemsScreen = ({ route }) => {
   const handleToggleCompleted = (category, index, item) => {
     const animatedVal = animatedValues[item.id] || new Animated.Value(0);
     const items = missingItems[category];
-    // Calculate how far down the tapped item should travel.
     const offset = (items.length - 1 - index) * ITEM_HEIGHT;
-
+  
     Animated.timing(animatedVal, {
       toValue: offset,
       duration: 300,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
     }).start(() => {
-      // After the animation, animate the layout reordering.
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       const updatedItems = [...items];
-      // Remove the tapped item.
       const [toggledItem] = updatedItems.splice(index, 1);
-      // Toggle its "completed" flag.
+  
+      // Toggle the completed flag
       toggledItem.completed = !toggledItem.completed;
-      // Append it to the end of the category list.
+  
+      // If toggledItem.completed is now true, add it to checkedItems
+      // If it's false, remove it from checkedItems
+      setCheckedItems(prev => {
+        const key = `${category}-${index}`;
+        if (toggledItem.completed) {
+          return [...prev, key];
+        } else {
+          return prev.filter(entry => entry !== key);
+        }
+      });
+  
       updatedItems.push(toggledItem);
       setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
-      // Reset the animated value for next time.
       animatedVal.setValue(0);
     });
   };

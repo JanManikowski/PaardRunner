@@ -2,91 +2,91 @@ import React, { useContext, useState, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { ThemeContext } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const CategoryDetailScreen = ({ route, navigation }) => {
   const { categoryName, orgId, refresh } = route.params;
   const { theme } = useContext(ThemeContext);
-  const [items, setItems] = useState([]);
 
-  // Function to handle drag-and-drop reorder
+  const [items, setItems] = useState([]);
+  const [manageMode, setManageMode] = useState(false); // Toggle to show/hide Edit & Delete buttons
+
+  // Reorder logic
   const handleDragEnd = async ({ data }) => {
     setItems(data);
-    await saveItemsToStorage(data); // Save re-ordered items
+    await saveItemsToStorage(data);
   };
 
-  // UseFocusEffect to refresh the items every time the screen is focused
+  // Fetch items when screen is focused
   useFocusEffect(
     useCallback(() => {
-      fetchItems(); // Fetch items whenever the screen is focused
+      fetchItems();
     }, [categoryName])
   );
 
+  // Also refresh if `refresh` param is passed
   useEffect(() => {
     if (refresh) {
-      fetchItems(); // Also refresh if the refresh param is passed
+      fetchItems();
     }
   }, [refresh]);
 
+  // Fetch items from AsyncStorage for the given category & org
   const fetchItems = async () => {
     try {
-      // Retrieve active organization ID
-      const activeOrgId = orgId || (await AsyncStorage.getItem('activeOrgId')); // Default to passed orgId or activeOrgId
+      const activeOrgId = orgId || (await AsyncStorage.getItem('activeOrgId'));
       if (!activeOrgId) {
         console.error('No active organization selected');
         return;
       }
 
-      // Fetch all items from AsyncStorage
       const storedItems = await AsyncStorage.getItem('items');
       const allItems = storedItems ? JSON.parse(storedItems) : [];
 
-      // Filter items for the active organization and category
       const filteredItems = allItems.filter(
         (item) => item.categoryName === categoryName && item.orgId === activeOrgId
       );
-      setItems(filteredItems); // Update state with the filtered items
+      setItems(filteredItems);
     } catch (error) {
       console.error('Failed to load items from storage', error);
     }
   };
 
+  // Save updated item order to AsyncStorage
   const saveItemsToStorage = async (updatedItems) => {
     try {
-      // Retrieve all global items
       const storedItems = await AsyncStorage.getItem('items');
       const allItems = storedItems ? JSON.parse(storedItems) : [];
 
-      // Retrieve active organization ID
       const activeOrgId = orgId || (await AsyncStorage.getItem('activeOrgId'));
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
 
-      // Update the global `items` array with the new order for the current category
+      // Remove old items for this category, then concat the updated ones
       const updatedGlobalItems = allItems
         .filter(
           (item) =>
             !(item.categoryName === categoryName && item.orgId === activeOrgId)
-        ) // Remove old items for this category
-        .concat(updatedItems); // Add the updated items in the new order
+        )
+        .concat(updatedItems);
 
-      // Save updated items list to AsyncStorage
       await AsyncStorage.setItem('items', JSON.stringify(updatedGlobalItems));
     } catch (error) {
       console.error('Failed to save items to storage', error);
     }
   };
 
+  // Remove an item from this category
   const removeItem = async (itemName) => {
     try {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       const storedItems = await AsyncStorage.getItem('items');
       const allItems = storedItems ? JSON.parse(storedItems) : [];
 
-      // Remove the item globally
+      // Filter out the item globally
       const updatedItems = allItems.filter(
         (item) =>
           item.name !== itemName ||
@@ -94,10 +94,10 @@ const CategoryDetailScreen = ({ route, navigation }) => {
           item.categoryName !== categoryName
       );
 
-      // Save the updated list back to AsyncStorage
+      // Save updated global items
       await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
 
-      // Update the filtered items for the current view
+      // Update local state
       const filteredItems = updatedItems.filter(
         (item) =>
           item.orgId === activeOrgId && item.categoryName === categoryName
@@ -110,9 +110,34 @@ const CategoryDetailScreen = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.colors.text }}>
+      {/* Category Title */}
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: 'bold',
+          marginBottom: 10,
+          color: theme.colors.text,
+          textAlign: 'center',
+        }}
+      >
         {categoryName} Items
       </Text>
+
+      {/* Toggle Manage Mode Button */}
+      <TouchableOpacity
+        style={{
+          backgroundColor: manageMode ? theme.colors.error : theme.colors.primary,
+          padding: 10,
+          borderRadius: 5,
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+        onPress={() => setManageMode(!manageMode)}
+      >
+        <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>
+          {manageMode ? 'Done' : 'Manage Items'}
+        </Text>
+      </TouchableOpacity>
 
       {/* Draggable List */}
       <DraggableFlatList
@@ -123,49 +148,64 @@ const CategoryDetailScreen = ({ route, navigation }) => {
           <TouchableOpacity
             style={{
               flexDirection: 'row',
-              justifyContent: 'space-between',
+              alignItems: 'center',
               marginBottom: 10,
               backgroundColor: isActive ? theme.colors.primary : theme.colors.surfaceVariant,
-              padding: 10,
               borderRadius: 8,
+              padding: 10,
+              // Shadow / elevation for a card-like feel
+              shadowColor: theme.colors.shadow || '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 3,
             }}
             onLongPress={drag} // Start drag on long press
           >
             {/* Display item image */}
             <Image
               source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
-              style={{ width: 50, height: 50, marginRight: 10, borderRadius: 5 }}
+              style={{ width: 50, height: 50, marginRight: 10, borderRadius: 5, backgroundColor:"white" }}
             />
 
             {/* Display item details */}
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, color: theme.colors.text }}>{item.name}</Text>
-              <Text style={{ color: theme.colors.text }}>Max: {item.maxAmount}</Text>
+              <Text style={{ fontSize: 18, color: theme.colors.text }}>
+                {item.name}
+              </Text>
+              <Text style={{ color: theme.colors.text }}>
+                Max: {item.maxAmount}
+              </Text>
             </View>
 
-            {/* Buttons for delete and edit */}
-            <TouchableOpacity
-              style={{
-                backgroundColor: theme.colors.error,
-                padding: 5,
-                borderRadius: 5,
-                marginLeft: 10,
-              }}
-              onPress={() => removeItem(item.name)} // Remove item
-            >
-              <Text style={{ color: theme.colors.onError }}>Delete</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                backgroundColor: theme.colors.primary,
-                padding: 5,
-                borderRadius: 5,
-                marginLeft: 10,
-              }}
-              onPress={() => navigation.navigate('ItemEditor', { categoryName, item })} // Navigate to ItemEditor
-            >
-              <Text style={{ color: theme.colors.onPrimary }}>Edit</Text>
-            </TouchableOpacity>
+            {/* Show Edit / Delete buttons only if in manageMode */}
+            {manageMode && (
+              <>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: theme.colors.error,
+                    padding: 5,
+                    borderRadius: 5,
+                    marginLeft: 10,
+                  }}
+                  onPress={() => removeItem(item.name)}
+                >
+                  <Text style={{ color: theme.colors.onError }}>Delete</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: theme.colors.primary,
+                    padding: 5,
+                    borderRadius: 5,
+                    marginLeft: 10,
+                  }}
+                  onPress={() => navigation.navigate('ItemEditor', { categoryName, item })}
+                >
+                  <Text style={{ color: theme.colors.onPrimary }}>Edit</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </TouchableOpacity>
         )}
       />
@@ -179,9 +219,11 @@ const CategoryDetailScreen = ({ route, navigation }) => {
           alignItems: 'center',
           marginTop: 20,
         }}
-        onPress={() => navigation.navigate('ItemEditor', { categoryName })} // Navigate to add new item
+        onPress={() => navigation.navigate('ItemEditor', { categoryName })}
       >
-        <Text style={{ color: theme.colors.onPrimary }}>Add New Item</Text>
+        <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>
+          Add New Item
+        </Text>
       </TouchableOpacity>
     </View>
   );
