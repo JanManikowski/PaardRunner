@@ -147,14 +147,14 @@ const AdminFeaturesScreen = ({ navigation }) => {
         const barId = await createBarInFirebase(orgId, bar);
         console.log(`Bar created/updated in Firebase: ${bar.name}, ID: ${barId}`);
   
-        const categories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+        const categories = JSON.parse(await AsyncStorage.getItem(`categories_${orgId}`)) || [];
         const categoriesForOrg = categories.filter((category) => category.orgId === activeOrgId);
   
         for (let category of categoriesForOrg) {
           const categoryId = await addCategory(orgId, category.name);
           console.log(`Category created/updated in Firebase: ${category.name}, ID: ${categoryId}`);
   
-          const items = JSON.parse(await AsyncStorage.getItem('items')) || [];
+          const items = JSON.parse(await AsyncStorage.getItem(`items_${activeOrgId}`)) || [];
           const itemsForCategory = items.filter((item) => item.categoryName === category.name);
   
           for (let item of itemsForCategory) {
@@ -164,7 +164,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
         }
       }
   
-      const customCrates = JSON.parse(await AsyncStorage.getItem('customCrates')) || [];
+      const customCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
       console.log(`Custom crates for active organization:`, customCrates);
   
       for (let crate of customCrates) {
@@ -177,6 +177,16 @@ const AdminFeaturesScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Error uploading data to Firebase:', error);
       Alert.alert('Error', 'Failed to upload data to Firebase.');
+    }
+  };
+
+  const clearLocalStorage = async () => {
+    try {
+      await AsyncStorage.clear();
+      Alert.alert('Success', 'Local storage has been cleared.');
+    } catch (error) {
+      console.error('Error clearing local storage:', error);
+      Alert.alert('Error', 'Failed to clear local storage.');
     }
   };
 
@@ -311,6 +321,11 @@ const AdminFeaturesScreen = ({ navigation }) => {
               }}
               style={{ backgroundColor: theme.colors.error }}
             />
+            <AdminActionButton
+  title="Clear Local Storage"
+  onPress={clearLocalStorage}
+  style={{ backgroundColor: theme.colors.error }}
+/>
           </View>
         );
       case 'organizations':

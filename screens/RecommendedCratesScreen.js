@@ -19,7 +19,8 @@ const RecommendedCratesScreen = ({ route }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const storedCrates = JSON.parse(await AsyncStorage.getItem('customCrates')) || [];
+        // Updated: fetch custom crates using the org-specific key
+        const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${bar.orgId}`)) || [];
         setCustomCrates(storedCrates);
 
         const missingItems = await fetchMissingItems(bar);
@@ -37,7 +38,8 @@ const RecommendedCratesScreen = ({ route }) => {
   const fetchMissingItems = async (bar) => {
     try {
       const categorizedItems = {};
-      const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
+      // Use the same key format as in other screens.
+      const storedItems = JSON.parse(await AsyncStorage.getItem(`items_${bar.orgId}`)) || [];
       const filteredItems = storedItems.filter((item) => item.orgId === bar.orgId);
       
       for (const item of filteredItems) {
@@ -187,9 +189,7 @@ const RecommendedCratesScreen = ({ route }) => {
         recommendedCrates.map((crate, index) => {
           // Calculate how many total items are in this crate
           const usedItemsCount = crate.items.reduce((sum, i) => sum + i.quantity, 0);
-          // Also retrieve crate.maxItems from your customCrates array, if it exists
-          // We'll find the crate definition with the same name
-          // (You might store or match on crate ID in your real logic.)
+          // Retrieve crate.maxItems from your customCrates array, if it exists.
           const crateDefinition = customCrates.find(c => c.name === crate.crateName.split(' - ')[0]);
           const maxItems = crateDefinition ? crateDefinition.maxItems : 0;
 

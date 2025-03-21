@@ -1,5 +1,4 @@
-// ViewBarsScreen.js
-import React, { useState, useEffect, useContext, useRef  } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { View, TouchableOpacity, Animated } from 'react-native';
 import { Text, Button, Icon } from 'react-native-elements';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,8 +6,7 @@ import DraggableFlatList from 'react-native-draggable-flatlist';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
-import WheelColorPicker  from 'react-native-wheel-color-picker';
-
+import WheelColorPicker from 'react-native-wheel-color-picker';
 
 const ViewBarsScreen = ({ navigation }) => {
   const [bars, setBars] = useState([]);
@@ -23,11 +21,14 @@ const ViewBarsScreen = ({ navigation }) => {
   const isInitialLoad = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
   
+  // New state to track if an animation is running.
+  const [isAnimating, setIsAnimating] = useState(false);
+
   useEffect(() => {
     // Create a loop with a 5-second delay before the flashing effect
     Animated.loop(
       Animated.sequence([
-        // Keep the icon fully visible for 5 seconds
+        // Keep the icon fully visible for 2 seconds
         Animated.timing(iconOpacity, {
           toValue: 1,
           duration: 2000,
@@ -53,33 +54,27 @@ const ViewBarsScreen = ({ navigation }) => {
     React.useCallback(() => {
       const loadOrganizationAndBars = async () => {
         const organizationId = await AsyncStorage.getItem('activeOrgId'); 
-        
         if (organizationId) {
           console.log(`Loading bars for organization ID: ${organizationId}`);
           setSelectedOrganization(organizationId);
-
           const storedBars = await AsyncStorage.getItem(`bars_${organizationId}`);
           const filteredBars = storedBars ? JSON.parse(storedBars) : [];
           setBars(filteredBars);
         } else {
-          // Clear bars if no active organization is selected
-          if (!isInitialLoad.current) { // Ensure this doesn't run during the initial load
+          if (!isInitialLoad.current) {
             console.log('No organization selected, clearing bars');
             setBars([]); 
           }
         }
-
-        isInitialLoad.current = false; // Mark the initial load as done
+        isInitialLoad.current = false;
       };
       
       loadOrganizationAndBars();
     }, [])
   );
 
-
   const handleColorChange = async () => {
     if (!selectedOrganization) return;
-
     const updatedBars = bars.map(bar =>
       bar.name === selectedBar.name
         ? { ...bar, color: pickedColor, textColor: getContrastingTextColor(pickedColor) }
@@ -87,25 +82,26 @@ const ViewBarsScreen = ({ navigation }) => {
     );
     setBars(updatedBars);
     await AsyncStorage.setItem(`bars_${selectedOrganization}`, JSON.stringify(updatedBars));
-    setIsColorPickerVisible(false);
+    // Animate the color picker out
+    setIsAnimating(true);
     Animated.timing(animatedValue, {
       toValue: 0,
       duration: 300,
       useNativeDriver: false,
-    }).start(() => setSelectedBar(null));
+    }).start(() => {
+      setSelectedBar(null);
+      setIsColorPickerVisible(false);
+      setIsAnimating(false);
+    });
   };
 
   const handlePress = async (bar) => {
     if (!selectedOrganization) return;
-
-    // Store last opened time
     const updatedBars = bars.map(b =>
       b.name === bar.name ? { ...b, lastOpened: new Date().toISOString() } : b
     );
     setBars(updatedBars);
     await AsyncStorage.setItem(`bars_${selectedOrganization}`, JSON.stringify(updatedBars));
-
-    // Navigate to BarDetailScreen
     navigation.navigate('BarDetail', { bar });
   };
 
@@ -114,11 +110,15 @@ const ViewBarsScreen = ({ navigation }) => {
     setPickedColor(bar.color || '#FFFFFF');
     setTextColor(getContrastingTextColor(bar.color || '#FFFFFF'));
     setIsColorPickerVisible(true);
+    // Animate the color picker in
+    setIsAnimating(true);
     Animated.timing(animatedValue, {
       toValue: 1,
       duration: 300,
       useNativeDriver: false,
-    }).start();
+    }).start(() => {
+      setIsAnimating(false);
+    });
   };
 
   const getContrastingTextColor = (backgroundColor) => {
@@ -151,7 +151,7 @@ const ViewBarsScreen = ({ navigation }) => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.backgroundVariant, padding: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-      <Text h4 style={{ color: theme.colors.text }}>Bars - {selectedOrganization || 'Unknown'}</Text>
+        <Text h4 style={{ color: theme.colors.text }}>Bars - {selectedOrganization || 'Unknown'}</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
           <MaterialIcons name="settings" size={28} color={theme.colors.text} />
         </TouchableOpacity>
@@ -194,7 +194,6 @@ const ViewBarsScreen = ({ navigation }) => {
             }}
             renderItem={({ item, drag, index }) => {
               const itemTextColor = getContrastingTextColor(item.color || theme.colors.surfaceVariant);
-
               return (
                 <TouchableOpacity
                   style={{
@@ -259,7 +258,6 @@ const ViewBarsScreen = ({ navigation }) => {
           <Text h4 style={{ textAlign: 'center', color: theme.colors.text }}>
             Pick a Color
           </Text>
-
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
             <WheelColorPicker
               initialColor={pickedColor}
@@ -270,7 +268,6 @@ const ViewBarsScreen = ({ navigation }) => {
               style={{ width: 300, height: 300 }}
             />
           </View>
-
           <Button
             title="Confirm"
             buttonStyle={{
@@ -284,19 +281,22 @@ const ViewBarsScreen = ({ navigation }) => {
           />
         </View>
       )}
-      <TouchableOpacity
-  style={{
-    padding: 15,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 8,
-    marginTop: 20,
-    alignItems: 'center',
-  }}
-  onPress={() => navigation.navigate('AllMissingItems')}
->
-  <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>View All Missing Items</Text>
-</TouchableOpacity>
-
+      
+      {/* "View All Missing Items" appears only if color picker is not visible and no animation is running */}
+      {(!isColorPickerVisible && !isAnimating) && (
+        <TouchableOpacity
+          style={{
+            padding: 15,
+            backgroundColor: theme.colors.primary,
+            borderRadius: 8,
+            marginTop: 20,
+            alignItems: 'center',
+          }}
+          onPress={() => navigation.navigate('AllMissingItems')}
+        >
+          <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>View All Missing Items</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

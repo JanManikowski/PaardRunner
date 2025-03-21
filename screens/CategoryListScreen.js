@@ -26,26 +26,44 @@ const CategoryListScreen = ({ route, navigation }) => {
   const nextCategoryName =
     categories[(currentCategoryIndex + 1) % categories.length]?.name || 'No Category';
 
-  const fetchItems = async () => {
-    const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
-    const filteredItems = storedItems.filter(
-      (item) => item.categoryName === currentCategoryName && item.orgId === bar.orgId
-    );
-
-    // Fetch missing amounts for each item
-    const updatedItems = await Promise.all(
-      filteredItems.map(async (item) => {
-        const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
-        const savedMissing = await AsyncStorage.getItem(missingKey);
-        return {
-          ...item,
-          missing: savedMissing ? parseInt(savedMissing, 10) : 0,
-        };
-      })
-    );
-
-    setItems(updatedItems);
-  };
+    const fetchItems = async () => {
+      try {
+        // Get the organization ID from the bar prop
+        const orgId = bar.orgId;
+        // Build the dynamic key for categories
+        const categoriesKey = `categories_${orgId}`;
+        // Retrieve stored categories for the active organization
+        const storedCategories = JSON.parse(await AsyncStorage.getItem(categoriesKey)) || [];
+        // Find the category matching the current category name
+        const currentCategory = storedCategories.find(
+          (category) => category.name === currentCategoryName
+        );
+    
+        if (!currentCategory || !currentCategory.items) {
+          setItems([]);
+          return;
+        }
+    
+        const itemsFromCategory = currentCategory.items;
+    
+        // Update each item with its corresponding "missing" value
+        const updatedItems = await Promise.all(
+          itemsFromCategory.map(async (item) => {
+            const missingKey = `missing_${item.id}_${orgId}_${bar.name}`;
+            const savedMissing = await AsyncStorage.getItem(missingKey);
+            return {
+              ...item,
+              missing: savedMissing ? parseInt(savedMissing, 10) : 0,
+            };
+          })
+        );
+    
+        setItems(updatedItems);
+      } catch (error) {
+        console.error('Error fetching items from AsyncStorage:', error);
+      }
+    };
+    
 
   useFocusEffect(
     useCallback(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, 
   Text, 
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const AllMissingItemsScreen = ({ navigation }) => {
   const { theme } = useContext(ThemeContext);
@@ -24,52 +25,69 @@ const AllMissingItemsScreen = ({ navigation }) => {
   // Fetch all missing items for all bars of the active organization
   const fetchAllMissingItems = async () => {
     try {
+      // Retrieve the active organization ID from "activeOrgId"
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
+        console.log("No active organization found.");
         setAggregatedData({});
         return;
       }
-      // Get all bars for the active organization
+      console.log("Active Organization ID:", activeOrgId);
+
+      // Load bars for the active organization using activeOrgId
       const storedBars = await AsyncStorage.getItem(`bars_${activeOrgId}`);
       const bars = storedBars ? JSON.parse(storedBars) : [];
-      // Get all global items
-      const storedItems = await AsyncStorage.getItem('items');
+      console.log("Loaded Bars:", bars);
+
+      // Load items stored with the same key (set in ItemDetailScreen)
+      const storedItems = await AsyncStorage.getItem(`items_${activeOrgId}`);
       const items = storedItems ? JSON.parse(storedItems) : [];
-      
+      console.log("Loaded Items:", items);
+
       const aggregated = {};
+
+      // For each bar, check each item for a missing amount
       for (const bar of bars) {
         let barData = {};
-        // Filter items for the org
-        const orgItems = items.filter(item => item.orgId === activeOrgId);
-        for (const item of orgItems) {
+        // Iterate over all items (they were already filtered by active organization)
+        for (const item of items) {
+          // Build the key using bar properties (must match ItemDetailScreen)
           const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
           const savedMissing = await AsyncStorage.getItem(missingKey);
           const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
+          console.log(`For bar "${bar.name}", item "${item.name}" uses key "${missingKey}" and has missingAmount: ${missingAmount}`);
+
           if (missingAmount > 0) {
-            if (!barData[item.categoryName]) {
-              barData[item.categoryName] = [];
+            // Use item.categoryName if available, otherwise fallback to "Uncategorized"
+            const category = item.categoryName || 'Uncategorized';
+            if (!barData[category]) {
+              barData[category] = [];
             }
-            barData[item.categoryName].push({
+            barData[category].push({
               ...item,
               missing: missingAmount,
               barName: bar.name,
             });
           }
         }
-        // Only include bars that actually have missing items
         if (Object.keys(barData).length > 0) {
           aggregated[bar.name] = barData;
         }
       }
+
+      console.log("Aggregated Missing Items Data:", aggregated);
       setAggregatedData(aggregated);
     } catch (error) {
       console.error('Error fetching all missing items:', error);
     }
   };
 
-  useEffect(() => {
-    fetchAllMissingItems();
-  }, []);
+  // Re-fetch data every time the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchAllMissingItems();
+    }, [])
+  );
 
   // Handler to delete all missing items for a bar (long press on bar name)
   const handleDeleteBar = (barName) => {
@@ -296,7 +314,7 @@ const AllMissingItemsScreen = ({ navigation }) => {
         <Button
           title="Share List"
           onPress={() => {
-            // Implement share logic
+            // Implement share logic if needed
           }}
           color="#4CAF50"
         />

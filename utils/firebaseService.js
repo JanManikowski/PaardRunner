@@ -65,7 +65,7 @@ export const createBarInFirebase = async (orgId, bar) => {
 
 export const addCategory = async (orgId, categoryName) => {
   try {
-    const categoryRef = doc(db, 'organizations', orgId, 'categories', categoryName);  // Categories under organizations, no barId
+    const categoryRef = doc(db, 'organizations', orgId, `categories_${orgId}`, categoryName);  // Categories under organizations, no barId
     await setDoc(categoryRef, {
       name: categoryName,
       orgId: orgId,  // Store orgId
@@ -79,18 +79,32 @@ export const addCategory = async (orgId, categoryName) => {
 
 export const addItem = async (orgId, categoryName, itemName, maxAmount, image) => {
   try {
-    const itemRef = doc(db, 'organizations', orgId, 'categories', categoryName, 'items', itemName);  // Items under categories by name
-    await setDoc(itemRef, {
-      name: itemName,
-      maxAmount,
-      image: image || null,
-      categoryName: categoryName,  // Store categoryName
-    }, { merge: true });
+    // Save the item under: organizations/{orgId}/categories_{orgId}/{categoryName}/items_{orgId}/{itemName}
+    const itemRef = doc(
+      db,
+      'organizations',
+      orgId,
+      `categories_${orgId}`,
+      categoryName,
+      `items_${orgId}`,
+      itemName
+    );
+    await setDoc(
+      itemRef,
+      {
+        name: itemName,
+        maxAmount,
+        image: image || null,
+        categoryName, // For reference when retrieving
+      },
+      { merge: true }
+    );
   } catch (error) {
     console.error('Error adding item:', error);
     throw error;
   }
 };
+
 
 
 
@@ -337,25 +351,21 @@ export const fetchOrganizationsByCode = async (code) => {
     
       // Fetch crates for this organization
       const cratesRef = collection(db, 'organizations', orgData.id, 'crates');
-      console.log("Fetching crates from path:", cratesRef.path);
-      const cratesSnapshot = await getDocs(cratesRef);
-      console.log("Crates snapshot size:", cratesSnapshot.size);
-      const crates = [];
-      cratesSnapshot.forEach((crateDoc) => {
-        const crateData = { id: crateDoc.id, ...crateDoc.data() };
-        console.log("Crate fetched:", crateData);
-        crates.push(crateData);
-      });
-      orgData.crates = crates;
-      if (crates.length > 0) {
-        await AsyncStorage.setItem(`crates_${orgData.id}`, JSON.stringify(crates));
-        console.log(`Crates saved to AsyncStorage for organization ID: ${orgData.id}`);
-      } else {
-        console.log(`No crates found for organization ID: ${orgData.id}`);
-      }
+    const cratesSnapshot = await getDocs(cratesRef);
+    const crates = cratesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    console.log("Fetched crates for org:", orgData.id, crates);
+
+    // 🔹 Store in AsyncStorage
+    if (crates.length > 0) {
+        await AsyncStorage.setItem(`customCrates_${orgData.id}`, JSON.stringify(crates));
+        console.log(`Crates saved in AsyncStorage for org: ${orgData.id}`);
+    } else {
+        console.log(`No crates found for org: ${orgData.id}`);
+    }
     
       // Fetch categories (and items) for this organization
-      const categoriesRef = collection(db, 'organizations', orgData.id, 'categories');
+      const categoriesRef = collection(db, 'organizations', orgData.id, `categories_${orgData.id}`);
       console.log("Fetching categories from path:", categoriesRef.path);
       const categoriesSnapshot = await getDocs(categoriesRef);
       console.log("Categories snapshot size:", categoriesSnapshot.size);
@@ -366,7 +376,7 @@ export const fetchOrganizationsByCode = async (code) => {
     
         // Use the category name (or fallback to id) for the items collection path
         const categoryIdentifier = categoryData.name || categoryData.id;
-        const itemsRef = collection(db, 'organizations', orgData.id, 'categories', categoryIdentifier, 'items');
+        const itemsRef = collection(db, 'organizations', orgData.id, `categories_${orgData.id}`, categoryIdentifier, `items_${orgData.id}`);
         console.log("Fetching items from path:", itemsRef.path);
         const itemsSnapshot = await getDocs(itemsRef);
         console.log("Items snapshot size for category", categoryIdentifier, ":", itemsSnapshot.size);
@@ -468,23 +478,21 @@ export const handleDeleteOrganization = async (orgId) => {
 
 export const addCrateToFirebase = async (orgId, crate) => {
   try {
-    // Use the crate name as the document ID
-    const crateId = crate.name.replace(/\s+/g, '_'); // Replace spaces with underscores to make it Firestore-compatible
-    const crateRef = doc(db, 'organizations', orgId, 'crates', crateId);
+      const crateRef = doc(db, 'organizations', orgId, 'crates', crate.name);
+      await setDoc(crateRef, {
+          name: crate.name,
+          category: crate.category,
+          maxItems: crate.maxItems,
+          orgId: orgId,
+      }, { merge: true });
 
-    await setDoc(crateRef, {
-      name: crate.name,
-      category: crate.category,
-      maxItems: crate.maxItems,
-    }, { merge: true });
-
-    console.log(`Crate added to Firebase under organization ${orgId}:`, crate);
-    return crateRef.id;
+      console.log(`Crate "${crate.name}" uploaded to organization ${orgId}`);
   } catch (error) {
-    console.error('Error adding crate:', error);
-    throw error;
+      console.error('Error adding crate:', error);
+      throw error;
   }
 };
+
 
 export const deleteAllDataUnderOrganization = async (orgId) => {
   try {

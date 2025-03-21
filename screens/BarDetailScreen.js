@@ -20,7 +20,7 @@ const BarDetailScreen = ({ route, navigation }) => {
         return;
       }
 
-      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+      const allCategories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
       const filteredCategories = allCategories.filter(category => category.orgId === activeOrgId);
       setCategories(filteredCategories);
     } catch (error) {

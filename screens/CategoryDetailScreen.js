@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback, useEffect } from 'react';
+import React, { useContext, useState, useCallback, useEffect, act } from 'react';
 import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
@@ -41,7 +41,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
         return;
       }
 
-      const storedItems = await AsyncStorage.getItem('items');
+      const storedItems = await AsyncStorage.getItem(`items_${activeOrgId}`);
       const allItems = storedItems ? JSON.parse(storedItems) : [];
 
       const filteredItems = allItems.filter(
@@ -73,7 +73,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
         )
         .concat(updatedItems);
 
-      await AsyncStorage.setItem('items', JSON.stringify(updatedGlobalItems));
+      await AsyncStorage.setItem(`items_${activeOrgId}`, JSON.stringify(updatedGlobalItems));
     } catch (error) {
       console.error('Failed to save items to storage', error);
     }
@@ -95,7 +95,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
       );
 
       // Save updated global items
-      await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
+      await AsyncStorage.setItem(`items_${activeOrgId}`, JSON.stringify(updatedItems));
 
       // Update local state
       const filteredItems = updatedItems.filter(

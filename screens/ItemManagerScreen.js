@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Modal, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 
@@ -8,14 +8,13 @@ const ItemManagerScreen = ({ navigation }) => {
   const [categories, setCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
-
-  // New state to track whether we’re in "manage" mode
   const [manageMode, setManageMode] = useState(false);
 
   useEffect(() => {
     fetchCategories();
   }, []);
 
+  // Use the same key when fetching categories
   const fetchCategories = async () => {
     try {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
@@ -23,9 +22,9 @@ const ItemManagerScreen = ({ navigation }) => {
         console.error('No active organization selected');
         return;
       }
-      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
-      const filteredCategories = allCategories.filter((cat) => cat.orgId === activeOrgId);
-      setCategories(filteredCategories);
+      // Always use the key "categories_${activeOrgId}"
+      const allCategories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
+      setCategories(allCategories.filter((cat) => cat.orgId === activeOrgId));
     } catch (error) {
       console.error('Failed to load categories', error);
       setCategories([]);
@@ -41,7 +40,8 @@ const ItemManagerScreen = ({ navigation }) => {
         console.error('No active organization selected');
         return;
       }
-      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+      // Use the same key here too
+      const allCategories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
       const newCategory = { name: newCategoryName, orgId: activeOrgId };
 
       // Check if category already exists
@@ -50,19 +50,21 @@ const ItemManagerScreen = ({ navigation }) => {
       );
       if (categoryExists) {
         console.log(`Category "${newCategoryName}" already exists for this organization.`);
+        Alert.alert('Error', 'Category already exists.');
         return;
       }
 
       const updatedCategories = [...allCategories, newCategory];
-      await AsyncStorage.setItem('categories', JSON.stringify(updatedCategories));
+      // Save using the same key
+      await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
 
       setNewCategoryName('');
       setModalVisible(false);
-
-      // Refresh categories list
-      setCategories(updatedCategories.filter((cat) => cat.orgId === activeOrgId));
+      // Refresh the category list
+      fetchCategories();
     } catch (error) {
       console.error('Failed to add category', error);
+      Alert.alert('Error', 'Failed to add category.');
     }
   };
 
@@ -73,19 +75,15 @@ const ItemManagerScreen = ({ navigation }) => {
         console.error('No active organization selected');
         return;
       }
-      // Filter out the category to delete
+      // Remove the category from the current state
       const updatedCategories = categories.filter((cat) => cat.name !== categoryName);
 
-      // Update AsyncStorage with the remaining categories
-      const allCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
-      const newAllCategories = allCategories.filter(
-        (cat) => !(cat.name === categoryName && cat.orgId === activeOrgId)
-      );
-      await AsyncStorage.setItem('categories', JSON.stringify(newAllCategories));
-
+      // Update AsyncStorage using the same key
+      await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
       setCategories(updatedCategories);
     } catch (error) {
       console.error('Failed to delete category', error);
+      Alert.alert('Error', 'Failed to delete category.');
     }
   };
 
@@ -110,7 +108,7 @@ const ItemManagerScreen = ({ navigation }) => {
         <Text style={{ color: theme.colors.onPrimary }}>Add New Category</Text>
       </TouchableOpacity>
 
-      {/* Row with "Categories:" text and the Manage/Done button on the right */}
+      {/* Row with "Categories:" text and the Manage/Done button */}
       <View
         style={{
           flexDirection: 'row',
@@ -131,7 +129,7 @@ const ItemManagerScreen = ({ navigation }) => {
           }}
           onPress={() => setManageMode(!manageMode)}
         >
-          <Text style={{ color: manageMode ? theme.colors.onError : theme.colors.onPrimary, marginRight: "10px" }}>
+          <Text style={{ color: manageMode ? theme.colors.onError : theme.colors.onPrimary }}>
             {manageMode ? 'Done' : 'Manage'}
           </Text>
         </TouchableOpacity>
@@ -227,7 +225,6 @@ const ItemManagerScreen = ({ navigation }) => {
             <Text style={{ fontSize: 18, color: theme.colors.text }}>
               {category.name}
             </Text>
-            {/* Show the delete button only if manageMode is on */}
             {manageMode && (
               <TouchableOpacity
                 style={{

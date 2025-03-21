@@ -49,7 +49,6 @@ export const CategoryProvider = ({ children }) => {
   // Save categories to AsyncStorage for the selected organization
   const saveCategories = async (newCategories) => {
     if (!selectedOrganization) return;
-
     try {
       await AsyncStorage.setItem(`categories_${selectedOrganization.id}`, JSON.stringify(newCategories));
       setCategories(newCategories);
@@ -110,8 +109,8 @@ export const CategoryProvider = ({ children }) => {
     <CategoryContext.Provider value={{
       categories,
       selectedOrganization,
-      setOrganization,    // Added function to set the organization
-      getOrganization,    // Added function to get the organization
+      setOrganization,
+      getOrganization,
       setCategories: setCategoriesDirectly,
       addCategory,
       deleteCategory,

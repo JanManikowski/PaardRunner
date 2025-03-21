@@ -1,3 +1,4 @@
+// ItemDetailScreen.js
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Image } from 'react-native';
 import { Text, Button, Input, Icon } from 'react-native-elements';
@@ -48,6 +49,31 @@ const ItemDetailScreen = ({ route, navigation }) => {
     };
     saveMissing();
   }, [missing, currentItem, bar]);
+
+  // **Store this item in `items_{bar.orgId}` so MissingItemsScreen can find it.**
+  useEffect(() => {
+    const storeItemInList = async () => {
+      if (!bar || !currentItem?.id) return;
+      const itemsKey = `items_${bar.orgId}`;
+
+      // 1) Load existing items from AsyncStorage
+      let existingItems = await AsyncStorage.getItem(itemsKey);
+      existingItems = existingItems ? JSON.parse(existingItems) : [];
+
+      // 2) Update or insert the current item
+      const idx = existingItems.findIndex(it => it.id === currentItem.id);
+      const updatedItem = { ...currentItem, missing }; // carry current "missing" count
+      if (idx >= 0) {
+        existingItems[idx] = updatedItem;
+      } else {
+        existingItems.push(updatedItem);
+      }
+
+      // 3) Save back
+      await AsyncStorage.setItem(itemsKey, JSON.stringify(existingItems));
+    };
+    storeItemInList();
+  }, [bar, currentItem, missing]);
 
   // Only allow missing to be between 0 and 999
   const updateMissing = (value) => {
@@ -249,7 +275,7 @@ const ItemDetailScreen = ({ route, navigation }) => {
           placeholderTextColor={theme.colors.onSurface}
           keyboardType="numeric"
           value={customValue}
-          onChangeText={handleChangeCustomValue}  // <--- changed here
+          onChangeText={handleChangeCustomValue}
           containerStyle={{ marginBottom: 10 }}
           inputContainerStyle={{
             borderWidth: 1,

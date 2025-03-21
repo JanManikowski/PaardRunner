@@ -20,7 +20,7 @@ const CustomCratesScreen = () => {
           Alert.alert('Error', 'No active organization selected.');
           return;
         }
-        const storedCategories = JSON.parse(await AsyncStorage.getItem('categories')) || [];
+        const storedCategories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
         const filteredCategories = storedCategories.filter(
           (category) => category.orgId === activeOrgId
         );
@@ -42,7 +42,7 @@ const CustomCratesScreen = () => {
         setCrates([]);
         return;
       }
-      const storedCrates = JSON.parse(await AsyncStorage.getItem('customCrates')) || [];
+      const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
       const filteredCrates = storedCrates.filter((crate) => crate.orgId === activeOrgId);
       setCrates(filteredCrates);
     } catch (error) {
@@ -76,7 +76,7 @@ const CustomCratesScreen = () => {
         orgId: activeOrgId,
       };
 
-      const storedCrates = JSON.parse(await AsyncStorage.getItem('customCrates')) || [];
+      const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
       const updatedCrates = [...storedCrates, newCrate];
       await AsyncStorage.setItem('customCrates', JSON.stringify(updatedCrates));
 

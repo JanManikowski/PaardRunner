@@ -75,7 +75,7 @@ const ItemEditorScreen = ({ route, navigation }) => {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-      const storedItems = await AsyncStorage.getItem('items');
+      const storedItems = await AsyncStorage.getItem(`items_${activeOrgId}`);
       const allItems = storedItems ? JSON.parse(storedItems) : [];
 
       const newItem = {
@@ -95,14 +95,28 @@ const ItemEditorScreen = ({ route, navigation }) => {
         // Adding new item
         updatedItems = [...allItems, newItem];
       }
-      await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
+      
+      await AsyncStorage.setItem(`items_${activeOrgId}`, JSON.stringify(updatedItems));
+
+      // 🛠 Also update the category's item list in AsyncStorage
+      const storedCategories = await AsyncStorage.getItem(`categories_${activeOrgId}`);
+      let categories = storedCategories ? JSON.parse(storedCategories) : [];
+      
+      // Find the category and update its items
+      const categoryIndex = categories.findIndex(cat => cat.name === categoryName);
+      if (categoryIndex !== -1) {
+        categories[categoryIndex].items = updatedItems.filter(i => i.categoryName === categoryName);
+        await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(categories));
+      }
+
       Alert.alert('Success', item ? 'Item updated successfully' : 'Item added successfully');
       navigation.navigate('CategoryDetail', { categoryName, orgId: activeOrgId, refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to save item');
       console.error(error);
     }
-  };
+};
+
 
   // ------------------------------------
   // Multiple-items mode state/logic

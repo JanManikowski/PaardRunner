@@ -1,3 +1,4 @@
+// MissingItemsScreen.js
 import React, { useContext, useState, useCallback, useEffect } from 'react';
 import {
   View,
@@ -33,7 +34,7 @@ const MissingItemsScreen = ({ route }) => {
   const { theme } = useContext(ThemeContext);
   const [circleMode, setCircleMode] = useState(false);
   const [checkedItems, setCheckedItems] = useState([]);
-  // We store an Animated.Value for each item, keyed by the item id.
+  // Store an Animated.Value for each item keyed by the item id.
   const [animatedValues, setAnimatedValues] = useState({});
 
   // Enable LayoutAnimation on Android
@@ -46,13 +47,12 @@ const MissingItemsScreen = ({ route }) => {
     }
   }, []);
 
-  // Initialize or update animated values whenever missingItems change.
+  // Update animated values whenever missingItems change.
   useEffect(() => {
     if (missingItems) {
       const newValues = {};
       Object.entries(missingItems).forEach(([category, items]) => {
         items.forEach(item => {
-          // Use an existing value if available; otherwise create a new Animated.Value.
           newValues[item.id] = animatedValues[item.id] || new Animated.Value(0);
         });
       });
@@ -80,7 +80,7 @@ const MissingItemsScreen = ({ route }) => {
     const animatedVal = animatedValues[item.id] || new Animated.Value(0);
     const items = missingItems[category];
     const offset = (items.length - 1 - index) * ITEM_HEIGHT;
-  
+
     Animated.timing(animatedVal, {
       toValue: offset,
       duration: 300,
@@ -90,12 +90,10 @@ const MissingItemsScreen = ({ route }) => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       const updatedItems = [...items];
       const [toggledItem] = updatedItems.splice(index, 1);
-  
+
       // Toggle the completed flag
       toggledItem.completed = !toggledItem.completed;
-  
-      // If toggledItem.completed is now true, add it to checkedItems
-      // If it's false, remove it from checkedItems
+
       setCheckedItems(prev => {
         const key = `${category}-${index}`;
         if (toggledItem.completed) {
@@ -104,14 +102,14 @@ const MissingItemsScreen = ({ route }) => {
           return prev.filter(entry => entry !== key);
         }
       });
-  
+
       updatedItems.push(toggledItem);
       setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
       animatedVal.setValue(0);
     });
   };
 
-  // Delete all items that have been checked (if using multi-select).
+  // Delete all checked items (multi-select).
   const deleteCheckedItems = async () => {
     Alert.alert(
       'Delete Checked Items',
@@ -180,18 +178,23 @@ const MissingItemsScreen = ({ route }) => {
     };
   }, [isEditing, navigation]);
 
-  // Fetch missing items from AsyncStorage and organize them by category.
+  // Fetch missing items from AsyncStorage and group them by category.
   const fetchMissingItems = async () => {
-    let categorizedItems = {};
-    const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
-    const filteredItems = storedItems.filter(
-      item => item.orgId === bar.orgId
-    );
+    // Use the bar's orgId to load items
+    const storedItemsRaw = await AsyncStorage.getItem(`items_${bar.orgId}`);
+    const storedItems = storedItemsRaw ? JSON.parse(storedItemsRaw) : [];
+    console.log("Fetched items from AsyncStorage for bar:", bar.orgId, storedItems);
 
-    for (const item of filteredItems) {
+    let categorizedItems = {};
+
+    // Loop through all items for this bar
+    for (const item of storedItems) {
+      // For each item, check how many are missing
       const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
       const savedMissing = await AsyncStorage.getItem(missingKey);
+      console.log(`Checking missing item: ${item.name}, Key: ${missingKey}, Value: ${savedMissing}`);
       const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
+
       if (missingAmount > 0) {
         if (!categorizedItems[item.categoryName]) {
           categorizedItems[item.categoryName] = [];
@@ -203,9 +206,9 @@ const MissingItemsScreen = ({ route }) => {
         });
       }
     }
-    setMissingItems(
-      Object.keys(categorizedItems).length ? categorizedItems : null
-    );
+
+    console.log("Final categorized missing items:", categorizedItems);
+    setMissingItems(Object.keys(categorizedItems).length ? categorizedItems : null);
   };
 
   // Generate a formatted message of missing items.
@@ -215,16 +218,15 @@ const MissingItemsScreen = ({ route }) => {
     if (missingItems) {
       for (const [category, items] of Object.entries(missingItems)) {
         if (items.length > 0) {
-          message += `*${category}:*\n`;
+          message += `\n*${category}:*\n`;
           items.forEach(item => {
-            message += `- ${item.type.padEnd(20, ' ')}: ${String(
-              item.missing
-            ).padStart(3, ' ')}\n`;
+            // If item.type exists use it; otherwise use item.name.
+            message += `- ${item.type ? item.type.padEnd(20, ' ') : item.name.padEnd(20, ' ')}: ${String(item.missing).padStart(3, ' ')}\n`;
           });
         }
       }
     } else {
-      message += 'No missing items found.';
+      message += '\nNo missing items found.';
     }
     return message;
   };
@@ -244,7 +246,7 @@ const MissingItemsScreen = ({ route }) => {
     }
   };
 
-  // Update the missing count in the state and input field.
+  // Update missing count locally and in AsyncStorage.
   const handleInputChange = (category, index, value) => {
     const updatedItems = [...missingItems[category]];
     updatedItems[index].missing = value;
@@ -252,49 +254,42 @@ const MissingItemsScreen = ({ route }) => {
   };
 
   const handleInputBlur = async (category, index) => {
-  const updatedItems = [...missingItems[category]];
-  const newCount = parseInt(inputValues[`${category}-${index}`], 10);
-  if (!isNaN(newCount)) {
-    updatedItems[index].missing = newCount;
-    // Update AsyncStorage with the new missing value.
+    const updatedItems = [...missingItems[category]];
+    const newCount = parseInt(inputValues[`${category}-${index}`], 10);
+    if (!isNaN(newCount)) {
+      updatedItems[index].missing = newCount;
+      const missingKey = `missing_${updatedItems[index].id}_${bar.orgId}_${bar.name}`;
+      await AsyncStorage.setItem(missingKey, newCount.toString());
+    }
+    setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
+    setIsEditing(false);
+  };
+
+  const updateMissingValue = async (category, index, newValue) => {
+    const updatedItems = [...missingItems[category]];
+    updatedItems[index].missing = newValue;
+    setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
+    
     const missingKey = `missing_${updatedItems[index].id}_${bar.orgId}_${bar.name}`;
-    await AsyncStorage.setItem(missingKey, newCount.toString());
-  }
-  setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
-  setIsEditing(false);
-};
+    await AsyncStorage.setItem(missingKey, newValue.toString());
+    setInputValues(prev => ({ ...prev, [`${category}-${index}`]: newValue.toString() }));
+  };
 
+  const incrementCount = async (category, index) => {
+    const currentValue =
+      parseInt(inputValues[`${category}-${index}`], 10) ||
+      missingItems[category][index].missing;
+    const updatedValue = currentValue + 1;
+    await updateMissingValue(category, index, updatedValue);
+  };
 
-const updateMissingValue = async (category, index, newValue) => {
-  // Update local state
-  const updatedItems = [...missingItems[category]];
-  updatedItems[index].missing = newValue;
-  setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
-  
-  // Save the new missing count in AsyncStorage using the expected key
-  const missingKey = `missing_${updatedItems[index].id}_${bar.orgId}_${bar.name}`;
-  await AsyncStorage.setItem(missingKey, newValue.toString());
-  
-  // Also update the input value state
-  setInputValues(prev => ({ ...prev, [`${category}-${index}`]: newValue.toString() }));
-};
-
-const incrementCount = async (category, index) => {
-  const currentValue =
-    parseInt(inputValues[`${category}-${index}`], 10) ||
-    missingItems[category][index].missing;
-  const updatedValue = currentValue + 1;
-  await updateMissingValue(category, index, updatedValue);
-};
-
-const decrementCount = async (category, index) => {
-  const currentValue =
-    parseInt(inputValues[`${category}-${index}`], 10) ||
-    missingItems[category][index].missing;
-  const updatedValue = currentValue > 0 ? currentValue - 1 : 0;
-  await updateMissingValue(category, index, updatedValue);
-};
-
+  const decrementCount = async (category, index) => {
+    const currentValue =
+      parseInt(inputValues[`${category}-${index}`], 10) ||
+      missingItems[category][index].missing;
+    const updatedValue = currentValue > 0 ? currentValue - 1 : 0;
+    await updateMissingValue(category, index, updatedValue);
+  };
 
   const deleteItem = async (category, index) => {
     Alert.alert(
@@ -309,12 +304,8 @@ const decrementCount = async (category, index) => {
             const updatedItems = [...missingItems[category]];
             const item = updatedItems[index];
             updatedItems.splice(index, 1);
-            await AsyncStorage.removeItem(
-              `missing_${item.id}_${bar.orgId}_${bar.name}`
-            );
-            LayoutAnimation.configureNext(
-              LayoutAnimation.Presets.easeInEaseOut
-            );
+            await AsyncStorage.removeItem(`missing_${item.id}_${bar.orgId}_${bar.name}`);
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setMissingItems(prev => ({ ...prev, [category]: updatedItems }));
           },
         },
@@ -334,15 +325,11 @@ const decrementCount = async (category, index) => {
           onPress: async () => {
             const items = missingItems[category];
             for (const item of items) {
-              await AsyncStorage.removeItem(
-                `missing_${item.id}_${bar.orgId}_${bar.name}`
-              );
+              await AsyncStorage.removeItem(`missing_${item.id}_${bar.orgId}_${bar.name}`);
             }
             const updatedMissingItems = { ...missingItems };
             delete updatedMissingItems[category];
-            LayoutAnimation.configureNext(
-              LayoutAnimation.Presets.easeInEaseOut
-            );
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setMissingItems(updatedMissingItems);
           },
         },
@@ -360,16 +347,14 @@ const decrementCount = async (category, index) => {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            for (const [category, items] of Object.entries(missingItems)) {
-              for (const item of items) {
-                await AsyncStorage.removeItem(
-                  `missing_${item.id}_${bar.orgId}_${bar.name}`
-                );
+            if (missingItems) {
+              for (const [category, items] of Object.entries(missingItems)) {
+                for (const item of items) {
+                  await AsyncStorage.removeItem(`missing_${item.id}_${bar.orgId}_${bar.name}`);
+                }
               }
             }
-            LayoutAnimation.configureNext(
-              LayoutAnimation.Presets.easeInEaseOut
-            );
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setMissingItems(null);
           },
         },
@@ -403,16 +388,16 @@ const decrementCount = async (category, index) => {
           Object.entries(missingItems).map(([category, items]) => (
             <View key={category} style={{ marginBottom: 20 }}>
               <TouchableOpacity onLongPress={() => deleteCategory(category)}>
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: 'bold',
-                  marginBottom: 10,
-                  color: theme.colors.primary,
-                }}
-              >
-                {category}
-              </Text>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    marginBottom: 10,
+                    color: theme.colors.primary,
+                  }}
+                >
+                  {category}
+                </Text>
               </TouchableOpacity>
               {items.map((item, index) => (
                 <Animated.View
@@ -435,19 +420,13 @@ const decrementCount = async (category, index) => {
                         borderRadius: 10,
                         borderWidth: 1,
                         borderColor: theme.colors.primary,
-                        backgroundColor: item.completed
-                          ? theme.colors.primary
-                          : 'transparent',
+                        backgroundColor: item.completed ? theme.colors.primary : 'transparent',
                       }}
                     />
                   )}
                   <TouchableOpacity
                     onLongPress={handleLongPressItem}
-                    style={{
-                      flex: 2,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}
+                    style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
                   >
                     <Image
                       source={{ uri: item.image || 'placeholder.jpg' }}
@@ -459,15 +438,11 @@ const decrementCount = async (category, index) => {
                         backgroundColor: 'white',
                       }}
                     />
-                    <Text style={{ fontSize: 16, color: theme.colors.text }}>
-                      {item.name}
-                    </Text>
+                    <Text style={{ fontSize: 16, color: theme.colors.text }}>{item.name}</Text>
                   </TouchableOpacity>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <TouchableOpacity onPress={() => decrementCount(category, index)}>
-                      <Text style={{ fontSize: 24, marginHorizontal: 10, color: theme.colors.primary }}>
-                        -
-                      </Text>
+                      <Text style={{ fontSize: 24, marginHorizontal: 10, color: theme.colors.primary }}>-</Text>
                     </TouchableOpacity>
                     <TextInput
                       style={{
@@ -491,9 +466,7 @@ const decrementCount = async (category, index) => {
                       onFocus={() => setIsEditing(true)}
                     />
                     <TouchableOpacity onPress={() => incrementCount(category, index)}>
-                      <Text style={{ fontSize: 24, marginHorizontal: 10, color: theme.colors.primary }}>
-                        +
-                      </Text>
+                      <Text style={{ fontSize: 24, marginHorizontal: 10, color: theme.colors.primary }}>+</Text>
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
@@ -506,15 +479,13 @@ const decrementCount = async (category, index) => {
           </Text>
         )}
       </ScrollView>
+
       {circleMode && (
         <View style={{ marginBottom: 10 }}>
-          <Button
-            title="Delete Selected Items"
-            onPress={deleteCheckedItems}
-            color="#FF3B30"
-          />
+          <Button title="Delete Selected Items" onPress={deleteCheckedItems} color="#FF3B30" />
         </View>
       )}
+
       <View style={{ marginBottom: 10 }}>
         <Button
           title="Show Recommended Crates"
