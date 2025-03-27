@@ -521,40 +521,42 @@ export const addCrateToFirebase = async (orgId, crate) => {
 
 export const deleteAllDataUnderOrganization = async (orgId) => {
   try {
-    // Delete all bars
+    // Delete bars
     const barsSnapshot = await getDocs(collection(db, 'organizations', orgId, 'bars'));
     for (const barDoc of barsSnapshot.docs) {
-      const barId = barDoc.id;
+      await deleteDoc(barDoc.ref);
+      console.log('Deleted bar:', barDoc.id);
+    }
 
-      // Delete all categories under this bar
-      const categoriesSnapshot = await getDocs(collection(db, 'organizations', orgId, 'categories'));
-      for (const categoryDoc of categoriesSnapshot.docs) {
-        const categoryId = categoryDoc.id;
-
-        // Delete all items under this category
-        const itemsSnapshot = await getDocs(collection(db, 'organizations', orgId, 'categories', categoryId, 'items'));
-        for (const itemDoc of itemsSnapshot.docs) {
-          await deleteDoc(itemDoc.ref); // Delete each item
-        }
-
-        await deleteDoc(categoryDoc.ref); // Delete the category
+    // Delete categories and items
+    const categoriesSnapshot = await getDocs(collection(db, 'organizations', orgId, `categories_${orgId}`));
+    for (const categoryDoc of categoriesSnapshot.docs) {
+      // Delete items inside each category
+      const itemsSnapshot = await getDocs(collection(db, 'organizations', orgId, `categories_${orgId}`, categoryDoc.id, `items_${orgId}`));
+      for (const itemDoc of itemsSnapshot.docs) {
+        await deleteDoc(itemDoc.ref);
+        console.log('Deleted item:', itemDoc.id);
       }
 
-      await deleteDoc(barDoc.ref); // Delete the bar
+      // Delete category after items are deleted
+      await deleteDoc(categoryDoc.ref);
+      console.log('Deleted category:', categoryDoc.id);
     }
 
-    // Optionally: Delete crates if your app uses them
+    // Optional: Delete crates if you use them
     const cratesSnapshot = await getDocs(collection(db, 'organizations', orgId, 'crates'));
     for (const crateDoc of cratesSnapshot.docs) {
-      await deleteDoc(crateDoc.ref); // Delete each crate
+      await deleteDoc(crateDoc.ref);
+      console.log('Deleted crate:', crateDoc.id);
     }
 
-    console.log(`All data under organization ${orgId} has been deleted.`);
+    console.log(`All data under organization ${orgId} deleted successfully.`);
   } catch (error) {
-    console.error(`Error deleting data under organization ${orgId}:`, error);
+    console.error('Error deleting organization data:', error);
     throw error;
   }
 };
+
 
 
 

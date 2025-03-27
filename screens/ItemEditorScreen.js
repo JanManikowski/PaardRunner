@@ -91,8 +91,6 @@ const ItemEditorScreen = ({ route, navigation }) => {
       console.error(error);
     }
   };
-  
-  
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>

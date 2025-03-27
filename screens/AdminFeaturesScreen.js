@@ -110,68 +110,61 @@ const AdminFeaturesScreen = ({ navigation }) => {
   const handleUploadLocalStorageToFirebase = async () => {
     try {
       console.log("Starting upload of local storage data to Firebase...");
-
+  
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
-        console.error("No active organization selected");
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-
+  
       await deleteAllDataUnderOrganization(activeOrgId);
       console.log(`All data under organization ${activeOrgId} deleted.`);
-
+  
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
-      const org = organizations.find((org) => org.id === activeOrgId);
+      const org = organizations.find(o => o.id === activeOrgId);
       if (!org) {
-        console.error("No matching organization found in local storage for activeOrgId", activeOrgId);
+        Alert.alert('Error', 'Organization not found in local storage.');
         return;
       }
-
-      console.log("Uploading organization:", org);
-
+  
       const orgId = await createOrUpdateOrganization(org.name);
-      console.log("Organization created/updated in Firebase with ID:", orgId);
-
+      console.log("Organization uploaded:", org.name);
+  
       const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
-      console.log(`Bars for active organization (ID: ${activeOrgId}):`, barsForOrg);
-
+  
       for (let bar of barsForOrg) {
-        const barId = await createBarInFirebase(orgId, bar);
-        console.log(`Bar created/updated in Firebase: ${bar.name}, ID: ${barId}`);
-
-        const categories = JSON.parse(await AsyncStorage.getItem(`categories_${orgId}`)) || [];
-        const categoriesForOrg = categories.filter((category) => category.orgId === activeOrgId);
-
-        for (let category of categoriesForOrg) {
-          const categoryId = await addCategory(orgId, category.name);
-          console.log(`Category created/updated in Firebase: ${category.name}, ID: ${categoryId}`);
-
-          const items = JSON.parse(await AsyncStorage.getItem(`items_${activeOrgId}`)) || [];
-          const itemsForCategory = items.filter((item) => item.categoryName === category.name);
-
-          for (let item of itemsForCategory) {
-            await addItem(orgId, category.name, item.name, item.maxAmount, item.image);
-            console.log(`Item created/updated in Firebase: ${item.name}`);
-          }
+        await createBarInFirebase(orgId, bar);
+        console.log(`Uploaded bar: ${bar.name}`);
+      }
+  
+      const categories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
+  
+      for (let category of categories) {
+        await addCategory(orgId, category.name);
+        console.log(`Uploaded category: ${category.name}`);
+  
+        // This is the critical fix:
+        const itemsForCategory = category.items || [];
+  
+        for (let item of itemsForCategory) {
+          await addItem(orgId, category.name, item.name, item.maxAmount, item.image);
+          console.log(`Uploaded item: ${item.name}`);
         }
       }
-
+  
       const customCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
-      console.log(`Custom crates for active organization:`, customCrates);
-
       for (let crate of customCrates) {
-        const crateId = await addCrateToFirebase(orgId, crate);
-        console.log(`Crate created/updated in Firebase: ${crate.name}, ID: ${crateId}`);
+        await addCrateToFirebase(orgId, crate);
+        console.log(`Uploaded crate: ${crate.name}`);
       }
-
-      Alert.alert('Upload Complete', 'Local storage data uploaded to Firebase successfully.');
-      console.log("Upload process completed successfully.");
+  
+      Alert.alert('Upload Complete', 'Local storage data uploaded successfully.');
     } catch (error) {
-      console.error('Error uploading data to Firebase:', error);
-      Alert.alert('Error', 'Failed to upload data to Firebase.');
+      console.error('Error uploading data:', error);
+      Alert.alert('Error', 'Failed to upload data.');
     }
   };
+  
 
   const clearLocalStorage = async () => {
     try {
