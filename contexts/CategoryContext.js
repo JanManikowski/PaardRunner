@@ -1,26 +1,26 @@
-// CategoryContext.js
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Create the context
 export const CategoryContext = createContext();
 
 export const CategoryProvider = ({ children }) => {
-  const [categories, setCategories] = useState({});
+  const [categories, setCategories] = useState([]);
   const [selectedOrganization, setSelectedOrganization] = useState(null);
 
-  // Function to log and set the selected organization
+  // Set the selected organization and load its categories
   const setOrganization = async (organization) => {
     try {
       await AsyncStorage.setItem('selectedOrganization', JSON.stringify(organization));
       setSelectedOrganization(organization);
       console.log(`Current organization: ${organization.name}`);
+      const storedCategories = await AsyncStorage.getItem(`categories_${organization.id}`);
+      setCategories(storedCategories ? JSON.parse(storedCategories) : []);
     } catch (error) {
       console.error('Error setting selected organization:', error);
     }
   };
 
-  // Function to get the selected organization
+  // Get the selected organization
   const getOrganization = async () => {
     try {
       const storedOrganization = await AsyncStorage.getItem('selectedOrganization');
@@ -34,19 +34,7 @@ export const CategoryProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    // Load the selected organization and categories from AsyncStorage on initialization
-    const loadData = async () => {
-      const organization = await getOrganization();
-      if (organization) {
-        const storedCategories = await AsyncStorage.getItem(`categories_${organization.id}`);
-        setCategories(storedCategories ? JSON.parse(storedCategories) : {});
-      }
-    };
-    loadData();
-  }, []);
-
-  // Save categories to AsyncStorage for the selected organization
+  // Save categories array to AsyncStorage and update state
   const saveCategories = async (newCategories) => {
     if (!selectedOrganization) return;
     try {
@@ -57,50 +45,68 @@ export const CategoryProvider = ({ children }) => {
     }
   };
 
-  // Add a new category for the selected organization
+  // Add a new category (if not already present)
   const addCategory = async (categoryName) => {
-    const newCategories = { ...categories, [categoryName]: [] };
+    if (categories.some(cat => cat.name === categoryName)) {
+      console.log(`Category "${categoryName}" already exists.`);
+      return;
+    }
+    const newCategories = [
+      ...categories,
+      { name: categoryName, items: [], orgId: selectedOrganization.id }
+    ];
     await saveCategories(newCategories);
   };
 
-  // Delete a category for the selected organization
   const deleteCategory = async (categoryName) => {
-    const { [categoryName]: _, ...remainingCategories } = categories;
-    await saveCategories(remainingCategories);
+    const newCategories = categories.filter(cat => cat.name !== categoryName);
+    await saveCategories(newCategories);
   };
 
-  // Add an item to a category for the selected organization
   const addItemToCategory = async (categoryName, item) => {
-    const newCategories = { 
-      ...categories, 
-      [categoryName]: [...(categories[categoryName] || []), item] 
-    };
+    const newCategories = categories.map(cat => {
+      if (cat.name === categoryName) {
+        return { ...cat, items: [...(cat.items || []), item] };
+      }
+      return cat;
+    });
     await saveCategories(newCategories);
   };
 
-  // Remove an item from a category for the selected organization
   const removeItemFromCategory = async (categoryName, itemName) => {
-    const updatedItems = (categories[categoryName] || []).filter(item => item.name !== itemName);
-    const newCategories = { ...categories, [categoryName]: updatedItems };
+    const newCategories = categories.map(cat => {
+      if (cat.name === categoryName) {
+        return { ...cat, items: (cat.items || []).filter(item => item.name !== itemName) };
+      }
+      return cat;
+    });
     await saveCategories(newCategories);
   };
 
-  // Update an item in a category for the selected organization
   const updateItemInCategory = async (categoryName, updatedItem) => {
-    const updatedItems = (categories[categoryName] || []).map(item =>
-      item.name === updatedItem.name ? updatedItem : item
-    );
-    const newCategories = { ...categories, [categoryName]: updatedItems };
+    const newCategories = categories.map(cat => {
+      if (cat.name === categoryName) {
+        return {
+          ...cat,
+          items: (cat.items || []).map(item => item.name === updatedItem.name ? updatedItem : item)
+        };
+      }
+      return cat;
+    });
     await saveCategories(newCategories);
   };
 
-  // Update the entire category items (useful for importing data)
   const updateCategoryItems = async (categoryName, updatedItems) => {
-    const newCategories = { ...categories, [categoryName]: updatedItems };
+    const newCategories = categories.map(cat => {
+      if (cat.name === categoryName) {
+        return { ...cat, items: updatedItems };
+      }
+      return cat;
+    });
     await saveCategories(newCategories);
   };
 
-  // Set categories directly (used for importing data)
+  // Directly set categories (for importing data, etc.)
   const setCategoriesDirectly = async (importedCategories) => {
     await saveCategories(importedCategories);
   };
@@ -123,3 +129,5 @@ export const CategoryProvider = ({ children }) => {
     </CategoryContext.Provider>
   );
 };
+
+export default CategoryProvider;

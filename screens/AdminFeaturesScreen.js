@@ -1,13 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  ScrollView, 
-  Alert, 
-  TouchableOpacity, 
-  Modal 
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, Alert, Modal } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { auth } from '../utils/firebaseConfig';
 import {
@@ -22,12 +14,12 @@ import {
   deleteAllDataUnderOrganization
 } from '../utils/firebaseService';
 import AdminActionButton from '../components/AdminActionButton';
-import OrganizationList from '../components/OrganizationList';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AdminFeaturesScreen = ({ navigation }) => {
   const { theme } = useContext(ThemeContext);
   const [user, setUser] = useState(null);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [organizations, setOrganizations] = useState([]);
   const [newOrgName, setNewOrgName] = useState('');
   const [activeOrgId, setActiveOrgId] = useState(null);
@@ -37,12 +29,13 @@ const AdminFeaturesScreen = ({ navigation }) => {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (!currentUser) {
-        navigation.navigate('Login'); // Redirect to Login if not logged in
+        navigation.replace('Login'); // Replace screen so the user cannot go back without logging in
       } else {
         setUser(currentUser);
         loadOrganizations();
         loadActiveOrgId();
       }
+      setIsAuthChecked(true);
     });
     return () => unsubscribe();
   }, []);
@@ -117,61 +110,61 @@ const AdminFeaturesScreen = ({ navigation }) => {
   const handleUploadLocalStorageToFirebase = async () => {
     try {
       console.log("Starting upload of local storage data to Firebase...");
-  
+
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         console.error("No active organization selected");
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-  
+
       await deleteAllDataUnderOrganization(activeOrgId);
       console.log(`All data under organization ${activeOrgId} deleted.`);
-  
+
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
       const org = organizations.find((org) => org.id === activeOrgId);
       if (!org) {
         console.error("No matching organization found in local storage for activeOrgId", activeOrgId);
         return;
       }
-  
+
       console.log("Uploading organization:", org);
-  
+
       const orgId = await createOrUpdateOrganization(org.name);
       console.log("Organization created/updated in Firebase with ID:", orgId);
-  
+
       const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
       console.log(`Bars for active organization (ID: ${activeOrgId}):`, barsForOrg);
-  
+
       for (let bar of barsForOrg) {
         const barId = await createBarInFirebase(orgId, bar);
         console.log(`Bar created/updated in Firebase: ${bar.name}, ID: ${barId}`);
-  
+
         const categories = JSON.parse(await AsyncStorage.getItem(`categories_${orgId}`)) || [];
         const categoriesForOrg = categories.filter((category) => category.orgId === activeOrgId);
-  
+
         for (let category of categoriesForOrg) {
           const categoryId = await addCategory(orgId, category.name);
           console.log(`Category created/updated in Firebase: ${category.name}, ID: ${categoryId}`);
-  
+
           const items = JSON.parse(await AsyncStorage.getItem(`items_${activeOrgId}`)) || [];
           const itemsForCategory = items.filter((item) => item.categoryName === category.name);
-  
+
           for (let item of itemsForCategory) {
             await addItem(orgId, category.name, item.name, item.maxAmount, item.image);
             console.log(`Item created/updated in Firebase: ${item.name}`);
           }
         }
       }
-  
+
       const customCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
       console.log(`Custom crates for active organization:`, customCrates);
-  
+
       for (let crate of customCrates) {
         const crateId = await addCrateToFirebase(orgId, crate);
         console.log(`Crate created/updated in Firebase: ${crate.name}, ID: ${crateId}`);
       }
-  
+
       Alert.alert('Upload Complete', 'Local storage data uploaded to Firebase successfully.');
       console.log("Upload process completed successfully.");
     } catch (error) {
@@ -198,38 +191,53 @@ const AdminFeaturesScreen = ({ navigation }) => {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: 10,
-          marginVertical: 5,
-          backgroundColor: activeOrgId === org.id ? theme.colors.primary : theme.colors.surfaceVariant,
+          // Reduced overall padding to shrink row height
+          paddingVertical: 10,
+          paddingHorizontal: 10,
+          marginVertical: 3,
+          backgroundColor: activeOrgId === org.id 
+            ? theme.colors.primary 
+            : theme.colors.surfaceVariant,
           borderRadius: 5,
         }}
       >
-        <TouchableOpacity
-          style={{ flex: 1 }}
+        <AdminActionButton
+          title={org.name}
           onPress={() => handleSetActiveOrganization(org.id)}
-        >
-          <Text
-            style={{
-              color: activeOrgId === org.id ? theme.colors.background : theme.colors.text,
-            }}
-          >
-            {org.name}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => handleDeleteOrganization(org.id)}
+          // Override default AdminActionButton padding to make button smaller
           style={{
-            padding: 5,
-            backgroundColor: theme.colors.error,
-            borderRadius: 5,
-            marginLeft: 10,
+            backgroundColor: activeOrgId === org.id 
+              ? theme.colors.primary 
+              : theme.colors.surfaceVariant,
+            marginBottom: 0,
+            paddingVertical: 5,
+            paddingHorizontal: 10,
           }}
-        >
-          <Text style={{ color: theme.colors.background, fontWeight: 'bold' }}>Delete</Text>
-        </TouchableOpacity>
+          textStyle={{
+            color: activeOrgId === org.id 
+              ? theme.colors.background 
+              : theme.colors.text,
+          }}
+        />
+        <AdminActionButton
+          title="Delete"
+          onPress={() => handleDeleteOrganization(org.id)}
+          // Same override here to keep both buttons the same size
+          style={{
+            backgroundColor: theme.colors.error,
+            marginBottom: 0,
+            paddingVertical: 5,
+            paddingHorizontal: 10,
+          }}
+          textStyle={{
+            color: theme.colors.background,
+            fontWeight: 'bold',
+          }}
+        />
       </View>
     ));
   };
+  
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -322,29 +330,20 @@ const AdminFeaturesScreen = ({ navigation }) => {
               style={{ backgroundColor: theme.colors.error }}
             />
             <AdminActionButton
-  title="Clear Local Storage"
-  onPress={clearLocalStorage}
-  style={{ backgroundColor: theme.colors.error }}
-/>
+              title="Clear Local Storage"
+              onPress={clearLocalStorage}
+              style={{ backgroundColor: theme.colors.error }}
+            />
           </View>
         );
       case 'organizations':
         return (
           <View>
-            <TouchableOpacity
-              style={{
-                backgroundColor: theme.colors.primary,
-                padding: 10,
-                borderRadius: 5,
-                marginBottom: 15,
-                alignItems: 'center',
-              }}
+            {/* Both buttons below now use AdminActionButton to ensure they have the same size */}
+            <AdminActionButton
+              title="Add Organization"
               onPress={() => setOrgModalVisible(true)}
-            >
-              <Text style={{ color: theme.colors.background, fontSize: 16 }}>
-                Add Organization
-              </Text>
-            </TouchableOpacity>
+            />
             <AdminActionButton
               title="Upload Data to Firebase"
               onPress={handleUploadLocalStorageToFirebase}
@@ -356,6 +355,10 @@ const AdminFeaturesScreen = ({ navigation }) => {
         return null;
     }
   };
+
+  if (!isAuthChecked || !user) {
+    return null;
+  }
 
   return (
     <ScrollView
@@ -371,7 +374,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
           fontWeight: 'bold',
           marginBottom: 20,
           textAlign: 'center',
-          color: "white",
+          color: 'white',
         }}
       >
         Admin Dashboard
@@ -385,57 +388,36 @@ const AdminFeaturesScreen = ({ navigation }) => {
           marginBottom: 20,
         }}
       >
-        <TouchableOpacity
+        <AdminActionButton
+          title="Manage Bars"
           onPress={() => setActiveTab('manageBars')}
           style={{
-            padding: 10,
             backgroundColor: activeTab === 'manageBars' ? theme.colors.primary : theme.colors.surfaceVariant,
-            borderRadius: 5,
           }}
-        >
-          <Text
-            style={{
-              color: activeTab === 'manageBars' ? theme.colors.background : theme.colors.text,
-              fontSize: 16,
-            }}
-          >
-            Manage Bars
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+          textStyle={{
+            color: activeTab === 'manageBars' ? theme.colors.background : theme.colors.text,
+          }}
+        />
+        <AdminActionButton
+          title="Debugging"
           onPress={() => setActiveTab('debugging')}
           style={{
-            padding: 10,
             backgroundColor: activeTab === 'debugging' ? theme.colors.primary : theme.colors.surfaceVariant,
-            borderRadius: 5,
           }}
-        >
-          <Text
-            style={{
-              color: activeTab === 'debugging' ? theme.colors.background : theme.colors.text,
-              fontSize: 16,
-            }}
-          >
-            Debugging
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+          textStyle={{
+            color: activeTab === 'debugging' ? theme.colors.background : theme.colors.text,
+          }}
+        />
+        <AdminActionButton
+          title="Organizations"
           onPress={() => setActiveTab('organizations')}
           style={{
-            padding: 10,
             backgroundColor: activeTab === 'organizations' ? theme.colors.primary : theme.colors.surfaceVariant,
-            borderRadius: 5,
           }}
-        >
-          <Text
-            style={{
-              color: activeTab === 'organizations' ? theme.colors.background : theme.colors.text,
-              fontSize: 16,
-            }}
-          >
-            Organizations
-          </Text>
-        </TouchableOpacity>
+          textStyle={{
+            color: activeTab === 'organizations' ? theme.colors.background : theme.colors.text,
+          }}
+        />
       </View>
 
       {/* Render Tab Content */}
@@ -504,31 +486,17 @@ const AdminFeaturesScreen = ({ navigation }) => {
                 width: '100%',
               }}
             >
-              <TouchableOpacity
-                style={{
-                  backgroundColor: theme.colors.primary,
-                  padding: 10,
-                  borderRadius: 8,
-                  flex: 1,
-                  alignItems: 'center',
-                  marginRight: 10,
-                }}
+              <AdminActionButton
+                title="Save"
                 onPress={handleAddOrganization}
-              >
-                <Text style={{ color: theme.colors.background, fontSize: 16 }}>Save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#F44336',
-                  padding: 10,
-                  borderRadius: 8,
-                  flex: 1,
-                  alignItems: 'center',
-                }}
+                style={{ flex: 1, marginRight: 10 }}
+              />
+              <AdminActionButton
+                title="Cancel"
                 onPress={() => setOrgModalVisible(false)}
-              >
-                <Text style={{ color: '#fff', fontSize: 16 }}>Cancel</Text>
-              </TouchableOpacity>
+                style={{ flex: 1, backgroundColor: '#F44336' }}
+                textStyle={{ color: '#fff' }}
+              />
             </View>
           </View>
         </View>

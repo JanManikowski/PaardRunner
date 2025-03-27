@@ -1,76 +1,46 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  Alert, 
-  Modal, 
-  TextInput 
-} from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DraggableFlatList from 'react-native-draggable-flatlist';
 import { ThemeContext } from '../contexts/ThemeContext';
 
-const ManageBarsScreen = ({ navigation, route }) => {
+const ManageBarsScreen = ({ navigation }) => {
+  const { theme } = useContext(ThemeContext);
   const [bars, setBars] = useState([]);
+  const [activeOrgId, setActiveOrgId] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editBar, setEditBar] = useState(null);
   const [editName, setEditName] = useState('');
-  const { theme } = useContext(ThemeContext);
 
   useEffect(() => {
-    if (route.params?.updatedBars) {
-      setBars(route.params.updatedBars);
-    } else {
-      fetchBars();
-    }
-  }, [route.params?.updatedBars]);
+    const loadBars = async () => {
+      const orgId = await AsyncStorage.getItem('activeOrgId');
+      setActiveOrgId(orgId);
+      const storedBars = JSON.parse(await AsyncStorage.getItem(`bars_${orgId}`)) || [];
+      setBars(storedBars.sort((a, b) => a.order - b.order));
+    };
+    loadBars();
+  }, []);
 
-  const fetchBars = async () => {
-    try {
-      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
-      if (!activeOrgId) {
-        console.error('No active organization selected');
-        return;
-      }
-      const storedBars = await AsyncStorage.getItem(`bars_${activeOrgId}`);
-      if (storedBars) {
-        setBars(JSON.parse(storedBars));
-      }
-    } catch (error) {
-      console.error('Failed to load bars from storage', error);
-    }
+  const handleDragEnd = async ({ data }) => {
+    const sortedBars = data.map((bar, index) => ({ ...bar, order: index }));
+    setBars(sortedBars);
+    await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(sortedBars));
   };
 
-  const deleteBar = async (barName) => {
-    try {
-      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
-      if (!activeOrgId) {
-        console.error('No active organization selected');
-        return;
-      }
-
-      Alert.alert(
-        'Confirm Delete',
-        'Are you sure you want to delete this bar?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            onPress: async () => {
-              const filteredBars = bars.filter(bar => bar.name !== barName);
-              setBars(filteredBars);
-              await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(filteredBars));
-              navigation.navigate('ViewBars', { refresh: true });
-            },
-            style: 'destructive',
-          },
-        ],
-        { cancelable: false }
-      );
-    } catch (error) {
-      console.error('Failed to delete bar', error);
-    }
+  const deleteBar = (barName) => {
+    Alert.alert('Confirm Delete', 'Delete this bar?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const updatedBars = bars.filter((bar) => bar.name !== barName);
+          setBars(updatedBars);
+          await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
+        },
+      },
+    ]);
   };
 
   const editBarDetails = (bar) => {
@@ -80,195 +50,81 @@ const ManageBarsScreen = ({ navigation, route }) => {
   };
 
   const saveBarDetails = async () => {
-    try {
-      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
-      if (!activeOrgId) {
-        console.error('No active organization selected');
-        return;
-      }
-  
-      const updatedBars = bars.map(bar => {
-        if (bar.name === editBar.name) {
-          return { ...bar, name: editName };
-        }
-        return bar;
-      });
-      setBars(updatedBars);
-  
-      await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
-      setEditModalVisible(false);
-      navigation.navigate('ViewBars', { refresh: true });
-    } catch (error) {
-      console.error('Failed to save bar details', error);
-    }
+    const updatedBars = bars.map((bar) =>
+      bar.name === editBar.name ? { ...bar, name: editName } : bar
+    );
+    setBars(updatedBars);
+    await AsyncStorage.setItem(`bars_${activeOrgId}`, JSON.stringify(updatedBars));
+    setEditModalVisible(false);
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={{
-        padding: 16,
-        backgroundColor: theme.colors.background,
-        flexGrow: 1,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: 'bold',
-          marginBottom: 20,
-          color: theme.colors.text,
-        }}
-      >
-        Manage Bars
-      </Text>
+    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Manage Bars</Text>
 
-      {bars.map((bar, index) => (
-        <View
-          key={index}
-          style={{
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-            backgroundColor: theme.colors.surfaceVariant,
-            borderRadius: 8,
-            marginBottom: 10,
-            padding: 15,
-            flexDirection: 'row',
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 18,
-              color: theme.colors.text,
-            }}
-          >
-            {bar.name}
-          </Text>
-
-          <View style={{ flexDirection: 'row' }}>
-            <TouchableOpacity
-              style={{
-                backgroundColor: theme.colors.primary,
-                padding: 10,
-                marginRight: 10,
-                borderRadius: 5,
-              }}
-              onPress={() => editBarDetails(bar)}
-            >
-              <Text style={{ color: '#fff', fontSize: 14 }}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                backgroundColor: '#F44336',
-                padding: 10,
-                borderRadius: 5,
-              }}
-              onPress={() => deleteBar(bar.name)}
-            >
-              <Text style={{ color: '#fff', fontSize: 14 }}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
-
-      {/* Edit Bar Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={editModalVisible}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          }}
-        >
+      <DraggableFlatList
+        data={bars}
+        keyExtractor={(item) => item.name}
+        onDragEnd={handleDragEnd}
+        renderItem={({ item, drag, isActive }) => (
           <View
             style={{
-              margin: 20,
-              backgroundColor: theme.colors.surface,
-              borderRadius: 15,
-              paddingVertical: 30,
-              paddingHorizontal: 25,
+              padding: 15,
+              backgroundColor: isActive ? theme.colors.primary : theme.colors.surfaceVariant,
+              borderRadius: 8,
+              marginVertical: 5,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 5,
-              elevation: 6,
-              width: '80%',
             }}
           >
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: 'bold',
-                marginBottom: 20,
-                color: theme.colors.text,
-              }}
-            >
-              Edit Bar
-            </Text>
+            <TouchableOpacity onLongPress={drag} style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, color: theme.colors.text }}>{item.name}</Text>
+            </TouchableOpacity>
 
-            <TextInput
-              style={{
-                width: '100%',
-                height: 45,
-                borderColor: theme.colors.primary,
-                borderWidth: 1,
-                marginBottom: 25,
-                paddingHorizontal: 10,
-                borderRadius: 8,
-                color: theme.colors.text,
-                backgroundColor: theme.colors.inputBackground || '#2A2A2A',
-              }}
-              placeholder="Bar Name"
-              placeholderTextColor={theme.colors.placeholder || '#888'}
-              value={editName}
-              onChangeText={setEditName}
-            />
-
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                width: '100%',
-              }}
-            >
+            <View style={{ flexDirection: 'row' }}>
               <TouchableOpacity
-                style={{
-                  backgroundColor: '#00BCD4', // bright cyan
-                  padding: 12,
-                  borderRadius: 8,
-                  flex: 1,
-                  alignItems: 'center',
-                  marginRight: 10,
-                }}
-                onPress={saveBarDetails}
+                onPress={() => editBarDetails(item)}
+                style={{ backgroundColor: theme.colors.primary, padding: 8, borderRadius: 5, marginRight: 8 }}
               >
-                <Text style={{ color: '#fff', fontSize: 16 }}>Save</Text>
+                <Text style={{ color: '#fff' }}>Edit</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={{
-                  backgroundColor: '#FF5252', // bright red
-                  padding: 12,
-                  borderRadius: 8,
-                  flex: 1,
-                  alignItems: 'center',
-                }}
-                onPress={() => setEditModalVisible(false)}
+                onPress={() => deleteBar(item.name)}
+                style={{ backgroundColor: theme.colors.error, padding: 8, borderRadius: 5 }}
               >
-                <Text style={{ color: '#fff', fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: '#fff' }}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
+        )}
+      />
+
+      <Modal animationType="slide" transparent={true} visible={editModalVisible}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ padding: 20, backgroundColor: theme.colors.surface, borderRadius: 10, width: '80%' }}>
+            <TextInput
+              value={editName}
+              onChangeText={setEditName}
+              style={{ borderColor: theme.colors.border, borderWidth: 1, padding: 10, borderRadius: 5, color: theme.colors.text }}
+            />
+            <TouchableOpacity
+              onPress={saveBarDetails}
+              style={{ backgroundColor: theme.colors.primary, padding: 10, marginTop: 10, borderRadius: 5 }}
+            >
+              <Text style={{ color: '#fff', textAlign: 'center' }}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setEditModalVisible(false)}
+              style={{ backgroundColor: theme.colors.error, padding: 10, marginTop: 10, borderRadius: 5 }}
+            >
+              <Text style={{ color: '#fff', textAlign: 'center' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 };
 

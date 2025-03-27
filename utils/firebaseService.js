@@ -79,7 +79,6 @@ export const addCategory = async (orgId, categoryName) => {
 
 export const addItem = async (orgId, categoryName, itemName, maxAmount, image) => {
   try {
-    // Save the item under: organizations/{orgId}/categories_{orgId}/{categoryName}/items_{orgId}/{itemName}
     const itemRef = doc(
       db,
       'organizations',
@@ -89,21 +88,47 @@ export const addItem = async (orgId, categoryName, itemName, maxAmount, image) =
       `items_${orgId}`,
       itemName
     );
+
     await setDoc(
       itemRef,
       {
         name: itemName,
         maxAmount,
         image: image || null,
-        categoryName, // For reference when retrieving
+        categoryName,
       },
       { merge: true }
     );
+
+    // Update AsyncStorage after adding the item to Firebase
+    const storageKey = `categories_${orgId}`;
+    const storedCategories = JSON.parse(await AsyncStorage.getItem(storageKey)) || [];
+
+    const updatedCategories = storedCategories.map(cat => {
+      if (cat.name === categoryName) {
+        const existingItems = cat.items || [];
+        
+        // Check if item already exists to avoid duplicates
+        const itemExists = existingItems.some(item => item.name === itemName);
+        
+        const updatedItems = itemExists
+          ? existingItems.map(item => item.name === itemName ? { name: itemName, maxAmount, image } : item)
+          : [...existingItems, { name: itemName, maxAmount, image }];
+        
+        return { ...cat, items: updatedItems };
+      }
+      return cat;
+    });
+
+    // Save updated categories back to AsyncStorage
+    await AsyncStorage.setItem(storageKey, JSON.stringify(updatedCategories));
+    
   } catch (error) {
     console.error('Error adding item:', error);
     throw error;
   }
 };
+
 
 
 
