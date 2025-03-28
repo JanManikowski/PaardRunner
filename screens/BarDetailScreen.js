@@ -36,7 +36,7 @@ const BarDetailScreen = ({ route, navigation }) => {
   );
 
   // Handle adding a custom item
-  const handleAddCustomItem = async (categoryName) => {
+  const handleAddCustomItem = async () => {
     if (customItem.trim()) {
       try {
         const activeOrgId = await AsyncStorage.getItem('activeOrgId');
@@ -45,43 +45,44 @@ const BarDetailScreen = ({ route, navigation }) => {
           return;
         }
   
-        // Get existing items from AsyncStorage (stored under "items")
-        const storedItems = JSON.parse(await AsyncStorage.getItem('items')) || [];
-  
-        // Create a new item with a unique id
+        // Create the custom item without a category
         const newItem = { 
-          id: Date.now().toString(), // or use a UUID generator for more uniqueness
+          id: Date.now().toString(),
           name: customItem, 
-          categoryName, 
+          categoryName: null,  // <-- Explicitly set to null
           orgId: activeOrgId,
-          missing: 1  // set to 1 so it appears in the missing items list
+          maxAmount: 1,
+          missing: 1,
+          image: null,
         };
   
-        // Add the new item to the list and store it back in AsyncStorage
-        const updatedItems = [...storedItems, newItem];
-        await AsyncStorage.setItem('items', JSON.stringify(updatedItems));
+        // Store missing key explicitly for MissingItemsScreen to find it
+        const missingKey = `missing_${newItem.id}_${activeOrgId}_${bar.name}`;
+        await AsyncStorage.setItem(missingKey, '1');
   
-        // ALSO store the missing count using the same key pattern as MissingItemsScreen expects
-        const missingKey = `missing_${newItem.id}_${bar.orgId}_${bar.name}`;
-        await AsyncStorage.setItem(missingKey, newItem.missing.toString());
+        // Store the custom item separately in AsyncStorage (optional but recommended)
+        const customItemsKey = `custom_missing_items_${activeOrgId}_${bar.name}`;
+        const customItems = JSON.parse(await AsyncStorage.getItem(customItemsKey)) || [];
+        customItems.push(newItem);
+        await AsyncStorage.setItem(customItemsKey, JSON.stringify(customItems));
   
         Toast.show({
           type: 'success',
           text1: 'Success',
-          text2: `${customItem} has been added to ${categoryName}`,
+          text2: `${customItem} has been added to Missing Items`,
           position: 'top',
         });
+  
         setCustomItem('');
       } catch (error) {
         console.error('Failed to add custom item', error);
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to add custom item.' });
       }
     } else {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Please enter a valid item name.' });
     }
   };
-
   
-
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: theme.colors.text }}>
@@ -152,16 +153,16 @@ const BarDetailScreen = ({ route, navigation }) => {
           onChangeText={setCustomItem}
         />
 
-        <TouchableOpacity
-          style={{
-            backgroundColor: theme.colors.primary,
-            paddingVertical: 10,
-            paddingHorizontal: 20,
-            borderRadius: 5,
-            alignItems: 'center',
-          }}
-          onPress={() => handleAddCustomItem('Custom')}
-        >
+<TouchableOpacity
+  style={{
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    alignItems: 'center',
+  }}
+  onPress={handleAddCustomItem} // <-- no argument here anymore
+>
           <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>
             Add Custom Item
           </Text>

@@ -180,36 +180,51 @@ const MissingItemsScreen = ({ route }) => {
 
   // Fetch missing items from AsyncStorage and group them by category.
   const fetchMissingItems = async () => {
-    // Use the bar's orgId to load items
-    const storedItemsRaw = await AsyncStorage.getItem(`items_${bar.orgId}`);
-    const storedItems = storedItemsRaw ? JSON.parse(storedItemsRaw) : [];
-    console.log("Fetched items from AsyncStorage for bar:", bar.orgId, storedItems);
-
-    let categorizedItems = {};
-
-    // Loop through all items for this bar
-    for (const item of storedItems) {
-      // For each item, check how many are missing
-      const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
-      const savedMissing = await AsyncStorage.getItem(missingKey);
-      console.log(`Checking missing item: ${item.name}, Key: ${missingKey}, Value: ${savedMissing}`);
-      const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
-
-      if (missingAmount > 0) {
-        if (!categorizedItems[item.categoryName]) {
-          categorizedItems[item.categoryName] = [];
+    const categorizedItems = {};
+    const categoriesKey = `categories_${bar.orgId}`;
+    const storedCategories = JSON.parse(await AsyncStorage.getItem(categoriesKey)) || [];
+  
+    for (const category of storedCategories) {
+      for (const item of category.items || []) {
+        const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
+        const savedMissing = await AsyncStorage.getItem(missingKey);
+        const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
+  
+        if (missingAmount > 0) {
+          if (!categorizedItems[category.name]) {
+            categorizedItems[category.name] = [];
+          }
+          categorizedItems[category.name].push({
+            ...item,
+            missing: missingAmount,
+            completed: false,
+          });
         }
-        categorizedItems[item.categoryName].push({
-          ...item,
-          missing: missingAmount,
-          completed: false,
-        });
       }
     }
-
-    console.log("Final categorized missing items:", categorizedItems);
+  
+    // Fetch custom items separately
+    const customItemsKey = `custom_missing_items_${bar.orgId}_${bar.name}`;
+    const customItems = JSON.parse(await AsyncStorage.getItem(customItemsKey)) || [];
+    const missingCustomItems = customItems.filter(async item => {
+      const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
+      const savedMissing = await AsyncStorage.getItem(missingKey);
+      return savedMissing && parseInt(savedMissing, 10) > 0;
+    });
+  
+    if (missingCustomItems.length > 0) {
+      categorizedItems["Custom Items"] = missingCustomItems.map(item => ({
+        ...item,
+        missing: 1,
+        completed: false,
+      }));
+    }
+  
     setMissingItems(Object.keys(categorizedItems).length ? categorizedItems : null);
   };
+  
+  
+  
 
   // Generate a formatted message of missing items.
   const generateMissingItemsMessage = () => {
