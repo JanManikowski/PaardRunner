@@ -36,30 +36,27 @@ const RecommendedCratesScreen = ({ route }) => {
 
   // Fetch missing items from local storage based on the current bar.
   const fetchMissingItems = async (bar) => {
-    try {
-      const categorizedItems = {};
-      // Use the same key format as in other screens.
-      const storedItems = JSON.parse(await AsyncStorage.getItem(`items_${bar.orgId}`)) || [];
-      const filteredItems = storedItems.filter((item) => item.orgId === bar.orgId);
-      
-      for (const item of filteredItems) {
+    const categorizedItems = {};
+    const categoriesKey = `categories_${bar.orgId}`;
+    const storedCategories = JSON.parse(await AsyncStorage.getItem(categoriesKey)) || [];
+  
+    for (const category of storedCategories) {
+      for (const item of category.items || []) {
         const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
         const savedMissing = await AsyncStorage.getItem(missingKey);
         const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
-
+  
         if (missingAmount > 0) {
-          if (!categorizedItems[item.categoryName]) {
-            categorizedItems[item.categoryName] = [];
+          if (!categorizedItems[category.name]) {
+            categorizedItems[category.name] = [];
           }
-          categorizedItems[item.categoryName].push({ ...item, missing: missingAmount });
+          categorizedItems[category.name].push({ ...item, missing: missingAmount });
         }
       }
-      return categorizedItems;
-    } catch (error) {
-      console.error('Error fetching missing items:', error);
-      return {};
     }
+    return categorizedItems;
   };
+  
 
   // Generate recommended crates based on missing items and crate configurations.
   // We include each item's "id" so that we can delete its missing key later.

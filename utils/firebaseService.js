@@ -502,21 +502,16 @@ export const handleDeleteOrganization = async (orgId) => {
 };
 
 export const addCrateToFirebase = async (orgId, crate) => {
-  try {
-      const crateRef = doc(db, 'organizations', orgId, 'crates', crate.name);
-      await setDoc(crateRef, {
-          name: crate.name,
-          category: crate.category,
-          maxItems: crate.maxItems,
-          orgId: orgId,
-      }, { merge: true });
-
-      console.log(`Crate "${crate.name}" uploaded to organization ${orgId}`);
-  } catch (error) {
-      console.error('Error adding crate:', error);
-      throw error;
-  }
+  const crateRef = doc(db, 'organizations', orgId, 'crates', crate.id);
+  await setDoc(crateRef, {
+    name: crate.name,
+    category: crate.category,
+    maxItems: crate.maxItems,
+    orgId,
+    id: crate.id,
+  });
 };
+
 
 
 export const deleteAllDataUnderOrganization = async (orgId) => {

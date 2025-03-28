@@ -55,19 +55,19 @@ const CustomCratesScreen = () => {
       Alert.alert('Error', 'All fields are required.');
       return;
     }
-
+  
     if (isNaN(maxItems) || parseInt(maxItems) <= 0) {
       Alert.alert('Error', 'Maximum items must be a positive number.');
       return;
     }
-
+  
     try {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected.');
         return;
       }
-
+  
       const newCrate = {
         id: Date.now().toString(),
         name: crateName.trim(),
@@ -75,11 +75,11 @@ const CustomCratesScreen = () => {
         maxItems: parseInt(maxItems),
         orgId: activeOrgId,
       };
-
+  
       const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
       const updatedCrates = [...storedCrates, newCrate];
-      await AsyncStorage.setItem('customCrates', JSON.stringify(updatedCrates));
-
+      await AsyncStorage.setItem(`customCrates_${activeOrgId}`, JSON.stringify(updatedCrates));
+  
       fetchCrates();
       setCrateName('');
       setSelectedCategory('');
@@ -90,6 +90,7 @@ const CustomCratesScreen = () => {
       Alert.alert('Error', 'Failed to add crate.');
     }
   };
+  
 
   const handleDeleteCrate = async (crateId) => {
     try {

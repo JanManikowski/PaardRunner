@@ -127,7 +127,8 @@ const AdminFeaturesScreen = ({ navigation }) => {
         return;
       }
   
-      const orgId = await createOrUpdateOrganization(org.name);
+      await createOrUpdateOrganization(org.name);
+      const orgId = activeOrgId;  // <-- THIS IS THE FIX
       console.log("Organization uploaded:", org.name);
   
       const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
@@ -143,7 +144,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
         await addCategory(orgId, category.name);
         console.log(`Uploaded category: ${category.name}`);
   
-        // This is the critical fix:
         const itemsForCategory = category.items || [];
   
         for (let item of itemsForCategory) {
@@ -153,7 +153,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
       }
   
       const customCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
-      for (let crate of customCrates) {
+      for (const crate of customCrates) {
         await addCrateToFirebase(orgId, crate);
         console.log(`Uploaded crate: ${crate.name}`);
       }
@@ -164,6 +164,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to upload data.');
     }
   };
+  
   
 
   const clearLocalStorage = async () => {
