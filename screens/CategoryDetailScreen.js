@@ -1,4 +1,5 @@
-import React, { useContext, useState, useCallback, useEffect } from 'react';
+// CategoryDetailScreen.js
+import React, { useContext, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
@@ -120,11 +121,20 @@ const CategoryDetailScreen = ({ route, navigation }) => {
         )}
       />
 
+      {/* Existing single item add button */}
       <TouchableOpacity
         style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 20 }}
         onPress={() => navigation.navigate('ItemEditor', { categoryName })}
       >
         <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>Add New Item</Text>
+      </TouchableOpacity>
+
+      {/* New multiple item add button */}
+      <TouchableOpacity
+        style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 }}
+        onPress={() => navigation.navigate('MultiItemEditor', { categoryName })}
+      >
+        <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>Add Multiple Items</Text>
       </TouchableOpacity>
     </View>
   );

@@ -18,6 +18,7 @@ import { NativeBaseProvider } from 'native-base';
 import CustomCratesScreen from '../screens/CustomCrateScreen';
 import RecommendedCratesScreen from '../screens/RecommendedCratesScreen';
 import AllMissingItemsScreen from '../screens/NewAllMissingItemsScreen';
+import MultiItemEditorScreen from '../screens/MultiItemEditorScreen';
 
 const Stack = createStackNavigator();
 
@@ -42,6 +43,9 @@ const AppNavigator = () => {
         <Stack.Screen name="CustomCrates" component={CustomCratesScreen} />
         <Stack.Screen name="RecommendedCrates" component={RecommendedCratesScreen} />
         <Stack.Screen name="AllMissingItems" component={AllMissingItemsScreen} />
+
+        <Stack.Screen name="MultiItemEditor" component={MultiItemEditorScreen} />
+
       </Stack.Navigator>
     </FridgeProvider>
     </NativeBaseProvider>

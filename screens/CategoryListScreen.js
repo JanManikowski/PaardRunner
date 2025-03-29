@@ -8,70 +8,133 @@ import { useFocusEffect } from '@react-navigation/native';
 const CategoryListScreen = ({ route, navigation }) => {
   const { categories, bar, categoryName } = route.params;
   const { theme } = useContext(ThemeContext);
-  const [items, setItems] = useState([]);
-  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
 
+  // Holds the items for the currently selected category
+  const [items, setItems] = useState([]);
+
+  // Start with null to indicate we haven’t decided which category index to show
+  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(null);
+
+  /**
+   * 1) Decide which category index we want to show, based on categoryName (if given).
+   *    We do this in a plain useEffect so the order of hooks never changes.
+   */
   useEffect(() => {
-    if (categoryName && categories?.length) {
-      const index = categories.findIndex((cat) => cat.name === categoryName);
-      if (index !== -1) {
-        setCurrentCategoryIndex(index);
+    if (categories?.length) {
+      let index = -1;
+      if (categoryName) {
+        index = categories.findIndex(cat => cat.name === categoryName);
       }
+      // If not found, default to the last category (or 0—your choice)
+      if (index === -1) {
+        index = categories.length - 1;
+      }
+      setCurrentCategoryIndex(index);
+    } else {
+      // If no categories, you could keep it at null or set to 0
+      setCurrentCategoryIndex(null);
     }
   }, [categoryName, categories]);
 
-  const currentCategoryName = categories[currentCategoryIndex]?.name;
+  /**
+   * 2) We define fetchItems at the top level. 
+   *    If currentCategoryIndex is null, we simply do nothing in the function.
+   */
+  const fetchItems = useCallback(async () => {
+    try {
+      if (currentCategoryIndex === null) {
+        // We haven't determined a category index yet, so skip
+        return;
+      }
+
+      const currentCategoryName = categories[currentCategoryIndex]?.name;
+      if (!currentCategoryName) {
+        setItems([]);
+        return;
+      }
+
+      const orgId = bar?.orgId;
+      if (!orgId) {
+        console.error('No orgId found in bar');
+        setItems([]);
+        return;
+      }
+
+      // Load from AsyncStorage
+      const categoriesKey = `categories_${orgId}`;
+      const storedCategories = JSON.parse(await AsyncStorage.getItem(categoriesKey)) || [];
+      const currentCategory = storedCategories.find(
+        category => category.name === currentCategoryName
+      );
+
+      if (!currentCategory || !currentCategory.items) {
+        setItems([]);
+        return;
+      }
+
+      // Load "missing" for each item
+      const updatedItems = await Promise.all(
+        currentCategory.items.map(async (item) => {
+          const missingKey = `missing_${item.id}_${orgId}_${bar.name}`;
+          const savedMissing = await AsyncStorage.getItem(missingKey);
+          return {
+            ...item,
+            missing: savedMissing ? parseInt(savedMissing, 10) : 0,
+          };
+        })
+      );
+
+      setItems(updatedItems);
+    } catch (error) {
+      console.error('Error fetching items:', error);
+    }
+  }, [bar, categories, currentCategoryIndex]);
+
+  /**
+   * 3) We always call useFocusEffect, unconditionally. 
+   *    Inside it, we call fetchItems(). Because fetchItems() checks if currentCategoryIndex === null,
+   *    we won’t break the rules of hooks.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      fetchItems();
+    }, [fetchItems])
+  );
+
+  /**
+   * 4) If we still haven’t determined the category index (null), show a loading or placeholder.
+   *    Importantly, we do this AFTER all hooks are declared.
+   */
+  if (currentCategoryIndex === null) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: theme.colors.background,
+        }}
+      >
+        <Text style={{ color: theme.colors.text }}>Loading category...</Text>
+      </View>
+    );
+  }
+
+  // Now we know currentCategoryIndex is a valid integer
+  const currentCategoryName = categories[currentCategoryIndex]?.name || '';
+
+  // For navigation buttons
   const previousCategoryName =
     categories[(currentCategoryIndex - 1 + categories.length) % categories.length]?.name || 'No Category';
   const nextCategoryName =
     categories[(currentCategoryIndex + 1) % categories.length]?.name || 'No Category';
 
-    const fetchItems = async () => {
-      try {
-        // Get the organization ID from the bar prop
-        const orgId = bar.orgId;
-        // Build the dynamic key for categories
-        const categoriesKey = `categories_${orgId}`;
-        // Retrieve stored categories for the active organization
-        const storedCategories = JSON.parse(await AsyncStorage.getItem(categoriesKey)) || [];
-        // Find the category matching the current category name
-        const currentCategory = storedCategories.find(
-          (category) => category.name === currentCategoryName
-        );
-    
-        if (!currentCategory || !currentCategory.items) {
-          setItems([]);
-          return;
-        }
-    
-        const itemsFromCategory = currentCategory.items;
-    
-        // Update each item with its corresponding "missing" value
-        const updatedItems = await Promise.all(
-          itemsFromCategory.map(async (item) => {
-            const missingKey = `missing_${item.id}_${orgId}_${bar.name}`;
-            const savedMissing = await AsyncStorage.getItem(missingKey);
-            return {
-              ...item,
-              missing: savedMissing ? parseInt(savedMissing, 10) : 0,
-            };
-          })
-        );
-    
-        setItems(updatedItems);
-      } catch (error) {
-        console.error('Error fetching items from AsyncStorage:', error);
-      }
-    };
-    
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchItems();
-    }, [currentCategoryName])
-  );
-
+  /**
+   * 5) Category navigation: updates currentCategoryIndex so that
+   *    fetchItems will run again via useFocusEffect.
+   */
   const navigateToCategory = (direction) => {
+    if (!categories?.length) return;
     const newIndex =
       direction === 'next'
         ? (currentCategoryIndex + 1) % categories.length
@@ -118,7 +181,7 @@ const CategoryListScreen = ({ route, navigation }) => {
       <ScrollView>
         {items.map((item, index) => (
           <TouchableOpacity
-            key={index}
+            key={item.id || index}
             style={{
               borderRadius: 10,
               marginVertical: 5,
@@ -131,16 +194,14 @@ const CategoryListScreen = ({ route, navigation }) => {
               padding: 10,
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between', // push name left, missing right
+              justifyContent: 'space-between',
             }}
             onPress={() => navigation.navigate('ItemDetail', { items, itemIndex: index, bar })}
           >
             {/* Left side: Image + Name */}
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Image
-                source={
-                  item.image ? { uri: item.image } : require('../assets/placeholder.jpg')
-                }
+                source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
                 style={{
                   width: 50,
                   height: 50,
@@ -154,7 +215,7 @@ const CategoryListScreen = ({ route, navigation }) => {
               </Text>
             </View>
 
-            {/* Right side: Missing amount (if any) */}
+            {/* Right side: Missing amount */}
             {item.missing > 0 && (
               <Text style={{ color: theme.colors.error, fontSize: 16, paddingRight: 10 }}>
                 Missing: {item.missing}
@@ -162,6 +223,12 @@ const CategoryListScreen = ({ route, navigation }) => {
             )}
           </TouchableOpacity>
         ))}
+
+        {items.length === 0 && (
+          <Text style={{ marginTop: 20, textAlign: 'center', color: theme.colors.text }}>
+            No items in this category
+          </Text>
+        )}
       </ScrollView>
     </View>
   );
