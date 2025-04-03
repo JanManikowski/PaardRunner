@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Modal, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DraggableFlatList from 'react-native-draggable-flatlist';
 import { ThemeContext } from '../contexts/ThemeContext';
 
 const ItemManagerScreen = ({ navigation }) => {
@@ -14,7 +15,7 @@ const ItemManagerScreen = ({ navigation }) => {
     fetchCategories();
   }, []);
 
-  // Use the same key when fetching categories
+  // Fetch categories from AsyncStorage for the active organization.
   const fetchCategories = async () => {
     try {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
@@ -22,15 +23,33 @@ const ItemManagerScreen = ({ navigation }) => {
         console.error('No active organization selected');
         return;
       }
-      // Always use the key "categories_${activeOrgId}"
       const allCategories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
-      setCategories(allCategories.filter((cat) => cat.orgId === activeOrgId));
+      // Filter by organization in case there are multiple
+      setCategories(allCategories.filter(cat => cat.orgId === activeOrgId));
     } catch (error) {
       console.error('Failed to load categories', error);
       setCategories([]);
     }
   };
 
+  // Save the reordered categories back to AsyncStorage.
+  const saveCategoriesToStorage = async (updatedCategories) => {
+    try {
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) return;
+      await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
+    } catch (error) {
+      console.error('Failed to save category order', error);
+    }
+  };
+
+  // Update local state and storage when the user drags a category.
+  const handleCategoryDragEnd = async ({ data }) => {
+    setCategories(data);
+    await saveCategoriesToStorage(data);
+  };
+
+  // Add a new category into AsyncStorage.
   const handleAddCategory = async () => {
     if (newCategoryName.trim() === '') return;
 
@@ -40,27 +59,19 @@ const ItemManagerScreen = ({ navigation }) => {
         console.error('No active organization selected');
         return;
       }
-      // Use the same key here too
       const allCategories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
       const newCategory = { name: newCategoryName, orgId: activeOrgId };
 
-      // Check if category already exists
-      const categoryExists = allCategories.some(
-        (cat) => cat.name === newCategoryName && cat.orgId === activeOrgId
-      );
+      // Avoid duplicate category names.
+      const categoryExists = allCategories.some(cat => cat.name === newCategoryName && cat.orgId === activeOrgId);
       if (categoryExists) {
-        console.log(`Category "${newCategoryName}" already exists for this organization.`);
         Alert.alert('Error', 'Category already exists.');
         return;
       }
-
       const updatedCategories = [...allCategories, newCategory];
-      // Save using the same key
       await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
-
       setNewCategoryName('');
       setModalVisible(false);
-      // Refresh the category list
       fetchCategories();
     } catch (error) {
       console.error('Failed to add category', error);
@@ -68,17 +79,12 @@ const ItemManagerScreen = ({ navigation }) => {
     }
   };
 
+  // Delete a category by its name.
   const deleteCategory = async (categoryName) => {
     try {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
-      if (!activeOrgId) {
-        console.error('No active organization selected');
-        return;
-      }
-      // Remove the category from the current state
-      const updatedCategories = categories.filter((cat) => cat.name !== categoryName);
-
-      // Update AsyncStorage using the same key
+      if (!activeOrgId) return;
+      const updatedCategories = categories.filter(cat => cat.name !== categoryName);
       await AsyncStorage.setItem(`categories_${activeOrgId}`, JSON.stringify(updatedCategories));
       setCategories(updatedCategories);
     } catch (error) {
@@ -87,13 +93,49 @@ const ItemManagerScreen = ({ navigation }) => {
     }
   };
 
+  // Render a single category item for the draggable list.
+  const renderCategoryItem = ({ item, index, drag, isActive }) => (
+    <TouchableOpacity
+      onLongPress={drag}
+      onPress={() =>
+        !manageMode && navigation.navigate('CategoryDetail', { categoryName: item.name })
+      }
+      style={{
+        borderRadius: 10,
+        marginVertical: 5,
+        backgroundColor: isActive ? theme.colors.primary : theme.colors.surfaceVariant,
+        shadowColor: theme.colors.shadow,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 2,
+        padding: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+      }}
+    >
+      <Text style={{ fontSize: 18, color: theme.colors.text }}>{item.name}</Text>
+      {manageMode && (
+        <TouchableOpacity
+          style={{
+            backgroundColor: theme.colors.error,
+            padding: 5,
+            borderRadius: 5,
+          }}
+          onPress={() => deleteCategory(item.name)}
+        >
+          <Text style={{ color: theme.colors.onError }}>Delete</Text>
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.colors.text }}>
         Item Manager
       </Text>
 
-      {/* Button to open Modal */}
       <TouchableOpacity
         style={{
           padding: 10,
@@ -108,15 +150,7 @@ const ItemManagerScreen = ({ navigation }) => {
         <Text style={{ color: theme.colors.onPrimary }}>Add New Category</Text>
       </TouchableOpacity>
 
-      {/* Row with "Categories:" text and the Manage/Done button */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 10,
-        }}
-      >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <Text style={{ flex: 1, fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>
           Categories:
         </Text>
@@ -135,29 +169,15 @@ const ItemManagerScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Modal for Adding New Category */}
+      {/* Modal for adding a new category */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          }}
-        >
-          <View
-            style={{
-              width: '80%',
-              backgroundColor: theme.colors.surface,
-              padding: 20,
-              borderRadius: 10,
-            }}
-          >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ width: '80%', backgroundColor: theme.colors.surface, padding: 20, borderRadius: 10 }}>
             <TextInput
               style={{
                 borderColor: theme.colors.border,
@@ -174,24 +194,13 @@ const ItemManagerScreen = ({ navigation }) => {
               onChangeText={setNewCategoryName}
             />
             <TouchableOpacity
-              style={{
-                padding: 10,
-                backgroundColor: theme.colors.primary,
-                borderRadius: 5,
-                alignItems: 'center',
-              }}
+              style={{ padding: 10, backgroundColor: theme.colors.primary, borderRadius: 5, alignItems: 'center' }}
               onPress={handleAddCategory}
             >
               <Text style={{ color: theme.colors.onPrimary }}>Add Category</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{
-                padding: 10,
-                backgroundColor: theme.colors.error,
-                borderRadius: 5,
-                alignItems: 'center',
-                marginTop: 10,
-              }}
+              style={{ padding: 10, backgroundColor: theme.colors.error, borderRadius: 5, alignItems: 'center', marginTop: 10 }}
               onPress={() => setModalVisible(false)}
             >
               <Text style={{ color: theme.colors.onError }}>Cancel</Text>
@@ -200,46 +209,13 @@ const ItemManagerScreen = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* List of Categories */}
-      <ScrollView>
-        {categories.map((category, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={() =>
-              navigation.navigate('CategoryDetail', { categoryName: category.name })
-            }
-            style={{
-              borderRadius: 10,
-              marginVertical: 5,
-              backgroundColor: theme.colors.surfaceVariant,
-              shadowColor: theme.colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 5,
-              elevation: 2,
-              padding: 10,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text style={{ fontSize: 18, color: theme.colors.text }}>
-              {category.name}
-            </Text>
-            {manageMode && (
-              <TouchableOpacity
-                style={{
-                  backgroundColor: theme.colors.error,
-                  padding: 5,
-                  borderRadius: 5,
-                }}
-                onPress={() => deleteCategory(category.name)}
-              >
-                <Text style={{ color: theme.colors.onError }}>Delete</Text>
-              </TouchableOpacity>
-            )}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Draggable list for categories */}
+      <DraggableFlatList
+        data={categories}
+        keyExtractor={(item) => item.name}
+        renderItem={renderCategoryItem}
+        onDragEnd={handleCategoryDragEnd}
+      />
     </View>
   );
 };

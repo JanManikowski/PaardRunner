@@ -47,13 +47,14 @@ export const createOrUpdateOrganization = async (name) => {
   }
 };
 
-export const createBarInFirebase = async (orgId, bar) => {
+export const createBarInFirebase = async (orgId, bar, order = 0) => {
   try {
     const barRef = doc(db, 'organizations', orgId, 'bars', bar.name);
     await setDoc(barRef, {
       name: bar.name,
       orgId: bar.orgId,
       color: bar.color || '#FFFFFF',
+      order: order, // Save the order number
     }, { merge: true });
     return barRef.id;
   } catch (error) {
@@ -63,12 +64,14 @@ export const createBarInFirebase = async (orgId, bar) => {
 };
 
 
-export const addCategory = async (orgId, categoryName) => {
+
+export const addCategory = async (orgId, categoryName, order = 0) => {
   try {
-    const categoryRef = doc(db, 'organizations', orgId, `categories_${orgId}`, categoryName);  // Categories under organizations, no barId
+    const categoryRef = doc(db, 'organizations', orgId, `categories_${orgId}`, categoryName);
     await setDoc(categoryRef, {
       name: categoryName,
-      orgId: orgId,  // Store orgId
+      orgId: orgId,
+      order: order, // Save the order
     }, { merge: true });
     return categoryRef.id;
   } catch (error) {
@@ -77,7 +80,8 @@ export const addCategory = async (orgId, categoryName) => {
   }
 };
 
-export const addItem = async (orgId, categoryName, itemName, maxAmount, image) => {
+
+export const addItem = async (orgId, categoryName, itemName, maxAmount, image, order = 0) => {
   try {
     const itemRef = doc(
       db,
@@ -96,6 +100,7 @@ export const addItem = async (orgId, categoryName, itemName, maxAmount, image) =
         maxAmount,
         image: image || null,
         categoryName,
+        order: order,
       },
       { merge: true }
     );
@@ -366,6 +371,8 @@ export const fetchOrganizationsByCode = async (code) => {
         console.log("Bar fetched:", barData);
         bars.push(barData);
       }
+      // Sort bars by order (default to 0 if order is missing)
+      bars.sort((a, b) => (a.order || 0) - (b.order || 0));
       if (bars.length > 0) {
         await AsyncStorage.setItem(`bars_${orgData.id}`, JSON.stringify(bars));
         console.log(`Bars saved to AsyncStorage for organization ID: ${orgData.id}`);
@@ -374,20 +381,20 @@ export const fetchOrganizationsByCode = async (code) => {
       }
       orgData.bars = bars;
     
-      // Fetch crates for this organization
+      // Fetch crates for this organization (if applicable)
       const cratesRef = collection(db, 'organizations', orgData.id, 'crates');
-    const cratesSnapshot = await getDocs(cratesRef);
-    const crates = cratesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const cratesSnapshot = await getDocs(cratesRef);
+      const crates = cratesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    console.log("Fetched crates for org:", orgData.id, crates);
+      console.log("Fetched crates for org:", orgData.id, crates);
 
-    // 🔹 Store in AsyncStorage
-    if (crates.length > 0) {
+      // Store crates in AsyncStorage if needed
+      if (crates.length > 0) {
         await AsyncStorage.setItem(`customCrates_${orgData.id}`, JSON.stringify(crates));
         console.log(`Crates saved in AsyncStorage for org: ${orgData.id}`);
-    } else {
+      } else {
         console.log(`No crates found for org: ${orgData.id}`);
-    }
+      }
     
       // Fetch categories (and items) for this organization
       const categoriesRef = collection(db, 'organizations', orgData.id, `categories_${orgData.id}`);
@@ -411,9 +418,13 @@ export const fetchOrganizationsByCode = async (code) => {
           console.log("Item fetched:", itemData);
           items.push(itemData);
         });
+        // Sort items by order
+        items.sort((a, b) => (a.order || 0) - (b.order || 0));
         categoryData.items = items;
         categories.push(categoryData);
       }
+      // Sort categories by order
+      categories.sort((a, b) => (a.order || 0) - (b.order || 0));
       orgData.categories = categories;
       if (categories.length > 0) {
         await AsyncStorage.setItem(`categories_${orgData.id}`, JSON.stringify(categories));
@@ -433,6 +444,7 @@ export const fetchOrganizationsByCode = async (code) => {
     throw error;
   }
 };
+
 
 
 

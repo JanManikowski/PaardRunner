@@ -128,30 +128,33 @@ const AdminFeaturesScreen = ({ navigation }) => {
       }
   
       await createOrUpdateOrganization(org.name);
-      const orgId = activeOrgId;  // <-- THIS IS THE FIX
+      const orgId = activeOrgId;
       console.log("Organization uploaded:", org.name);
   
+      // Upload Bars with order:
       const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
-  
-      for (let bar of barsForOrg) {
-        await createBarInFirebase(orgId, bar);
-        console.log(`Uploaded bar: ${bar.name}`);
+      for (let i = 0; i < barsForOrg.length; i++) {
+        let bar = barsForOrg[i];
+        await createBarInFirebase(orgId, bar, i); // pass i as the order
+        console.log(`Uploaded bar: ${bar.name} with order ${i}`);
       }
   
+      // Upload Categories and Items with order:
       const categories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
-  
-      for (let category of categories) {
-        await addCategory(orgId, category.name);
-        console.log(`Uploaded category: ${category.name}`);
+      for (let i = 0; i < categories.length; i++) {
+        let category = categories[i];
+        await addCategory(orgId, category.name, i); // include order
+        console.log(`Uploaded category: ${category.name} with order ${i}`);
   
         const itemsForCategory = category.items || [];
-  
-        for (let item of itemsForCategory) {
-          await addItem(orgId, category.name, item.name, item.maxAmount, item.image);
-          console.log(`Uploaded item: ${item.name}`);
+        for (let j = 0; j < itemsForCategory.length; j++) {
+          let item = itemsForCategory[j];
+          await addItem(orgId, category.name, item.name, item.maxAmount, item.image, j); // include order
+          console.log(`Uploaded item: ${item.name} with order ${j}`);
         }
       }
   
+      // Upload custom crates (if order is relevant, adjust similarly)
       const customCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
       for (const crate of customCrates) {
         await addCrateToFirebase(orgId, crate);
@@ -164,6 +167,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to upload data.');
     }
   };
+  
   
   
 
