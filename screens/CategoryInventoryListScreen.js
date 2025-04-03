@@ -203,7 +203,7 @@ const CategoryListScreen = ({ route, navigation }) => {
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
-            onPress={() => navigation.navigate('ItemDetail', { items, itemIndex: index, bar })}
+            onPress={() => navigation.navigate('ManageMissingAmount', { items, itemIndex: index, bar })}
           >
             {/* Left side: Image + Name */}
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>

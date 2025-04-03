@@ -111,7 +111,7 @@ const CustomDarkTheme = merge(PaperDarkTheme, {
 export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
+  const [isDarkTheme, setIsDarkTheme] = useState(true);
 
   useEffect(() => {
     const loadThemePreference = async () => {

@@ -119,7 +119,7 @@ onPress={async () => {
   );
   
 
-  navigation.navigate('CategoryList', {
+  navigation.navigate('CategoryInventoryList', {
     categoryName: category.name,
     bar,
     categories,
@@ -146,7 +146,7 @@ onPress={async () => {
             alignItems: 'center',
             backgroundColor: theme.colors.surfaceVariant,
           }}
-          onPress={() => navigation.navigate('MissingItems', { bar })}
+          onPress={() => navigation.navigate('BarMissingItems', { bar })}
         >
           <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
             View Missing Items

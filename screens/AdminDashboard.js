@@ -252,7 +252,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
             />
             <AdminActionButton
               title="Item Manager"
-              onPress={() => navigation.navigate('ItemManager')}
+              onPress={() => navigation.navigate('ManageCategories')}
             />
             <AdminActionButton
               title="Custom Crates"

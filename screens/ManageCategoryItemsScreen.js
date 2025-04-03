@@ -124,7 +124,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
       {/* Existing single item add button */}
       <TouchableOpacity
         style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 20 }}
-        onPress={() => navigation.navigate('ItemEditor', { categoryName })}
+        onPress={() => navigation.navigate('AddItem', { categoryName })}
       >
         <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>Add New Item</Text>
       </TouchableOpacity>
@@ -132,7 +132,7 @@ const CategoryDetailScreen = ({ route, navigation }) => {
       {/* New multiple item add button */}
       <TouchableOpacity
         style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 }}
-        onPress={() => navigation.navigate('MultiItemEditor', { categoryName })}
+        onPress={() => navigation.navigate('BulkAddItems', { categoryName })}
       >
         <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>Add Multiple Items</Text>
       </TouchableOpacity>

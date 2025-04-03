@@ -102,7 +102,7 @@ const ViewBarsScreen = ({ navigation }) => {
     );
     setBars(updatedBars);
     await AsyncStorage.setItem(`bars_${selectedOrganization}`, JSON.stringify(updatedBars));
-    navigation.navigate('BarDetail', { bar });
+    navigation.navigate('BarCategories', { bar });
   };
 
   const handleColorPickerPress = (bar) => {

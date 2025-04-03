@@ -98,7 +98,7 @@ const ItemManagerScreen = ({ navigation }) => {
     <TouchableOpacity
       onLongPress={drag}
       onPress={() =>
-        !manageMode && navigation.navigate('CategoryDetail', { categoryName: item.name })
+        !manageMode && navigation.navigate('ManageCategoryItems', { categoryName: item.name })
       }
       style={{
         borderRadius: 10,

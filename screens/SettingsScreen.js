@@ -138,7 +138,7 @@ const SettingsScreen = ({ navigation }) => {
         {/* Admin Features Button */}
         <StyledButton
           title="Admin"
-          onPress={() => navigation.navigate('AdminFeatures')}
+          onPress={() => navigation.navigate('AdminDashboard')}
           style={{ backgroundColor: theme.colors.primary }}
           textStyle={{ color: theme.colors.background }}
         />
