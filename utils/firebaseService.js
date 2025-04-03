@@ -359,6 +359,12 @@ export const fetchOrganizationsByCode = async (code) => {
       console.log("Processing organization document with id:", orgDoc.id);
       const orgData = { id: orgDoc.id, ...orgDoc.data() };
       console.log("Fetched organization:", orgData);
+      
+      // Delete any existing local storage data for bars, categories, and crates
+      await AsyncStorage.removeItem(`bars_${orgData.id}`);
+      await AsyncStorage.removeItem(`categories_${orgData.id}`);
+      await AsyncStorage.removeItem(`customCrates_${orgData.id}`);
+      console.log(`Cleared local storage for bars, categories, and crates of org ${orgData.id}`);
     
       // Fetch bars for this organization
       const barsRef = collection(db, 'organizations', orgData.id, 'bars');
@@ -381,14 +387,11 @@ export const fetchOrganizationsByCode = async (code) => {
       }
       orgData.bars = bars;
     
-      // Fetch crates for this organization (if applicable)
+      // Fetch crates for this organization
       const cratesRef = collection(db, 'organizations', orgData.id, 'crates');
       const cratesSnapshot = await getDocs(cratesRef);
       const crates = cratesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
       console.log("Fetched crates for org:", orgData.id, crates);
-
-      // Store crates in AsyncStorage if needed
       if (crates.length > 0) {
         await AsyncStorage.setItem(`customCrates_${orgData.id}`, JSON.stringify(crates));
         console.log(`Crates saved in AsyncStorage for org: ${orgData.id}`);
@@ -444,6 +447,7 @@ export const fetchOrganizationsByCode = async (code) => {
     throw error;
   }
 };
+
 
 
 
