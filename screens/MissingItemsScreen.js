@@ -15,7 +15,12 @@ import {
   Platform,
   UIManager,
 } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,6 +36,7 @@ const AnimatedListItem = ({
   toggleItem,
   theme,
   circleMode,
+  justEnteredSelectMode,
   decrementCount,
   incrementCount,
   inputValue,
@@ -84,7 +90,11 @@ const AnimatedListItem = ({
           }}
         />
       )}
-      <TouchableOpacity onLongPress={onLongPress} style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}>
+      <TouchableOpacity
+        onPress={circleMode && !justEnteredSelectMode ? toggleItem : undefined}
+        onLongPress={!circleMode ? onLongPress : undefined}
+        style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
+      >
         <Image
           source={{ uri: item.image || 'placeholder.jpg' }}
           style={{
@@ -135,6 +145,39 @@ const MissingItemsScreen = ({ route }) => {
   const [circleMode, setCircleMode] = useState(false);
   // Use stable keys "category-itemId" for selected items.
   const [checkedItems, setCheckedItems] = useState([]);
+  // Flag to prevent auto-selection immediately after entering select mode.
+  const [justEnteredSelectMode, setJustEnteredSelectMode] = useState(false);
+
+  // Reanimated shared value for bottom button animation.
+  const bottomAnim = useSharedValue(0);
+
+  useEffect(() => {
+    bottomAnim.value = withTiming(circleMode ? 1 : 0, { duration: 300 });
+  }, [circleMode, bottomAnim]);
+
+  // Animated style for normal bottom buttons.
+  const normalBottomStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateY: interpolate(bottomAnim.value, [0, 1], [0, 50]),
+        },
+      ],
+      opacity: interpolate(bottomAnim.value, [0, 1], [1, 0]),
+    };
+  });
+
+  // Animated style for select mode bottom buttons.
+  const selectBottomStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateY: interpolate(bottomAnim.value, [0, 1], [50, 0]),
+        },
+      ],
+      opacity: bottomAnim.value,
+    };
+  });
 
   // Enable LayoutAnimation on Android.
   useEffect(() => {
@@ -152,8 +195,15 @@ const MissingItemsScreen = ({ route }) => {
     }, [bar.name])
   );
 
+  // Modified long press handler: When not in select mode, enter select mode without auto-selecting.
   const handleLongPressItem = () => {
-    setCircleMode(!circleMode);
+    if (!circleMode) {
+      setCircleMode(true);
+      setJustEnteredSelectMode(true);
+      setTimeout(() => {
+        setJustEnteredSelectMode(false);
+      }, 500);
+    }
   };
 
   // Toggle an item's completed status and update checkedItems using its ID.
@@ -226,7 +276,7 @@ const MissingItemsScreen = ({ route }) => {
     );
   };
 
-  // Prevent navigating back when editing.
+  // Intercept back actions. If select mode is active, exit it instead of navigating back.
   useEffect(() => {
     const backAction = () => {
       if (isEditing) {
@@ -238,26 +288,37 @@ const MissingItemsScreen = ({ route }) => {
         );
         return true;
       }
+      if (circleMode) {
+        setCircleMode(false);
+        setCheckedItems([]);
+        return true;
+      }
       return false;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     const beforeRemoveListener = navigation.addListener('beforeRemove', e => {
-      if (!isEditing) return;
-      e.preventDefault();
-      Alert.alert(
-        'Finish Editing',
-        'Please finish editing before leaving this screen.',
-        [{ text: 'OK' }],
-        { cancelable: false }
-      );
+      if (isEditing || circleMode) {
+        e.preventDefault();
+        if (circleMode) {
+          setCircleMode(false);
+          setCheckedItems([]);
+        } else {
+          Alert.alert(
+            'Finish Editing',
+            'Please finish editing before leaving this screen.',
+            [{ text: 'OK' }],
+            { cancelable: false }
+          );
+        }
+      }
     });
 
     return () => {
       backHandler.remove();
       beforeRemoveListener();
     };
-  }, [isEditing, navigation]);
+  }, [isEditing, circleMode, navigation]);
 
   // Fetch missing items from AsyncStorage and group them by category.
   const fetchMissingItems = async () => {
@@ -296,22 +357,26 @@ const MissingItemsScreen = ({ route }) => {
 
   // Generate a formatted message of missing items.
   const generateMissingItemsMessage = () => {
-    const header = `*${bar.name} is missing these items:*`;
-    let message = header;
+    let message = `*${bar.name}:*\n`;
     if (missingItems) {
-      for (const [category, items] of Object.entries(missingItems)) {
+      Object.entries(missingItems).forEach(([category, items]) => {
         if (items.length > 0) {
-          message += `\n*${category}:*\n`;
+          message += `*${category}:*\n\`\`\`\n`;
           items.forEach(item => {
-            message += `- ${item.type ? item.type.padEnd(20, ' ') : item.name.padEnd(20, ' ')}: ${String(item.missing).padStart(3, ' ')}\n`;
+            // Use the item's type if available, otherwise the name.
+            const label = item.type ? item.type : item.name;
+            // Pad the label to 20 characters and the missing count to 3 characters.
+            message += `- ${label.padEnd(20, ' ')} : ${String(item.missing).padStart(3, ' ')}\n`;
           });
+          message += "```\n";
         }
-      }
+      });
     } else {
       message += '\nNo missing items found.';
     }
     return message;
   };
+  
 
   const copyToClipboard = () => {
     const message = generateMissingItemsMessage();
@@ -370,7 +435,7 @@ const MissingItemsScreen = ({ route }) => {
     await updateMissingValue(category, index, updatedValue);
   };
 
-  // Delete an individual item. If it is a custom item, update the custom items storage.
+  // Delete an individual item.
   const deleteItem = async (category, index) => {
     Alert.alert(
       'Delete Item',
@@ -399,7 +464,7 @@ const MissingItemsScreen = ({ route }) => {
     );
   };
 
-  // Delete an entire category. For Custom Items, remove the stored custom items.
+  // Delete an entire category.
   const deleteCategory = async category => {
     Alert.alert(
       'Delete Category',
@@ -427,7 +492,6 @@ const MissingItemsScreen = ({ route }) => {
     );
   };
 
-  // Delete all items for the bar, and importantly, remove the custom items storage as well.
   const deleteAllItemsForBar = async () => {
     Alert.alert(
       'Delete All Items',
@@ -445,7 +509,6 @@ const MissingItemsScreen = ({ route }) => {
                 }
               }
             }
-            // Remove custom items storage explicitly.
             await AsyncStorage.removeItem(`custom_missing_items_${bar.orgId}_${bar.name}`);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setMissingItems(null);
@@ -456,12 +519,12 @@ const MissingItemsScreen = ({ route }) => {
   };
 
   return (
-    <View style={{ padding: 16, backgroundColor: theme.colors.background, flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16 }}>
       <Text
         style={{
           fontSize: 24,
           fontWeight: 'bold',
-          marginBottom: 20,
+          marginBottom: 10,
           textAlign: 'center',
           color: theme.colors.onBackground,
         }}
@@ -473,14 +536,14 @@ const MissingItemsScreen = ({ route }) => {
           backgroundColor: '#343C3D',
           padding: 15,
           borderRadius: 8,
-          marginBottom: 20,
+          marginBottom: 150, // extra bottom margin to avoid overlap with the buttons
         }}
         contentContainerStyle={{ paddingBottom: 15 }}
       >
         {missingItems ? (
           Object.entries(missingItems).map(([category, items]) => (
             <View key={category} style={{ marginBottom: 20 }}>
-              <TouchableOpacity onLongPress={() => deleteCategory(category)}>
+              <TouchableOpacity onPress={() => deleteCategory(category)}>
                 <Text
                   style={{
                     fontSize: 20,
@@ -501,6 +564,7 @@ const MissingItemsScreen = ({ route }) => {
                     toggleItem={() => handleToggleCompleted(category, index, item)}
                     theme={theme}
                     circleMode={circleMode}
+                    justEnteredSelectMode={justEnteredSelectMode}
                     decrementCount={() => decrementCount(category, index)}
                     incrementCount={() => incrementCount(category, index)}
                     inputValue={
@@ -522,24 +586,62 @@ const MissingItemsScreen = ({ route }) => {
           </Text>
         )}
       </ScrollView>
-      {circleMode && (
-        <View style={{ marginBottom: 10 }}>
-          <Button title="Delete Selected Items" onPress={deleteCheckedItems} color="#FF3B30" />
-        </View>
-      )}
-      <View style={{ marginBottom: 10 }}>
-        <Button
-          title="Show Recommended Crates"
-          onPress={() => navigation.navigate('RecommendedCrates', { bar })}
-          color="#FFA500"
-        />
-      </View>
-      <View style={{ marginBottom: 10 }}>
-        <Button title="Share List" onPress={shareList} color="#4CAF50" />
-      </View>
-      <View style={{ marginBottom: 10 }}>
-        <Button title="Delete All Items" onPress={deleteAllItemsForBar} color="#FF3B30" />
-      </View>
+      {/* Absolutely positioned bottom buttons */}
+      // In the absolutely positioned container at the bottom:
+<View style={{ position: 'absolute', left: 16, right: 16, bottom: 145 }}>
+  {/* Normal bottom buttons: active when circleMode is false */}
+  <Animated.View
+    style={[
+      normalBottomStyle,
+      {
+        position: 'absolute',
+        width: '100%',
+        pointerEvents: circleMode ? 'none' : 'auto',
+      },
+    ]}
+  >
+    <View style={{ marginBottom: 10 }}>
+      <Button
+        title="Show Recommended Crates"
+        onPress={() => navigation.navigate('RecommendedCrates', { bar })}
+        color="#FFA500"
+      />
+    </View>
+    <View style={{ marginBottom: 10 }}>
+      <Button title="Share List" onPress={shareList} color="#4CAF50" />
+    </View>
+    <View style={{ marginBottom: 10 }}>
+      <Button title="Delete All Items" onPress={deleteAllItemsForBar} color="#FF3B30" />
+    </View>
+  </Animated.View>
+  
+  {/* Select mode bottom buttons: active when circleMode is true */}
+  <Animated.View
+    style={[
+      selectBottomStyle,
+      {
+        position: 'absolute',
+        width: '100%',
+        pointerEvents: circleMode ? 'auto' : 'none', // <-- Inverted here
+      },
+    ]}
+  >
+    <View style={{ marginBottom: 10 }}>
+      <Button title="Delete Selected Items" onPress={deleteCheckedItems} color="#FF3B30" />
+    </View>
+    <View style={{ marginBottom: 10 }}>
+      <Button
+        title="Exit Select Mode"
+        onPress={() => {
+          setCircleMode(false);
+          setCheckedItems([]);
+        }}
+        color="#007AFF"
+      />
+    </View>
+  </Animated.View>
+</View>
+
     </View>
   );
 };
