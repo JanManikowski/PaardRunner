@@ -86,7 +86,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.paardrunner"
+    namespace 'com.memonik.PaardRunner'
     defaultConfig {
         applicationId 'com.memonik.PaardRunner'
         minSdkVersion rootProject.ext.minSdkVersion

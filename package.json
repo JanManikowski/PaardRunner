@@ -70,33 +70,5 @@
   "devDependencies": {
     "@babel/core": "^7.24.0"
   },
-  "private": true,
-  "expo": {
-    "doctor": {
-      "reactNativeDirectoryCheck": {
-        "exclude": [
-          "react-native-image-crop-picker",
-          "react-native-snackbar",
-          "react-native-zip-archive",
-          "@babel/runtime",
-          "@expo/metro-runtime",
-          "@firebase/firestore",
-          "@react-native/virtualized-lists",
-          "bootstrap",
-          "expo-google-fonts",
-          "firebase",
-          "lodash",
-          "lz-string",
-          "normalize-css-color",
-          "pako",
-          "react-native-color",
-          "react-native-color-picker",
-          "react-native-color-wheel",
-          "react-native-elements",
-          "react-native-wheel-color-picker",
-          "typescript"
-        ]
-      }
-    }
-  }
+  "private": true
 }
