@@ -36,6 +36,13 @@ const CategoryListScreen = ({ route, navigation }) => {
     }
   }, [categoryName, categories]);
 
+  useEffect(() => {
+    if (route.params?.preloadedItems) {
+      setItems(route.params.preloadedItems);
+    }
+  }, [route.params?.preloadedItems]);
+  
+
   /**
    * 2) We define fetchItems at the top level. 
    *    If currentCategoryIndex is null, we simply do nothing in the function.

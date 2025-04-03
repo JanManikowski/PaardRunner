@@ -19,25 +19,37 @@ const ItemDetailScreen = ({ route, navigation }) => {
   // On mount or when currentIndex changes, update currentItem
   useEffect(() => {
     if (items.length > 0 && currentIndex < items.length) {
-      setCurrentItem(items[currentIndex]);
+      const nextItem = items[currentIndex];
+      setCurrentItem(nextItem);
+      setMissing(typeof nextItem.missing === 'number' ? nextItem.missing : 0);
     }
   }, [items, currentIndex]);
+  
 
   // Load missing from AsyncStorage whenever currentItem changes
   useEffect(() => {
     const loadData = async () => {
       if (currentItem && currentItem.id && bar) {
         const missingKey = `missing_${currentItem.id}_${bar.orgId}_${bar.name}`;
+  
+        // 1. Use in-memory value first if available
+        if (typeof currentItem.missing === 'number') {
+          setMissing(currentItem.missing);
+        }
+  
+        // 2. Then check AsyncStorage in case there's a newer value
         const savedMissing = await AsyncStorage.getItem(missingKey);
         if (savedMissing !== null) {
-          setMissing(parseInt(savedMissing, 10));
-        } else {
-          setMissing(0);
+          const parsed = parseInt(savedMissing, 10);
+          if (!isNaN(parsed) && parsed !== currentItem.missing) {
+            setMissing(parsed);
+          }
         }
       }
     };
     loadData();
   }, [currentItem, bar]);
+  
 
   // Save missing to AsyncStorage whenever missing changes
   useEffect(() => {

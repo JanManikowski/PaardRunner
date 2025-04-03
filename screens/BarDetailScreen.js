@@ -101,13 +101,32 @@ const BarDetailScreen = ({ route, navigation }) => {
         backgroundColor: theme.colors.surfaceVariant,
         alignItems: 'center',
       }}
-      onPress={() =>
-        navigation.navigate('CategoryList', {
-          categoryName: category.name, // Pass the correct category name
-          bar,
-          categories,
-        })
-      }
+      // In BarDetailScreen
+onPress={async () => {
+  const orgId = await AsyncStorage.getItem('activeOrgId');
+  const storedCategories = JSON.parse(await AsyncStorage.getItem(`categories_${orgId}`)) || [];
+  const selectedCategory = storedCategories.find(c => c.name === category.name);
+
+  const updatedItems = await Promise.all(
+    (selectedCategory.items || []).map(async (item) => {
+      const missingKey = `missing_${item.id}_${orgId}_${bar.name}`;
+      const savedMissing = await AsyncStorage.getItem(missingKey);
+      return {
+        ...item,
+        missing: savedMissing ? parseInt(savedMissing, 10) : 0,
+      };
+    })
+  );
+  
+
+  navigation.navigate('CategoryList', {
+    categoryName: category.name,
+    bar,
+    categories,
+    preloadedItems: updatedItems, // <== Pass preloaded
+  });
+}}
+
     >
       <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
         View {category.name} {/* Display the correct category name */}
