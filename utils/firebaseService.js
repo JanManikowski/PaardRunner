@@ -7,50 +7,33 @@ import { storage } from './firebaseConfig';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import * as FileSystem from 'expo-file-system';
 
+
 export const uploadImageToFirebase = async (uri, orgId, categoryName, itemName) => {
-  console.log(`Attempting to upload image for ${itemName} with URI: ${uri}`);
-  if (!uri || !(uri.startsWith('file://') || uri.startsWith('data:image/'))) {
-    console.warn('Invalid or missing URI:', uri);
+  if (!uri || !uri.startsWith('data:image/')) {
+    console.warn('❌ Invalid URI format:', uri);
     return null;
   }
 
   try {
-    let base64;
-    let mimeType;
-
-    if (uri.startsWith('data:image/')) {
-      base64 = uri.split(',')[1];
-      mimeType = uri.substring(uri.indexOf(':') + 1, uri.indexOf(';'));
-      console.log("Using web base64 image");
-    } else if (uri.startsWith('file://')) {
-      console.log("Using mobile file image, reading base64...");
-      base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      if (!base64) {
-        throw new Error("Base64 conversion returned empty string");
-      }
-
-      const extMatch = uri.match(/\.(\w+)$/);
-      const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
-      mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-      console.log(`Successfully read base64 from file: mimeType=${mimeType}`);
-    }
-
+    const base64 = uri.split(',')[1];
+    const mimeType = uri.substring(uri.indexOf(':') + 1, uri.indexOf(';'));
     const ext = mimeType.split('/')[1];
+
     const imageRef = ref(storage, `items/${orgId}/${categoryName}/${itemName}.${ext}`);
+
+    // CRITICAL CHANGE: Use Firebase's base64 upload method explicitly
     await uploadString(imageRef, base64, 'base64', { contentType: mimeType });
 
     const downloadURL = await getDownloadURL(imageRef);
-    console.log(`✅ Image uploaded successfully. URL: ${downloadURL}`);
-
+    console.log(`✅ Successfully uploaded image for ${itemName}. URL: ${downloadURL}`);
     return downloadURL;
   } catch (error) {
-    console.error(`❌ Error uploading image for ${itemName}:`, error);
+    console.error(`❌ Upload failed for ${itemName}:`, error);
     return null;
   }
 };
+
+
 
 
 

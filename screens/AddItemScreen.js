@@ -13,16 +13,26 @@ const ItemEditorScreen = ({ route, navigation }) => {
   const [image, setImage] = useState(item ? item.image : null);
 
   const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission denied', 'We need camera roll permissions to select images.');
+      return;
+    }
+  
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1,
+      quality: 0.8,
+      base64: true // keep base64:true
     });
+  
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      setImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
     }
   };
+  
+  
 
   const handleSaveItem = async () => {
     if (itemName.trim() === '') {

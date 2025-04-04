@@ -155,7 +155,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
   
           let uploadedImageUrl = null;
   
-          if (item.image) {
+          if (item.image && item.image.startsWith('data:image/')) {
             console.log(`📸 Uploading image for item: ${item.name}`);
             uploadedImageUrl = await uploadImageToFirebase(
               item.image,
@@ -163,6 +163,13 @@ const AdminFeaturesScreen = ({ navigation }) => {
               category.name,
               item.name
             );
+            if (uploadedImageUrl) {
+              console.log(`✅ Uploaded image for ${item.name}: ${uploadedImageUrl}`);
+            } else {
+              console.warn(`⚠️ Image upload failed for ${item.name}`);
+            }
+          } else {
+            console.warn(`⚠️ No valid image found for ${item.name}`);
           }
   
           await addItem(
@@ -191,6 +198,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to upload data.');
     }
   };
+  
   
   
   
