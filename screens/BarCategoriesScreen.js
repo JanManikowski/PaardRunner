@@ -2,16 +2,16 @@ import React, { useContext, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { ThemeContext } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Toast from 'react-native-toast-message'; // Import Toast for feedback
+import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
 
 const BarDetailScreen = ({ route, navigation }) => {
   const { bar } = route.params;
   const { theme } = useContext(ThemeContext);
   const [categories, setCategories] = useState({});
-  const [customItem, setCustomItem] = useState(''); // State for custom item input
+  const [customItem, setCustomItem] = useState('');
 
-  // Fetch categories linked to the active organization
+
   const fetchCategories = async () => {
     try {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
@@ -28,14 +28,14 @@ const BarDetailScreen = ({ route, navigation }) => {
     }
   };
 
-  // Fetch categories whenever the screen is focused
+
   useFocusEffect(
     useCallback(() => {
       fetchCategories();
     }, [])
   );
 
-  // Handle adding a custom item
+
   const handleAddCustomItem = async () => {
     if (customItem.trim()) {
       try {
@@ -45,22 +45,20 @@ const BarDetailScreen = ({ route, navigation }) => {
           return;
         }
   
-        // Create the custom item without a category
+
         const newItem = { 
           id: Date.now().toString(),
           name: customItem, 
-          categoryName: null,  // <-- Explicitly set to null
+          categoryName: null, 
           orgId: activeOrgId,
           maxAmount: 1,
           missing: 1,
           image: null,
         };
-  
-        // Store missing key explicitly for MissingItemsScreen to find it
+
         const missingKey = `missing_${newItem.id}_${activeOrgId}_${bar.name}`;
         await AsyncStorage.setItem(missingKey, '1');
   
-        // Store the custom item separately in AsyncStorage (optional but recommended)
         const customItemsKey = `custom_missing_items_${activeOrgId}_${bar.name}`;
         const customItems = JSON.parse(await AsyncStorage.getItem(customItemsKey)) || [];
         customItems.push(newItem);
@@ -101,7 +99,7 @@ const BarDetailScreen = ({ route, navigation }) => {
         backgroundColor: theme.colors.surfaceVariant,
         alignItems: 'center',
       }}
-      // In BarDetailScreen
+
 onPress={async () => {
   const orgId = await AsyncStorage.getItem('activeOrgId');
   const storedCategories = JSON.parse(await AsyncStorage.getItem(`categories_${orgId}`)) || [];
@@ -123,13 +121,13 @@ onPress={async () => {
     categoryName: category.name,
     bar,
     categories,
-    preloadedItems: updatedItems, // <== Pass preloaded
+    preloadedItems: updatedItems,
   });
 }}
 
     >
       <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>
-        View {category.name} {/* Display the correct category name */}
+        View {category.name}
       </Text>
     </TouchableOpacity>
   ))
@@ -154,7 +152,6 @@ onPress={async () => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Custom Item Input and Button */}
       <View style={{ paddingTop: 10, paddingBottom:20 }}>
         <TextInput
           style={{
@@ -180,7 +177,7 @@ onPress={async () => {
     borderRadius: 5,
     alignItems: 'center',
   }}
-  onPress={handleAddCustomItem} // <-- no argument here anymore
+  onPress={handleAddCustomItem}
 >
           <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>
             Add Custom Item

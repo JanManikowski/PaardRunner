@@ -1,4 +1,3 @@
-// MissingItemsScreen.js
 import React, { useContext, useState, useCallback, useEffect } from 'react';
 import {
   View,
@@ -29,7 +28,6 @@ import { ThemeContext } from '../contexts/ThemeContext';
 const ITEM_HEIGHT = 60;
 const ITEM_SPACING = 10;
 
-// AnimatedListItem with absolute positioning and smooth translation.
 const AnimatedListItem = ({
   item,
   index,
@@ -47,7 +45,6 @@ const AnimatedListItem = ({
   const translateY = useSharedValue(index * (ITEM_HEIGHT + ITEM_SPACING));
 
   useEffect(() => {
-    // Animate to the new position based on its index.
     translateY.value = withTiming(index * (ITEM_HEIGHT + ITEM_SPACING), { duration: 400 });
   }, [index]);
 
@@ -143,19 +140,15 @@ const MissingItemsScreen = ({ route }) => {
   const navigation = useNavigation();
   const { theme } = useContext(ThemeContext);
   const [circleMode, setCircleMode] = useState(false);
-  // Use stable keys "category-itemId" for selected items.
   const [checkedItems, setCheckedItems] = useState([]);
-  // Flag to prevent auto-selection immediately after entering select mode.
   const [justEnteredSelectMode, setJustEnteredSelectMode] = useState(false);
 
-  // Reanimated shared value for bottom button animation.
   const bottomAnim = useSharedValue(0);
 
   useEffect(() => {
     bottomAnim.value = withTiming(circleMode ? 1 : 0, { duration: 300 });
   }, [circleMode, bottomAnim]);
 
-  // Animated style for normal bottom buttons.
   const normalBottomStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -167,7 +160,6 @@ const MissingItemsScreen = ({ route }) => {
     };
   });
 
-  // Animated style for select mode bottom buttons.
   const selectBottomStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -179,7 +171,6 @@ const MissingItemsScreen = ({ route }) => {
     };
   });
 
-  // Enable LayoutAnimation on Android.
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -195,7 +186,6 @@ const MissingItemsScreen = ({ route }) => {
     }, [bar.name])
   );
 
-  // Modified long press handler: When not in select mode, enter select mode without auto-selecting.
   const handleLongPressItem = () => {
     if (!circleMode) {
       setCircleMode(true);
@@ -206,8 +196,6 @@ const MissingItemsScreen = ({ route }) => {
     }
   };
 
-  // Toggle an item's completed status and update checkedItems using its ID.
-  // Also, record a timestamp if marking complete and reorder the list accordingly.
   const handleToggleCompleted = (category, index, item) => {
     let updatedItems = [...missingItems[category]];
     const [toggledItem] = updatedItems.splice(index, 1);
@@ -222,7 +210,6 @@ const MissingItemsScreen = ({ route }) => {
     const completed = updatedItems.filter(it => it.completed);
     if (newStatus) {
       completed.push(toggledItem);
-      // Sort completed so that the most recently toggled is first.
       completed.sort((a, b) => b.toggledAt - a.toggledAt);
     } else {
       nonCompleted.push(toggledItem);
@@ -236,7 +223,6 @@ const MissingItemsScreen = ({ route }) => {
     });
   };
 
-  // Delete checked items and update custom items storage if needed.
   const deleteCheckedItems = async () => {
     Alert.alert(
       'Delete Checked Items',
@@ -276,7 +262,6 @@ const MissingItemsScreen = ({ route }) => {
     );
   };
 
-  // Intercept back actions. If select mode is active, exit it instead of navigating back.
   useEffect(() => {
     const backAction = () => {
       if (isEditing) {
@@ -320,7 +305,6 @@ const MissingItemsScreen = ({ route }) => {
     };
   }, [isEditing, circleMode, navigation]);
 
-  // Fetch missing items from AsyncStorage and group them by category.
   const fetchMissingItems = async () => {
     const categorizedItems = {};
     const categoriesKey = `categories_${bar.orgId}`;
@@ -342,7 +326,6 @@ const MissingItemsScreen = ({ route }) => {
         }
       }
     }
-    // Fetch custom items separately.
     const customItemsKey = `custom_missing_items_${bar.orgId}_${bar.name}`;
     const customItems = JSON.parse(await AsyncStorage.getItem(customItemsKey)) || [];
     if (customItems.length > 0) {
@@ -355,7 +338,6 @@ const MissingItemsScreen = ({ route }) => {
     setMissingItems(Object.keys(categorizedItems).length ? categorizedItems : null);
   };
 
-  // Generate a formatted message of missing items.
   const generateMissingItemsMessage = () => {
     let message = `*${bar.name}:*\n`;
     if (missingItems) {
@@ -363,9 +345,7 @@ const MissingItemsScreen = ({ route }) => {
         if (items.length > 0) {
           message += `*${category}:*\n\`\`\`\n`;
           items.forEach(item => {
-            // Use the item's type if available, otherwise the name.
             const label = item.type ? item.type : item.name;
-            // Pad the label to 20 characters and the missing count to 3 characters.
             message += `- ${label.padEnd(20, ' ')} : ${String(item.missing).padStart(3, ' ')}\n`;
           });
           message += "```\n";
@@ -393,7 +373,6 @@ const MissingItemsScreen = ({ route }) => {
     }
   };
 
-  // Update missing count locally and in AsyncStorage.
   const handleInputChange = (category, index, value) => {
     const updatedItems = [...missingItems[category]];
     updatedItems[index].missing = value;
@@ -435,7 +414,6 @@ const MissingItemsScreen = ({ route }) => {
     await updateMissingValue(category, index, updatedValue);
   };
 
-  // Delete an individual item.
   const deleteItem = async (category, index) => {
     Alert.alert(
       'Delete Item',
@@ -464,7 +442,6 @@ const MissingItemsScreen = ({ route }) => {
     );
   };
 
-  // Delete an entire category.
   const deleteCategory = async category => {
     Alert.alert(
       'Delete Category',
@@ -536,7 +513,7 @@ const MissingItemsScreen = ({ route }) => {
           backgroundColor: '#343C3D',
           padding: 15,
           borderRadius: 8,
-          marginBottom: 150, // extra bottom margin to avoid overlap with the buttons
+          marginBottom: 150,  
         }}
         contentContainerStyle={{ paddingBottom: 15 }}
       >
@@ -586,10 +563,8 @@ const MissingItemsScreen = ({ route }) => {
           </Text>
         )}
       </ScrollView>
-      {/* Absolutely positioned bottom buttons */}
-      // In the absolutely positioned container at the bottom:
+
 <View style={{ position: 'absolute', left: 16, right: 16, bottom: 145 }}>
-  {/* Normal bottom buttons: active when circleMode is false */}
   <Animated.View
     style={[
       normalBottomStyle,
@@ -615,14 +590,14 @@ const MissingItemsScreen = ({ route }) => {
     </View>
   </Animated.View>
   
-  {/* Select mode bottom buttons: active when circleMode is true */}
+
   <Animated.View
     style={[
       selectBottomStyle,
       {
         position: 'absolute',
         width: '100%',
-        pointerEvents: circleMode ? 'auto' : 'none', // <-- Inverted here
+        pointerEvents: circleMode ? 'auto' : 'none',
       },
     ]}
   >

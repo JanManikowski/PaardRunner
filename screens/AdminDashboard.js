@@ -146,20 +146,12 @@ const AdminFeaturesScreen = ({ navigation }) => {
         await addCategory(orgId, category.name, i); // include order
         console.log(`Uploaded category: ${category.name} with order ${i}`);
   
+        const itemsForCategory = category.items || [];
         for (let j = 0; j < itemsForCategory.length; j++) {
           let item = itemsForCategory[j];
-        
-          // 🟡 Upload image first (if present)
-          let uploadedImageUrl = null;
-          if (item.image) {
-            uploadedImageUrl = await uploadImageToFirebase(item.image, orgId, category.name, item.name);
-          }
-        
-          // ✅ Then save item with image URL to Firestore
-          await addItem(orgId, category.name, item.name, item.maxAmount, uploadedImageUrl, j);
+          await addItem(orgId, category.name, item.name, item.maxAmount, item.image, j); // include order
           console.log(`Uploaded item: ${item.name} with order ${j}`);
         }
-        
       }
   
       // Upload custom crates (if order is relevant, adjust similarly)
