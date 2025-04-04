@@ -2,8 +2,52 @@ import { db } from './firebaseConfig';
 import { collection, addDoc, getDocs, query, where, setDoc, doc, getDoc, Firestore, deleteDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebaseConfig';
-import firebase from 'firebase/app';
 import 'firebase/firestore';
+import { storage } from './firebaseConfig';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import * as FileSystem from 'expo-file-system';
+
+export const uploadImageToFirebase = async (uri, orgId, categoryName, itemName) => {
+  console.log('🚨 uploadImageToFirebase: USING BASE64 STRING VERSION (WEB)');
+  if (!uri || !uri.startsWith('file://') && !uri.startsWith('data:image/')) {
+    console.warn('❌ Invalid or missing URI:', uri);
+    return null;
+  }
+
+  try {
+    console.log(`🟡 Uploading image for ${itemName} from URI:`, uri);
+
+    let base64;
+    let mimeType = 'image/jpeg';
+
+    if (uri.startsWith('data:image/')) {
+      // If the image is already a base64 data URI (web)
+      base64 = uri.split(',')[1];
+      mimeType = uri.substring(uri.indexOf(':') + 1, uri.indexOf(';'));
+    } else {
+      // If using file:// in mobile, read it
+      base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const ext = uri.split('.').pop().toLowerCase();
+      mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+    }
+
+    const ext = mimeType.split('/')[1];
+    const imageRef = ref(storage, `items/${orgId}/${categoryName}/${itemName}.${ext}`);
+
+    await uploadString(imageRef, base64, 'base64', { contentType: mimeType });
+
+    const downloadURL = await getDownloadURL(imageRef);
+    console.log(`✅ Uploaded ${itemName} → ${downloadURL}`);
+    return downloadURL;
+  } catch (error) {
+    console.error(`❌ Failed to upload image for ${itemName}:`, error);
+    return null;
+  }
+};
+
+
 
 // Function to create or update an organization in Firebase
 export const createOrUpdateOrganization = async (name) => {
