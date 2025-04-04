@@ -109,7 +109,7 @@ const AdminFeaturesScreen = ({ navigation }) => {
 
   const handleUploadLocalStorageToFirebase = async () => {
     try {
-      console.log("Starting upload of local storage data to Firebase...");
+      console.log("🚀 Starting upload of local storage data to Firebase...");
   
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
@@ -117,9 +117,11 @@ const AdminFeaturesScreen = ({ navigation }) => {
         return;
       }
   
+      // Clear previous data
       await deleteAllDataUnderOrganization(activeOrgId);
-      console.log(`All data under organization ${activeOrgId} deleted.`);
+      console.log(`🧹 All data under organization ${activeOrgId} deleted.`);
   
+      // Get organization info
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
       const org = organizations.find(o => o.id === activeOrgId);
       if (!org) {
@@ -129,44 +131,66 @@ const AdminFeaturesScreen = ({ navigation }) => {
   
       await createOrUpdateOrganization(org.name);
       const orgId = activeOrgId;
-      console.log("Organization uploaded:", org.name);
+      console.log("🏢 Organization uploaded:", org.name);
   
-      // Upload Bars with order:
+      // Upload Bars
       const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
       for (let i = 0; i < barsForOrg.length; i++) {
-        let bar = barsForOrg[i];
-        await createBarInFirebase(orgId, bar, i); // pass i as the order
-        console.log(`Uploaded bar: ${bar.name} with order ${i}`);
+        const bar = barsForOrg[i];
+        await createBarInFirebase(orgId, bar, i);
+        console.log(`🏗️ Uploaded bar: ${bar.name} with order ${i}`);
       }
   
-      // Upload Categories and Items with order:
+      // Upload Categories and Items
       const categories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
       for (let i = 0; i < categories.length; i++) {
-        let category = categories[i];
-        await addCategory(orgId, category.name, i); // include order
-        console.log(`Uploaded category: ${category.name} with order ${i}`);
+        const category = categories[i];
+        await addCategory(orgId, category.name, i);
+        console.log(`📂 Uploaded category: ${category.name} with order ${i}`);
   
         const itemsForCategory = category.items || [];
         for (let j = 0; j < itemsForCategory.length; j++) {
-          let item = itemsForCategory[j];
-          await addItem(orgId, category.name, item.name, item.maxAmount, item.image, j); // include order
-          console.log(`Uploaded item: ${item.name} with order ${j}`);
+          const item = itemsForCategory[j];
+  
+          let uploadedImageUrl = null;
+  
+          if (item.image) {
+            console.log(`📸 Uploading image for item: ${item.name}`);
+            uploadedImageUrl = await uploadImageToFirebase(
+              item.image,
+              orgId,
+              category.name,
+              item.name
+            );
+          }
+  
+          await addItem(
+            orgId,
+            category.name,
+            item.name,
+            item.maxAmount,
+            uploadedImageUrl,
+            j
+          );
+  
+          console.log(`📦 Uploaded item: ${item.name} with order ${j}`);
         }
       }
   
-      // Upload custom crates (if order is relevant, adjust similarly)
+      // Upload Crates
       const customCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
       for (const crate of customCrates) {
         await addCrateToFirebase(orgId, crate);
-        console.log(`Uploaded crate: ${crate.name}`);
+        console.log(`🎁 Uploaded crate: ${crate.name}`);
       }
   
-      Alert.alert('Upload Complete', 'Local storage data uploaded successfully.');
+      Alert.alert('✅ Upload Complete', 'Local storage data uploaded successfully.');
     } catch (error) {
-      console.error('Error uploading data:', error);
+      console.error('❌ Error uploading data:', error);
       Alert.alert('Error', 'Failed to upload data.');
     }
   };
+  
   
   
   
