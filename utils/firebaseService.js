@@ -16,34 +16,42 @@ export const uploadImageToFirebase = async (uri, orgId, categoryName, itemName) 
 
   try {
     let base64;
-    let mimeType = 'image/jpeg';
+    let mimeType;
 
     if (uri.startsWith('data:image/')) {
-      // Already a base64 data URI (web)
       base64 = uri.split(',')[1];
       mimeType = uri.substring(uri.indexOf(':') + 1, uri.indexOf(';'));
-    } else {
-      // Mobile: read the file from the filesystem
+      console.log("Using web base64 image");
+    } else if (uri.startsWith('file://')) {
+      console.log("Using mobile file image, reading base64...");
       base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      const ext = uri.split('.').pop().toLowerCase();
+
+      if (!base64) {
+        throw new Error("Base64 conversion returned empty string");
+      }
+
+      const extMatch = uri.match(/\.(\w+)$/);
+      const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
       mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+      console.log(`Successfully read base64 from file: mimeType=${mimeType}`);
     }
 
     const ext = mimeType.split('/')[1];
     const imageRef = ref(storage, `items/${orgId}/${categoryName}/${itemName}.${ext}`);
-    console.log(`Uploading to storage at path: items/${orgId}/${categoryName}/${itemName}.${ext}`);
-    
     await uploadString(imageRef, base64, 'base64', { contentType: mimeType });
+
     const downloadURL = await getDownloadURL(imageRef);
-    console.log(`Image uploaded successfully. Download URL: ${downloadURL}`);
+    console.log(`✅ Image uploaded successfully. URL: ${downloadURL}`);
+
     return downloadURL;
   } catch (error) {
-    console.error(`Error uploading image for ${itemName}:`, error);
+    console.error(`❌ Error uploading image for ${itemName}:`, error);
     return null;
   }
 };
+
 
 
 
