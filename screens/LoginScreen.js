@@ -1,21 +1,29 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/native';
 import { checkAndAssignUserCode } from '../utils/firebaseService';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-
+import { auth } from '../utils/firebaseConfig';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const navigation = useNavigation();
   const { theme } = useContext(ThemeContext);
+  const navigation = useNavigation();
   const [showPassword, setShowPassword] = useState(false);
 
-
-  const auth = getAuth();
+  // Listen for auth state changes so that if the user is already logged in,
+  // they are immediately navigated to the dashboard.
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigation.replace('AdminDashboard');
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const handleLogin = () => {
     if (email && password) {
@@ -23,8 +31,6 @@ const LoginScreen = () => {
         .then(async (userCredential) => {
           Alert.alert('Logged in successfully');
           await checkAndAssignUserCode(userCredential.user.uid);
-
-          // Replace login screen with AdminFeatures
           navigation.replace('AdminDashboard');
         })
         .catch((error) => {
@@ -60,41 +66,40 @@ const LoginScreen = () => {
         autoCorrect={false}
       />
 
-<View style={{ position: 'relative', marginBottom: 20 }}>
-  <TextInput
-    style={{
-      height: 50,
-      borderColor: theme.colors.text,
-      borderWidth: 1,
-      paddingLeft: 10,
-      paddingRight: 40, // space for the icon
-      borderRadius: 8,
-      color: theme.colors.text,
-    }}
-    placeholder="Password"
-    placeholderTextColor={theme.colors.text}
-    value={password}
-    onChangeText={setPassword}
-    secureTextEntry={!showPassword}
-    autoCapitalize="none"
-    autoCorrect={false}
-  />
-  <TouchableOpacity
-    onPress={() => setShowPassword(!showPassword)}
-    style={{
-      position: 'absolute',
-      right: 10,
-      top: 12,
-    }}
-  >
-    <Ionicons
-      name={showPassword ? 'eye-off' : 'eye'}
-      size={24}
-      color={theme.colors.text}
-    />
-  </TouchableOpacity>
-</View>
-
+      <View style={{ position: 'relative', marginBottom: 20 }}>
+        <TextInput
+          style={{
+            height: 50,
+            borderColor: theme.colors.text,
+            borderWidth: 1,
+            paddingLeft: 10,
+            paddingRight: 40, // space for the icon
+            borderRadius: 8,
+            color: theme.colors.text,
+          }}
+          placeholder="Password"
+          placeholderTextColor={theme.colors.text}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TouchableOpacity
+          onPress={() => setShowPassword(!showPassword)}
+          style={{
+            position: 'absolute',
+            right: 10,
+            top: 12,
+          }}
+        >
+          <Ionicons
+            name={showPassword ? 'eye-off' : 'eye'}
+            size={24}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity
         style={{
