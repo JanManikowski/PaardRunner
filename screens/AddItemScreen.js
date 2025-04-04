@@ -85,7 +85,7 @@ const ItemEditorScreen = ({ route, navigation }) => {
       await AsyncStorage.setItem(storageKey, JSON.stringify(categories));
   
       Alert.alert('Success', item ? 'Item updated successfully' : 'Item added successfully');
-      navigation.navigate('CategoryDetail', { categoryName, orgId: activeOrgId, refresh: true });
+      navigation.navigate('ManageCategoryItems', { categoryName, orgId: activeOrgId, refresh: true });
     } catch (error) {
       Alert.alert('Error', 'Failed to save item');
       console.error(error);

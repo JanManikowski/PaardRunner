@@ -73,7 +73,7 @@ const MultiItemEditorScreen = ({ route, navigation }) => {
         : newItems;
       await AsyncStorage.setItem(storageKey, JSON.stringify(categories));
       Alert.alert('Success', 'Items added successfully');
-      navigation.navigate('CategoryDetail', { categoryName, refresh: true });
+      navigation.navigate('ManageCategoryItems', { categoryName, refresh: true });
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Failed to save items');
