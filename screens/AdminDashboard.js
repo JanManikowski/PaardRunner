@@ -11,7 +11,8 @@ import {
   addItem,
   addCategory,
   addCrateToFirebase,
-  deleteAllDataUnderOrganization
+  deleteAllDataUnderOrganization,
+  uploadImageToFirebase,
 } from '../utils/firebaseService';
 import AdminActionButton from '../components/AdminActionButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';

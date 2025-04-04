@@ -8,24 +8,22 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import * as FileSystem from 'expo-file-system';
 
 export const uploadImageToFirebase = async (uri, orgId, categoryName, itemName) => {
-  console.log('🚨 uploadImageToFirebase: USING BASE64 STRING VERSION (WEB)');
-  if (!uri || !uri.startsWith('file://') && !uri.startsWith('data:image/')) {
-    console.warn('❌ Invalid or missing URI:', uri);
+  console.log(`Attempting to upload image for ${itemName} with URI: ${uri}`);
+  if (!uri || !(uri.startsWith('file://') || uri.startsWith('data:image/'))) {
+    console.warn('Invalid or missing URI:', uri);
     return null;
   }
 
   try {
-    console.log(`🟡 Uploading image for ${itemName} from URI:`, uri);
-
     let base64;
     let mimeType = 'image/jpeg';
 
     if (uri.startsWith('data:image/')) {
-      // If the image is already a base64 data URI (web)
+      // Already a base64 data URI (web)
       base64 = uri.split(',')[1];
       mimeType = uri.substring(uri.indexOf(':') + 1, uri.indexOf(';'));
     } else {
-      // If using file:// in mobile, read it
+      // Mobile: read the file from the filesystem
       base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -35,17 +33,18 @@ export const uploadImageToFirebase = async (uri, orgId, categoryName, itemName) 
 
     const ext = mimeType.split('/')[1];
     const imageRef = ref(storage, `items/${orgId}/${categoryName}/${itemName}.${ext}`);
-
+    console.log(`Uploading to storage at path: items/${orgId}/${categoryName}/${itemName}.${ext}`);
+    
     await uploadString(imageRef, base64, 'base64', { contentType: mimeType });
-
     const downloadURL = await getDownloadURL(imageRef);
-    console.log(`✅ Uploaded ${itemName} → ${downloadURL}`);
+    console.log(`Image uploaded successfully. Download URL: ${downloadURL}`);
     return downloadURL;
   } catch (error) {
-    console.error(`❌ Failed to upload image for ${itemName}:`, error);
+    console.error(`Error uploading image for ${itemName}:`, error);
     return null;
   }
 };
+
 
 
 
