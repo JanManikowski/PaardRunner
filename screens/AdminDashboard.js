@@ -154,23 +154,22 @@ const AdminFeaturesScreen = ({ navigation }) => {
           const item = itemsForCategory[j];
   
           let uploadedImageUrl = null;
-  
-          if (item.image && item.image.startsWith('data:image/')) {
-            console.log(`📸 Uploading image for item: ${item.name}`);
+
+          if (item.image && item.image.startsWith('file://')) {
+            console.log(`📸 Uploading local file for item: ${item.name}`);
             uploadedImageUrl = await uploadImageToFirebase(
               item.image,
               orgId,
               category.name,
               item.name
             );
-            if (uploadedImageUrl) {
-              console.log(`✅ Uploaded image for ${item.name}: ${uploadedImageUrl}`);
-            } else {
-              console.warn(`⚠️ Image upload failed for ${item.name}`);
-            }
+          } else if (item.image && item.image.startsWith('http')) {
+            console.log(`🌐 Using existing remote image for ${item.name}`);
+            uploadedImageUrl = item.image; // already a URL, maybe previously uploaded
           } else {
             console.warn(`⚠️ No valid image found for ${item.name}`);
           }
+
   
           await addItem(
             orgId,

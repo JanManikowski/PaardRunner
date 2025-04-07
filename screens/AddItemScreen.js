@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-nat
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 const ItemEditorScreen = ({ route, navigation }) => {
   const { categoryName, item } = route.params || {};
@@ -24,11 +25,22 @@ const ItemEditorScreen = ({ route, navigation }) => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-      base64: true // keep base64:true
     });
   
     if (!result.canceled) {
-      setImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      const pickedUri = result.assets[0].uri;
+      const fileName = pickedUri.split('/').pop();
+      const newPath = FileSystem.documentDirectory + fileName;
+  
+      try {
+        await FileSystem.copyAsync({
+          from: pickedUri,
+          to: newPath,
+        });
+        setImage(newPath); // store local file path, not base64
+      } catch (error) {
+        console.error('Error saving image locally:', error);
+      }
     }
   };
   

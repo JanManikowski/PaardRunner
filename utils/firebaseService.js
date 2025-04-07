@@ -4,27 +4,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebaseConfig';
 import 'firebase/firestore';
 import { storage } from './firebaseConfig';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import * as FileSystem from 'expo-file-system';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
 export const uploadImageToFirebase = async (uri, orgId, categoryName, itemName) => {
-  if (!uri || !uri.startsWith('data:image/')) {
-    console.warn('❌ Invalid URI format:', uri);
+  if (!uri || !uri.startsWith('file://')) {
+    console.warn('❌ Invalid URI format for local file:', uri);
     return null;
   }
 
   try {
-    const base64 = uri.split(',')[1];
-    const mimeType = uri.substring(uri.indexOf(':') + 1, uri.indexOf(';'));
-    const ext = mimeType.split('/')[1];
+    const response = await fetch(uri);
+    const blob = await response.blob();
 
+    const ext = uri.split('.').pop().split('?')[0]; // Extract file extension
     const imageRef = ref(storage, `items/${orgId}/${categoryName}/${itemName}.${ext}`);
 
-    // CRITICAL CHANGE: Use Firebase's base64 upload method explicitly
-    await uploadString(imageRef, base64, 'base64', { contentType: mimeType });
-
+    await uploadBytes(imageRef, blob);
     const downloadURL = await getDownloadURL(imageRef);
+
     console.log(`✅ Successfully uploaded image for ${itemName}. URL: ${downloadURL}`);
     return downloadURL;
   } catch (error) {
@@ -32,12 +30,6 @@ export const uploadImageToFirebase = async (uri, orgId, categoryName, itemName) 
     return null;
   }
 };
-
-
-
-
-
-
 
 // Function to create or update an organization in Firebase
 export const createOrUpdateOrganization = async (name) => {
