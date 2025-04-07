@@ -2,42 +2,54 @@ import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+
+import { auth } from '../utils/firebaseConfig';
 import { checkAndAssignUserCode } from '../utils/firebaseService';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
-import { auth } from '../utils/firebaseConfig';
 
 const LoginScreen = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const { theme } = useContext(ThemeContext);
   const navigation = useNavigation();
-  const [showPassword, setShowPassword] = useState(false);
 
-  // Listen for auth state changes so that if the user is already logged in,
-  // they are immediately navigated to the dashboard.
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [stayLoggedIn, setStayLoggedIn] = useState(true); // Default to true
+
+  // Auto-redirect if already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        navigation.replace('AdminDashboard');
+        console.log("User is already logged in, redirecting to Main Navigator");
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
       }
     });
     return unsubscribe;
-  }, [navigation]);
+  }, []);
 
-  const handleLogin = () => {
-    if (email && password) {
-      signInWithEmailAndPassword(auth, email, password)
-        .then(async (userCredential) => {
-          Alert.alert('Logged in successfully');
-          await checkAndAssignUserCode(userCredential.user.uid);
-          navigation.replace('AdminDashboard');
-        })
-        .catch((error) => {
-          Alert.alert('Login error', error.message);
-        });
-    } else {
+  const handleLogin = async () => {
+    if (!email || !password) {
       Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Save the user's "stay logged in" preference
+      await AsyncStorage.setItem('stayLoggedIn', stayLoggedIn ? 'true' : 'false');
+      await checkAndAssignUserCode(userCredential.user.uid);
+
+      Alert.alert('Logged in successfully');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
+    } catch (error) {
+      Alert.alert('Login error', error.message);
     }
   };
 
@@ -73,7 +85,7 @@ const LoginScreen = () => {
             borderColor: theme.colors.text,
             borderWidth: 1,
             paddingLeft: 10,
-            paddingRight: 40, // space for the icon
+            paddingRight: 40,
             borderRadius: 8,
             color: theme.colors.text,
           }}
@@ -85,21 +97,23 @@ const LoginScreen = () => {
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <TouchableOpacity
-          onPress={() => setShowPassword(!showPassword)}
-          style={{
-            position: 'absolute',
-            right: 10,
-            top: 12,
-          }}
-        >
-          <Ionicons
-            name={showPassword ? 'eye-off' : 'eye'}
-            size={24}
-            color={theme.colors.text}
-          />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: 12 }}>
+          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={24} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        onPress={() => setStayLoggedIn(!stayLoggedIn)}
+        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}
+      >
+        <Ionicons
+          name={stayLoggedIn ? 'checkbox-outline' : 'square-outline'}
+          size={24}
+          color={theme.colors.text}
+          style={{ marginRight: 8 }}
+        />
+        <Text style={{ color: theme.colors.text }}>Stay logged in</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={{

@@ -26,6 +26,9 @@ const AdminFeaturesScreen = ({ navigation }) => {
   const [activeOrgId, setActiveOrgId] = useState(null);
   const [activeTab, setActiveTab] = useState('manageBars'); // Default tab: Manage Bars
   const [orgModalVisible, setOrgModalVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -274,10 +277,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
       case 'manageBars':
         return (
           <View>
-            <AdminActionButton
-              title="Add Bar"
-              onPress={() => navigation.navigate('AddBar')}
-            />
             <AdminActionButton
               title="Manage Bars"
               onPress={() => navigation.navigate('ManageBars')}

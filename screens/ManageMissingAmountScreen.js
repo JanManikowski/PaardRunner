@@ -98,7 +98,7 @@ const ItemDetailScreen = ({ route }) => {
 
   return (
     <View style={{ flex: 1, padding: normalize(16), backgroundColor: theme.colors.background }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: normalize(16), paddingTop: normalize(100) }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: normalize(16), paddingTop: normalize(80) }}>
         <Button
           icon={<Icon name="arrow-back" size={normalize(30)} color={theme.colors.primary} />}
           type="clear"

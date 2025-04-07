@@ -58,7 +58,7 @@ export default AppNavigator;
 // Consider moving utility functions like this to a separate file (e.g., utils.js)
 export const logLocalStorageData = async () => {
   try {
-    // --- Requires AsyncStorage import ---
+    // --- Requires AsyncStorage import --- 
     // import AsyncStorage from '@react-native-async-storage/async-storage';
 
     const bars = await AsyncStorage.getItem('bars');
@@ -72,37 +72,35 @@ export const logLocalStorageData = async () => {
     console.log('--- Local Storage Data ---'); // Added header for clarity
     console.log('Bars:');
     if (parsedBars.length > 0) {
-        parsedBars.forEach((bar, index) => {
-          console.log(` Bar ${index + 1}:`);
-          console.log(`   Name: ${bar.name}`);
-          console.log(`   Color: ${bar.color}`);
-          console.log(`   Number of Fridges: ${bar.numFridges}`);
-          console.log(`   Number of Shelves: ${bar.numShelves}`);
-          console.log(`   Last Opened: ${bar.lastOpened}`);
-          // Log bar-specific inventory if needed/available
-        });
+      parsedBars.forEach((bar, index) => {
+        console.log(` Bar ${index + 1}:`);
+        console.log(`   Name: ${bar.name}`);
+        console.log(`   Color: ${bar.color}`);
+        console.log(`   Number of Fridges: ${bar.numFridges}`);
+        console.log(`   Number of Shelves: ${bar.numShelves}`);
+        console.log(`   Last Opened: ${bar.lastOpened}`);
+        // Log bar-specific inventory if needed/available
+      });
     } else {
-        console.log(' No bars found.');
+      console.log(' No bars found.');
     }
 
-
     console.log('Categories (Templates):'); // Clarified this likely refers to templates
-     if (Object.keys(parsedCategories).length > 0) {
-        Object.keys(parsedCategories).forEach((categoryName) => {
-          console.log(` Category: ${categoryName}`);
-          parsedCategories[categoryName].forEach((item, index) => {
-            console.log(`   Item ${index + 1}:`);
-            console.log(`     Name: ${item.name}`);
-            console.log(`     Max Amount: ${item.maxAmount}`);
-            // Missing count here might be irrelevant for a template, depends on your data structure
-            console.log(`     Missing: ${item.missing ?? 'N/A'}`);
-            console.log(`     Image: ${item.image}`);
-          });
+    if (Object.keys(parsedCategories).length > 0) {
+      Object.keys(parsedCategories).forEach((categoryName) => {
+        console.log(` Category: ${categoryName}`);
+        parsedCategories[categoryName].forEach((item, index) => {
+          console.log(`   Item ${index + 1}:`);
+          console.log(`     Name: ${item.name}`);
+          console.log(`     Max Amount: ${item.maxAmount}`);
+          // Missing count here might be irrelevant for a template, depends on your data structure
+          console.log(`     Missing: ${item.missing ?? 'N/A'}`);
+          console.log(`     Image: ${item.image}`);
         });
-     } else {
-         console.log(' No category templates found.');
-     }
-
+      });
+    } else {
+      console.log(' No category templates found.');
+    }
 
     console.log('Items (Master List?):'); // Clarified potential purpose
     if (parsedItems.length > 0) {
@@ -114,7 +112,7 @@ export const logLocalStorageData = async () => {
     } else {
       console.log(' No master items found.');
     }
-     console.log('--- End Local Storage Data ---'); // Added footer
+    console.log('--- End Local Storage Data ---'); // Added footer
 
   } catch (error) {
     console.error('Error logging local storage data:', error);
