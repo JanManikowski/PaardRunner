@@ -24,10 +24,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 
+// Reuse from MissingItemsScreen
 const ITEM_HEIGHT = 60;
 const ITEM_SPACING = 10;
 
-// Reusable animated list item component
+// Reusable animated list item
 const AnimatedListItem = ({
   item,
   index,
@@ -135,15 +136,18 @@ const AnimatedListItem = ({
 
 const AllMissingItemsScreen = () => {
   const { theme } = useContext(ThemeContext);
+
+  // Data: { barName: { categoryName: [item, ...] } }
   const [aggregatedData, setAggregatedData] = useState({});
   const [inputValues, setInputValues] = useState({});
   const [circleMode, setCircleMode] = useState(false);
   const [checkedItems, setCheckedItems] = useState([]);
   const [justEnteredSelectMode, setJustEnteredSelectMode] = useState(false);
-  // Collapsible state for each bar
+
+  // Collapsible state: barName => bool
   const [expandedBars, setExpandedBars] = useState({});
 
-  // Animate bottom buttons (for select mode)
+  // Animate bottom buttons (as in MissingItemsScreen)
   const bottomAnim = useSharedValue(0);
   useEffect(() => {
     bottomAnim.value = withTiming(circleMode ? 1 : 0, { duration: 300 });
@@ -166,7 +170,7 @@ const AllMissingItemsScreen = () => {
     }
   }, []);
 
-  // Fetch missing items when screen is focused
+  // Fetch missing items on focus
   useFocusEffect(
     React.useCallback(() => {
       fetchAllMissingItems();
@@ -210,20 +214,21 @@ const AllMissingItemsScreen = () => {
           aggregated[bar.name] = barData;
         }
       }
-      setAggregatedData(aggregated);
+      // After you build your 'aggregated' object in fetchAllMissingItems:
+setAggregatedData(aggregated);
 
-      // Expand all bars by default
-      const expanded = {};
-      Object.keys(aggregated).forEach((barName) => {
-        expanded[barName] = true;
-      });
-      setExpandedBars(expanded);
+// Set all bars to expanded by default:
+const expanded = {};
+Object.keys(aggregated).forEach((barName) => {
+  expanded[barName] = true;
+});
+setExpandedBars(expanded);
     } catch (error) {
       console.error('Error fetching aggregated missing items:', error);
     }
   };
 
-  // Toggle expand/collapse for a bar
+  // Collapsible toggling
   const toggleBar = (barName) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedBars(prev => ({
@@ -232,7 +237,7 @@ const AllMissingItemsScreen = () => {
     }));
   };
 
-  // Update missing count for an item and save to AsyncStorage
+  // Updating missing values
   const updateMissingValue = async (barName, category, index, newValue) => {
     const updated = { ...aggregatedData };
     const item = updated[barName][category][index];
@@ -276,6 +281,7 @@ const AllMissingItemsScreen = () => {
     await updateMissingValue(barName, category, index, updatedValue);
   };
 
+  // Toggle completed & track multi-select
   const handleToggleCompleted = (barName, category, index, item) => {
     const updated = { ...aggregatedData };
     const targetItem = updated[barName][category][index];
@@ -287,7 +293,7 @@ const AllMissingItemsScreen = () => {
       delete targetItem.toggledAt;
     }
 
-    // Reorder items: non-completed first, then completed
+    // reorder: non-completed first, completed after
     const items = [...updated[barName][category]];
     items.splice(index, 1);
     const nonCompleted = items.filter(it => !it.completed);
@@ -309,7 +315,7 @@ const AllMissingItemsScreen = () => {
     });
   };
 
-  // Long press to enter multi-select mode
+  // Long press to enter multi-select
   const handleLongPressItem = () => {
     if (!circleMode) {
       setCircleMode(true);
@@ -387,7 +393,7 @@ const AllMissingItemsScreen = () => {
     );
   };
 
-  // Generate shareable message for missing items
+  // Generate a shareable message
   const generateAllMissingItemsMessage = () => {
     if (Object.keys(aggregatedData).length === 0) {
       return 'No missing items found across all bars.';
@@ -417,77 +423,6 @@ const AllMissingItemsScreen = () => {
     }
   };
 
-  // Prepare aggregated data so that each bar header and its corresponding content are separate children
-  const renderAggregatedData = () => {
-    const elements = [];
-    const stickyIndices = [];
-    let componentIndex = 0;
-
-    Object.entries(aggregatedData).forEach(([barName, categories]) => {
-      // Render bar header as a separate component
-      stickyIndices.push(componentIndex);
-      elements.push(
-        <TouchableOpacity
-          key={barName}
-          onPress={() => toggleBar(barName)}
-          onLongPress={() => deleteAllItemsForBar(barName)}
-          style={styles.barHeader}
-        >
-          <Text style={[styles.barTitle, { color: theme.colors.primary }]}>{barName}</Text>
-          <Text style={styles.caret}>
-            {expandedBars[barName] ? '▲' : '▼'}
-          </Text>
-        </TouchableOpacity>
-      );
-      componentIndex++;
-
-      // Render bar content if expanded
-      if (expandedBars[barName]) {
-        elements.push(
-          <View key={`${barName}-content`} style={styles.barContent}>
-            {Object.entries(categories).map(([category, items]) => (
-              <View key={category} style={{ marginBottom: 20 }}>
-                <Text style={[styles.categoryTitle, { color: theme.colors.primary }]}>{category}</Text>
-                <View
-                  style={{
-                    position: 'relative',
-                    minHeight: items.length * (ITEM_HEIGHT + ITEM_SPACING),
-                  }}
-                >
-                  {items.map((item, i) => (
-                    <AnimatedListItem
-                      key={item.id}
-                      item={item}
-                      index={i}
-                      theme={theme}
-                      circleMode={circleMode}
-                      justEnteredSelectMode={justEnteredSelectMode}
-                      toggleItem={() => handleToggleCompleted(barName, category, i, item)}
-                      decrementCount={() => decrementCount(barName, category, i)}
-                      incrementCount={() => incrementCount(barName, category, i)}
-                      inputValue={
-                        inputValues[`${barName}-${category}-${i}`] !== undefined
-                          ? inputValues[`${barName}-${category}-${i}`]
-                          : String(item.missing)
-                      }
-                      onInputChange={text => handleInputChange(barName, category, i, text)}
-                      onInputBlur={() => handleInputBlur(barName, category, i)}
-                      onLongPress={handleLongPressItem}
-                    />
-                  ))}
-                </View>
-              </View>
-            ))}
-          </View>
-        );
-        componentIndex++;
-      }
-    });
-    return { elements, stickyIndices };
-  };
-
-  const { elements, stickyIndices } = renderAggregatedData();
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Text style={[styles.title, { color: theme.colors.onBackground }]}>
@@ -495,15 +430,79 @@ const AllMissingItemsScreen = () => {
       </Text>
 
       <ScrollView
-        stickyHeaderIndices={stickyIndices}
         style={{ marginBottom: 150 }}
         contentContainerStyle={{ paddingBottom: 15 }}
       >
-        {elements}
+        {Object.keys(aggregatedData).length > 0 ? (
+          Object.entries(aggregatedData).map(([barName, categories]) => {
+            const isExpanded = expandedBars[barName] || false;
+            return (
+              <View key={barName} style={styles.barCard}>
+                {/* Bar Header */}
+                <TouchableOpacity
+                  onPress={() => toggleBar(barName)}
+                  onLongPress={() => deleteAllItemsForBar(barName)}
+                  style={styles.barHeader}
+                >
+                  <Text style={[styles.barTitle, { color: theme.colors.primary }]}>
+                    {barName}
+                  </Text>
+                  <Text style={styles.caret}>
+                    {isExpanded ? '▲' : '▼'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Collapsible content */}
+                {isExpanded && (
+                  <View style={styles.barContent}>
+                    {Object.entries(categories).map(([category, items]) => (
+                      <View key={category} style={{ marginBottom: 20 }}>
+                        <Text style={[styles.categoryTitle, { color: theme.colors.primary }]}>
+                          {category}
+                        </Text>
+                        <View style={{
+                          position: 'relative',
+                          minHeight: items.length * (ITEM_HEIGHT + ITEM_SPACING),
+                        }}>
+                          {items.map((item, index) => (
+                            <AnimatedListItem
+                              key={item.id}
+                              item={item}
+                              index={index}
+                              theme={theme}
+                              circleMode={circleMode}
+                              justEnteredSelectMode={justEnteredSelectMode}
+                              toggleItem={() => handleToggleCompleted(barName, category, index, item)}
+                              decrementCount={() => decrementCount(barName, category, index)}
+                              incrementCount={() => incrementCount(barName, category, index)}
+                              inputValue={
+                                inputValues[`${barName}-${category}-${index}`] !== undefined
+                                  ? inputValues[`${barName}-${category}-${index}`]
+                                  : String(item.missing)
+                              }
+                              onInputChange={text => handleInputChange(barName, category, index, text)}
+                              onInputBlur={() => handleInputBlur(barName, category, index)}
+                              onLongPress={handleLongPressItem}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          })
+        ) : (
+          <Text style={{ fontSize: 18, textAlign: 'center', color: theme.colors.onSurface }}>
+            No missing items found.
+          </Text>
+        )}
       </ScrollView>
 
       {/* Bottom buttons */}
       <View style={styles.bottomButtonsContainer}>
+        {/* Normal buttons */}
         <Animated.View
           style={[
             normalBottomStyle,
@@ -547,6 +546,7 @@ const AllMissingItemsScreen = () => {
           </View>
         </Animated.View>
 
+        {/* Select mode buttons */}
         <Animated.View
           style={[
             selectBottomStyle,
@@ -573,6 +573,7 @@ const AllMissingItemsScreen = () => {
   );
 };
 
+// Basic styling to make the layout look more modern
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -584,12 +585,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
   },
+  barCard: {
+    marginBottom: 15,
+    borderRadius: 8,
+    backgroundColor: '#2F3535', // or theme.colors.surfaceVariant
+    padding: 5,
+  },
   barHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 10,
-    backgroundColor: '#2F3535', // Background is required for sticky header effect
   },
   barTitle: {
     fontSize: 20,

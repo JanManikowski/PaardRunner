@@ -26,9 +26,9 @@ const AdminFeaturesScreen = ({ navigation }) => {
   const [activeOrgId, setActiveOrgId] = useState(null);
   const [activeTab, setActiveTab] = useState('manageBars'); // Default tab: Manage Bars
   const [orgModalVisible, setOrgModalVisible] = useState(false);
+  // States for upload progress
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
-
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -114,97 +114,126 @@ const AdminFeaturesScreen = ({ navigation }) => {
   const handleUploadLocalStorageToFirebase = async () => {
     try {
       console.log("🚀 Starting upload of local storage data to Firebase...");
-  
+
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected');
         return;
       }
-  
-      // Clear previous data
+
+      // Start the upload modal by blocking user interaction
+      setUploading(true);
+      let currentStep = 0;
+
+      // Get items from AsyncStorage that we plan to upload:
+      const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
+      const categories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
+      const customCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
+      
+      // Calculate total steps:
+      // 1: Delete previous data
+      // 1: Upload organization info
+      // barsForOrg.length steps: One for each bar
+      // For each category: 1 step for the category + 1 step per item in that category
+      // customCrates.length steps: One for each crate
+      let totalSteps = 1 + 1 + barsForOrg.length;
+      totalSteps += categories.length;
+      categories.forEach((cat) => {
+        totalSteps += (cat.items ? cat.items.length : 0);
+      });
+      totalSteps += customCrates.length;
+      
+      // Set initial progress
+      setUploadProgress({ current: 0, total: totalSteps });
+
+      // Step 1: Clear previous data
       await deleteAllDataUnderOrganization(activeOrgId);
+      currentStep++;
+      setUploadProgress({ current: currentStep, total: totalSteps });
       console.log(`🧹 All data under organization ${activeOrgId} deleted.`);
-  
-      // Get organization info
+
+      // Get organization info from local storage
       const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
       const org = organizations.find(o => o.id === activeOrgId);
       if (!org) {
+        setUploading(false);
         Alert.alert('Error', 'Organization not found in local storage.');
         return;
       }
-  
+
+      // Step 2: Upload the organization name/info
       await createOrUpdateOrganization(org.name);
-      const orgId = activeOrgId;
+      currentStep++;
+      setUploadProgress({ current: currentStep, total: totalSteps });
       console.log("🏢 Organization uploaded:", org.name);
-  
-      // Upload Bars
-      const barsForOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
+
+      // Step 3: Upload Bars
       for (let i = 0; i < barsForOrg.length; i++) {
         const bar = barsForOrg[i];
-        await createBarInFirebase(orgId, bar, i);
+        await createBarInFirebase(activeOrgId, bar, i);
+        currentStep++;
+        setUploadProgress({ current: currentStep, total: totalSteps });
         console.log(`🏗️ Uploaded bar: ${bar.name} with order ${i}`);
       }
-  
-      // Upload Categories and Items
-      const categories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
+
+      // Step 4: Upload Categories and Items
       for (let i = 0; i < categories.length; i++) {
         const category = categories[i];
-        await addCategory(orgId, category.name, i);
+        await addCategory(activeOrgId, category.name, i);
+        currentStep++;
+        setUploadProgress({ current: currentStep, total: totalSteps });
         console.log(`📂 Uploaded category: ${category.name} with order ${i}`);
-  
+
         const itemsForCategory = category.items || [];
         for (let j = 0; j < itemsForCategory.length; j++) {
           const item = itemsForCategory[j];
-  
-          let uploadedImageUrl = null;
 
+          let uploadedImageUrl = null;
           if (item.image && item.image.startsWith('file://')) {
             console.log(`📸 Uploading local file for item: ${item.name}`);
             uploadedImageUrl = await uploadImageToFirebase(
               item.image,
-              orgId,
+              activeOrgId,
               category.name,
               item.name
             );
           } else if (item.image && item.image.startsWith('http')) {
             console.log(`🌐 Using existing remote image for ${item.name}`);
-            uploadedImageUrl = item.image; // already a URL, maybe previously uploaded
+            uploadedImageUrl = item.image;
           } else {
             console.warn(`⚠️ No valid image found for ${item.name}`);
           }
 
-  
           await addItem(
-            orgId,
+            activeOrgId,
             category.name,
             item.name,
             item.maxAmount,
             uploadedImageUrl,
             j
           );
-  
+          currentStep++;
+          setUploadProgress({ current: currentStep, total: totalSteps });
           console.log(`📦 Uploaded item: ${item.name} with order ${j}`);
         }
       }
-  
-      // Upload Crates
-      const customCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
-      for (const crate of customCrates) {
-        await addCrateToFirebase(orgId, crate);
-        console.log(`🎁 Uploaded crate: ${crate.name}`);
+
+      // Step 5: Upload Crates
+      for (let i = 0; i < customCrates.length; i++) {
+        await addCrateToFirebase(activeOrgId, customCrates[i]);
+        currentStep++;
+        setUploadProgress({ current: currentStep, total: totalSteps });
+        console.log(`🎁 Uploaded crate: ${customCrates[i].name}`);
       }
-  
+
       Alert.alert('✅ Upload Complete', 'Local storage data uploaded successfully.');
+      setUploading(false);
     } catch (error) {
       console.error('❌ Error uploading data:', error);
       Alert.alert('Error', 'Failed to upload data.');
+      setUploading(false);
     }
   };
-  
-  
-  
-  
-  
 
   const clearLocalStorage = async () => {
     try {
@@ -224,7 +253,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          // Reduced overall padding to shrink row height
           paddingVertical: 10,
           paddingHorizontal: 10,
           marginVertical: 3,
@@ -237,7 +265,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
         <AdminActionButton
           title={org.name}
           onPress={() => handleSetActiveOrganization(org.id)}
-          // Override default AdminActionButton padding to make button smaller
           style={{
             backgroundColor: activeOrgId === org.id 
               ? theme.colors.primary 
@@ -255,7 +282,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
         <AdminActionButton
           title="Delete"
           onPress={() => handleDeleteOrganization(org.id)}
-          // Same override here to keep both buttons the same size
           style={{
             backgroundColor: theme.colors.error,
             marginBottom: 0,
@@ -270,7 +296,6 @@ const AdminFeaturesScreen = ({ navigation }) => {
       </View>
     ));
   };
-  
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -291,84 +316,84 @@ const AdminFeaturesScreen = ({ navigation }) => {
             />
           </View>
         );
-      case 'debugging':
-        return (
-          <View>
-            <AdminActionButton
-              title="Log All Bars in Local Storage"
-              onPress={async () => {
-                try {
-                  const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
-                  console.log("Organizations in Local Storage:", organizations);
-                  let allBars = [];
-                  for (let org of organizations) {
-                    const orgBars = JSON.parse(await AsyncStorage.getItem(`bars_${org.id}`)) || [];
-                    console.log(`Bars for Organization (${org.id}):`, orgBars);
-                    allBars = [...allBars, ...orgBars];
-                  }
-                  console.log("All Bars in Local Storage Across All Organizations:", allBars);
-                } catch (error) {
-                  console.error("Error logging all bars:", error);
-                }
-              }}
-              style={{ backgroundColor: theme.colors.secondary }}
-            />
-            <AdminActionButton
-              title="Log Bars from Active Org"
-              onPress={async () => {
-                try {
-                  const activeOrgId = await AsyncStorage.getItem('activeOrgId');
-                  if (!activeOrgId) {
-                    console.log("No active organization selected.");
-                    return;
-                  }
-                  const barsForActiveOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
-                  console.log(`Bars for Active Organization (${activeOrgId}):`, barsForActiveOrg);
-                } catch (error) {
-                  console.error("Error logging bars for active organization:", error);
-                }
-              }}
-              style={{ backgroundColor: theme.colors.secondary }}
-            />
-            <AdminActionButton
-              title="Delete All Bars"
-              onPress={() => {
-                Alert.alert(
-                  'Confirm Delete',
-                  'Are you sure you want to delete all bars? This action cannot be undone.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'OK',
-                      onPress: async () => {
-                        try {
-                          const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
-                          for (let org of organizations) {
-                            await AsyncStorage.removeItem(`bars_${org.id}`);
-                          }
-                          Alert.alert('Success', 'All bars deleted.');
-                        } catch (error) {
-                          console.error("Error deleting bars:", error);
-                          Alert.alert('Error', 'Failed to delete bars.');
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
-              style={{ backgroundColor: theme.colors.error }}
-            />
-            <AdminActionButton
-              title="Clear Local Storage"
-              onPress={clearLocalStorage}
-              style={{ backgroundColor: theme.colors.error }}
-            />
-          </View>
-        );
+      // Uncomment and adjust if needed for debugging tab
+      // case 'debugging':
+      //   return (
+      //     <View>
+      //       <AdminActionButton
+      //         title="Log All Bars in Local Storage"
+      //         onPress={async () => {
+      //           try {
+      //             const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
+      //             console.log("Organizations in Local Storage:", organizations);
+      //             let allBars = [];
+      //             for (let org of organizations) {
+      //               const orgBars = JSON.parse(await AsyncStorage.getItem(`bars_${org.id}`)) || [];
+      //               console.log(`Bars for Organization (${org.id}):`, orgBars);
+      //               allBars = [...allBars, ...orgBars];
+      //             }
+      //             console.log("All Bars in Local Storage Across All Organizations:", allBars);
+      //           } catch (error) {
+      //             console.error("Error logging all bars:", error);
+      //           }
+      //         }}
+      //         style={{ backgroundColor: theme.colors.secondary }}
+      //       />
+      //       <AdminActionButton
+      //         title="Log Bars from Active Org"
+      //         onPress={async () => {
+      //           try {
+      //             const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      //             if (!activeOrgId) {
+      //               console.log("No active organization selected.");
+      //               return;
+      //             }
+      //             const barsForActiveOrg = JSON.parse(await AsyncStorage.getItem(`bars_${activeOrgId}`)) || [];
+      //             console.log(`Bars for Active Organization (${activeOrgId}):`, barsForActiveOrg);
+      //           } catch (error) {
+      //             console.error("Error logging bars for active organization:", error);
+      //           }
+      //         }}
+      //         style={{ backgroundColor: theme.colors.secondary }}
+      //       />
+      //       <AdminActionButton
+      //         title="Delete All Bars"
+      //         onPress={() => {
+      //           Alert.alert(
+      //             'Confirm Delete',
+      //             'Are you sure you want to delete all bars? This action cannot be undone.',
+      //             [
+      //               { text: 'Cancel', style: 'cancel' },
+      //               {
+      //                 text: 'OK',
+      //                 onPress: async () => {
+      //                   try {
+      //                     const organizations = JSON.parse(await AsyncStorage.getItem('organizations')) || [];
+      //                     for (let org of organizations) {
+      //                       await AsyncStorage.removeItem(`bars_${org.id}`);
+      //                     }
+      //                     Alert.alert('Success', 'All bars deleted.');
+      //                   } catch (error) {
+      //                     console.error("Error deleting bars:", error);
+      //                     Alert.alert('Error', 'Failed to delete bars.');
+      //                   }
+      //                 },
+      //               },
+      //             ]
+      //           );
+      //         }}
+      //         style={{ backgroundColor: theme.colors.error }}
+      //       />
+      //       <AdminActionButton
+      //         title="Clear Local Storage"
+      //         onPress={clearLocalStorage}
+      //         style={{ backgroundColor: theme.colors.error }}
+      //       />
+      //     </View>
+      //   );
       case 'organizations':
         return (
           <View>
-            {/* Both buttons below now use AdminActionButton to ensure they have the same size */}
             <AdminActionButton
               title="Add Organization"
               onPress={() => setOrgModalVisible(true)}
@@ -390,147 +415,187 @@ const AdminFeaturesScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView
-      style={{
-        flex: 1,
-        padding: 16,
-        backgroundColor: theme.colors.background,
-      }}
-    >
-      <Text
+    <>
+      <ScrollView
         style={{
-          fontSize: 28,
-          fontWeight: 'bold',
-          marginBottom: 20,
-          textAlign: 'center',
-          color: 'white',
+          flex: 1,
+          padding: 16,
+          backgroundColor: theme.colors.background,
         }}
       >
-        Admin Dashboard
-      </Text>
-
-      {/* Tab Navigation */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-around',
-          marginBottom: 20,
-        }}
-      >
-        <AdminActionButton
-          title="Manage Bars"
-          onPress={() => setActiveTab('manageBars')}
+        <Text
           style={{
-            backgroundColor: activeTab === 'manageBars' ? theme.colors.primary : theme.colors.surfaceVariant,
+            fontSize: 28,
+            fontWeight: 'bold',
+            marginBottom: 20,
+            textAlign: 'center',
+            color: 'white',
           }}
-          textStyle={{
-            color: activeTab === 'manageBars' ? theme.colors.background : theme.colors.text,
-          }}
-        />
-        <AdminActionButton
-          title="Debugging"
-          onPress={() => setActiveTab('debugging')}
-          style={{
-            backgroundColor: activeTab === 'debugging' ? theme.colors.primary : theme.colors.surfaceVariant,
-          }}
-          textStyle={{
-            color: activeTab === 'debugging' ? theme.colors.background : theme.colors.text,
-          }}
-        />
-        <AdminActionButton
-          title="Organizations"
-          onPress={() => setActiveTab('organizations')}
-          style={{
-            backgroundColor: activeTab === 'organizations' ? theme.colors.primary : theme.colors.surfaceVariant,
-          }}
-          textStyle={{
-            color: activeTab === 'organizations' ? theme.colors.background : theme.colors.text,
-          }}
-        />
-      </View>
+        >
+          Admin Dashboard
+        </Text>
 
-      {/* Render Tab Content */}
-      {renderTabContent()}
-
-      {/* Organization Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={orgModalVisible}
-        onRequestClose={() => setOrgModalVisible(false)}
-      >
+        {/* Tab Navigation */}
         <View
           style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            flexDirection: 'row',
+            justifyContent: 'space-around',
+            marginBottom: 20,
           }}
+        >
+          <AdminActionButton
+            title="Manage Bars"
+            onPress={() => setActiveTab('manageBars')}
+            style={{
+              backgroundColor: activeTab === 'manageBars' ? theme.colors.primary : theme.colors.surfaceVariant,
+            }}
+            textStyle={{
+              color: activeTab === 'manageBars' ? theme.colors.background : theme.colors.text,
+            }}
+          />
+          <AdminActionButton
+            title="Organizations"
+            onPress={() => setActiveTab('organizations')}
+            style={{
+              backgroundColor: activeTab === 'organizations' ? theme.colors.primary : theme.colors.surfaceVariant,
+            }}
+            textStyle={{
+              color: activeTab === 'organizations' ? theme.colors.background : theme.colors.text,
+            }}
+          />
+        </View>
+
+        {/* Render Tab Content */}
+        {renderTabContent()}
+
+        {/* Organization Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={orgModalVisible}
+          onRequestClose={() => setOrgModalVisible(false)}
         >
           <View
             style={{
-              width: '80%',
-              backgroundColor: theme.colors.surface,
-              borderRadius: 10,
-              padding: 20,
+              flex: 1,
+              justifyContent: 'center',
               alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 5,
+              backgroundColor: 'rgba(0,0,0,0.5)',
             }}
           >
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                marginBottom: 20,
-                color: theme.colors.text,
-              }}
-            >
-              Add Organization
-            </Text>
-            <TextInput
-              style={{
-                width: '100%',
-                height: 40,
-                borderColor: theme.colors.outline,
-                borderWidth: 1,
-                borderRadius: 8,
-                paddingHorizontal: 10,
-                marginBottom: 20,
-                color: theme.colors.text,
-                backgroundColor: theme.colors.surfaceVariant,
-              }}
-              placeholder="Organization Name"
-              placeholderTextColor={theme.colors.onSurface}
-              value={newOrgName}
-              onChangeText={setNewOrgName}
-            />
             <View
               style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                width: '100%',
+                width: '80%',
+                backgroundColor: theme.colors.surface,
+                borderRadius: 10,
+                padding: 20,
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 5,
               }}
             >
-              <AdminActionButton
-                title="Save"
-                onPress={handleAddOrganization}
-                style={{ flex: 1, marginRight: 10 }}
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  marginBottom: 20,
+                  color: theme.colors.text,
+                }}
+              >
+                Add Organization
+              </Text>
+              <TextInput
+                style={{
+                  width: '100%',
+                  height: 40,
+                  borderColor: theme.colors.outline,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  marginBottom: 20,
+                  color: theme.colors.text,
+                  backgroundColor: theme.colors.surfaceVariant,
+                }}
+                placeholder="Organization Name"
+                placeholderTextColor={theme.colors.onSurface}
+                value={newOrgName}
+                onChangeText={setNewOrgName}
               />
-              <AdminActionButton
-                title="Cancel"
-                onPress={() => setOrgModalVisible(false)}
-                style={{ flex: 1, backgroundColor: '#F44336' }}
-                textStyle={{ color: '#fff' }}
-              />
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                }}
+              >
+                <AdminActionButton
+                  title="Save"
+                  onPress={handleAddOrganization}
+                  style={{ flex: 1, marginRight: 10 }}
+                />
+                <AdminActionButton
+                  title="Cancel"
+                  onPress={() => setOrgModalVisible(false)}
+                  style={{ flex: 1, backgroundColor: '#F44336' }}
+                  textStyle={{ color: '#fff' }}
+                />
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+
+      {/* Upload Progress Modal: blocks all interactions until done */}
+      {uploading && (
+        <Modal transparent={true} animationType="none">
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0,0,0,0.7)',
+            }}
+          >
+            <View
+              style={{
+                width: '80%',
+                backgroundColor: theme.colors.surface,
+                borderRadius: 10,
+                padding: 20,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ marginBottom: 10, fontSize: 18, color: theme.colors.text }}>
+                Uploading data...
+              </Text>
+              <View
+                style={{
+                  width: '100%',
+                  height: 10,
+                  backgroundColor: '#ddd',
+                  borderRadius: 5,
+                }}
+              >
+                <View
+                  style={{
+                    width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
+                    height: '100%',
+                    backgroundColor: theme.colors.primary,
+                    borderRadius: 5,
+                  }}
+                />
+              </View>
+              <Text style={{ marginTop: 10, fontSize: 16, color: theme.colors.text }}>
+                {Math.floor((uploadProgress.current / uploadProgress.total) * 100)}%
+              </Text>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </>
   );
 };
 

@@ -94,9 +94,14 @@ const CustomCratesScreen = () => {
 
   const handleDeleteCrate = async (crateId) => {
     try {
-      const storedCrates = JSON.parse(await AsyncStorage.getItem('customCrates')) || [];
+      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
+      if (!activeOrgId) {
+        Alert.alert('Error', 'No active organization selected.');
+        return;
+      }
+      const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
       const updatedCrates = storedCrates.filter((crate) => crate.id !== crateId);
-      await AsyncStorage.setItem('customCrates', JSON.stringify(updatedCrates));
+      await AsyncStorage.setItem(`customCrates_${activeOrgId}`, JSON.stringify(updatedCrates));
       fetchCrates();
       Alert.alert('Success', 'Crate deleted successfully.');
     } catch (error) {
@@ -104,6 +109,7 @@ const CustomCratesScreen = () => {
       Alert.alert('Error', 'Failed to delete crate.');
     }
   };
+  
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>

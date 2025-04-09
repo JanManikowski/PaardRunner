@@ -57,12 +57,28 @@ const CategoryDetailScreen = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 10, color: theme.colors.text, textAlign: 'center' }}>
+      {/* Title */}
+      <Text 
+        style={{ 
+          fontSize: 24, 
+          fontWeight: 'bold', 
+          marginBottom: 10, 
+          color: theme.colors.text, 
+          textAlign: 'center' 
+        }}
+      >
         {categoryName} Items
       </Text>
 
+      {/* Manage Mode Toggle */}
       <TouchableOpacity
-        style={{ backgroundColor: manageMode ? theme.colors.error : theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center', marginBottom: 20 }}
+        style={{ 
+          backgroundColor: manageMode ? theme.colors.error : theme.colors.primary, 
+          padding: 10, 
+          borderRadius: 5, 
+          alignItems: 'center', 
+          marginBottom: 20 
+        }}
         onPress={() => setManageMode(!manageMode)}
       >
         <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>
@@ -70,72 +86,90 @@ const CategoryDetailScreen = ({ route, navigation }) => {
         </Text>
       </TouchableOpacity>
 
-      <DraggableFlatList
-        data={items}
-        keyExtractor={(item) => item.name}
-        onDragEnd={handleDragEnd}
-        renderItem={({ item, drag, isActive }) => (
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginBottom: 10,
-              backgroundColor: isActive ? theme.colors.primary : theme.colors.surfaceVariant,
-              borderRadius: 8,
-              padding: 10,
-              shadowColor: theme.colors.shadow || '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 3,
-            }}
-            onLongPress={drag}
-          >
-            <Image
-              source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
-              style={{ width: 50, height: 50, marginRight: 10, borderRadius: 5, backgroundColor: "white" }}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, color: theme.colors.text }}>{item.name}</Text>
-              <Text style={{ color: theme.colors.text }}>Max: {item.maxAmount}</Text>
-            </View>
-
-            {manageMode && (
-              <>
-                <TouchableOpacity
-                  style={{ backgroundColor: theme.colors.error, padding: 5, borderRadius: 5, marginLeft: 10 }}
-                  onPress={() => removeItem(item.name)}
-                >
-                  <Text style={{ color: theme.colors.onError }}>Delete</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={{ backgroundColor: theme.colors.primary, padding: 5, borderRadius: 5, marginLeft: 10 }}
-                  onPress={() => navigation.navigate('ItemEditor', { categoryName, item })}
-                >
-                  <Text style={{ color: theme.colors.onPrimary }}>Edit</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
-      />
-
-      {/* Existing single item add button */}
+      {/* Add Buttons moved above the list */}
       <TouchableOpacity
-        style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 20 }}
+        style={{ 
+          backgroundColor: theme.colors.primary, 
+          padding: 10, 
+          borderRadius: 5, 
+          alignItems: 'center', 
+          marginBottom: 10 
+        }}
         onPress={() => navigation.navigate('AddItem', { categoryName })}
       >
-        <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>Add New Item</Text>
+        <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>
+          Add New Item
+        </Text>
       </TouchableOpacity>
 
-      {/* New multiple item add button */}
       <TouchableOpacity
-        style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 }}
+        style={{ 
+          backgroundColor: theme.colors.primary, 
+          padding: 10, 
+          borderRadius: 5, 
+          alignItems: 'center', 
+          marginBottom: 20 
+        }}
         onPress={() => navigation.navigate('BulkAddItems', { categoryName })}
       >
-        <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>Add Multiple Items</Text>
+        <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>
+          Add Multiple Items
+        </Text>
       </TouchableOpacity>
+
+      {/* Draggable list in a scrollable container */}
+      <View style={{ flex: 1 }}>
+        <DraggableFlatList
+          data={items}
+          keyExtractor={(item) => item.name}
+          onDragEnd={handleDragEnd}
+          renderItem={({ item, drag, isActive }) => (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 10,
+                backgroundColor: isActive ? theme.colors.primary : theme.colors.surfaceVariant,
+                borderRadius: 8,
+                padding: 10,
+                shadowColor: theme.colors.shadow || '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
+              onLongPress={drag}
+            >
+              <Image
+                source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
+                style={{ width: 50, height: 50, marginRight: 10, borderRadius: 5, backgroundColor: "white" }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 18, color: theme.colors.text }}>{item.name}</Text>
+                <Text style={{ color: theme.colors.text }}>Max: {item.maxAmount}</Text>
+              </View>
+
+              {manageMode && (
+                <>
+                  <TouchableOpacity
+                    style={{ backgroundColor: theme.colors.error, padding: 5, borderRadius: 5, marginLeft: 10 }}
+                    onPress={() => removeItem(item.name)}
+                  >
+                    <Text style={{ color: theme.colors.onError }}>Delete</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{ backgroundColor: theme.colors.primary, padding: 5, borderRadius: 5, marginLeft: 10 }}
+                    onPress={() => navigation.navigate('ItemEditor', { categoryName, item })}
+                  >
+                    <Text style={{ color: theme.colors.onPrimary }}>Edit</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        />
+      </View>
     </View>
   );
 };
