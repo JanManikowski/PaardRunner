@@ -45,6 +45,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.9",
+    "react-native-calendars": "^1.1310.0",
     "react-native-color": "^0.0.10",
     "react-native-color-picker": "^0.6.0",
     "react-native-color-wheel": "^0.1.7",

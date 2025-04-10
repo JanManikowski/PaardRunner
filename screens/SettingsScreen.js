@@ -142,6 +142,12 @@ const SettingsScreen = ({ navigation }) => {
           style={{ backgroundColor: theme.colors.primary }}
           textStyle={{ color: theme.colors.background }}
         />
+        <StyledButton
+  title="Calendar Settings"
+  onPress={() => navigation.navigate('Calendar')}
+  style={{ backgroundColor: theme.colors.primary }}
+  textStyle={{ color: theme.colors.background }}
+/>
       </View>
 
       {/* Input and Fetch Button at Bottom */}

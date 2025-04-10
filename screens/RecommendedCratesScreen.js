@@ -1,12 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
-  Alert 
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 
@@ -19,11 +12,13 @@ const RecommendedCratesScreen = ({ route }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Updated: fetch custom crates using the org-specific key
+        // Retrieve custom crate configurations (each includes category and maxItems)
         const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${bar.orgId}`)) || [];
         setCustomCrates(storedCrates);
 
+        // Get the missing items per category from local storage.
         const missingItems = await fetchMissingItems(bar);
+        // Generate recommended crates using the new dynamic priority algorithm.
         const crates = generateRecommendedCrates(missingItems, storedCrates);
         setRecommendedCrates(crates);
       } catch (error) {
@@ -34,93 +29,115 @@ const RecommendedCratesScreen = ({ route }) => {
     fetchData();
   }, [bar]);
 
-  // Fetch missing items from local storage based on the current bar.
+  // Retrieves missing item counts per category.
+  // Each item is expected to have a defined maximum (item.maxAmount).
   const fetchMissingItems = async (bar) => {
     const categorizedItems = {};
     const categoriesKey = `categories_${bar.orgId}`;
     const storedCategories = JSON.parse(await AsyncStorage.getItem(categoriesKey)) || [];
-  
+
     for (const category of storedCategories) {
       for (const item of category.items || []) {
         const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
         const savedMissing = await AsyncStorage.getItem(missingKey);
         const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
-  
+
         if (missingAmount > 0) {
           if (!categorizedItems[category.name]) {
             categorizedItems[category.name] = [];
           }
-          categorizedItems[category.name].push({ ...item, missing: missingAmount });
+          // Copy the item and attach its missing count.
+          categorizedItems[category.name].push({
+            ...item,
+            missing: missingAmount,
+          });
         }
       }
     }
     return categorizedItems;
   };
-  
 
-  // Generate recommended crates based on missing items and crate configurations.
-  // We include each item's "id" so that we can delete its missing key later.
-  const generateRecommendedCrates = (missingItems, crates) => {
+  // Generate recommended crates using a dynamic, unit-by-unit algorithm.
+  // For each custom crate configuration, items are added one-by-one.
+  // In each round we calculate priority (missing / maxAmount), choose the candidate
+  // with the highest priority (and with least allocated units in the current crate on tie),
+  // then update its missing count before proceeding.
+  const generateRecommendedCrates = (missingItems, crateConfigs) => {
     const recommended = [];
-  
-    crates.forEach((crate) => {
-      const matchingItems = (missingItems[crate.category] || []).filter((item) => item.missing > 0);
-  
-      if (matchingItems.length > 0) {
-        matchingItems.sort((a, b) => b.missing - a.missing);
-  
+
+    // Iterate through each custom crate configuration
+    crateConfigs.forEach((crateConfig) => {
+      // Get a shallow copy of all items in the category so we can update their missing counts
+      const itemsForCategory = missingItems[crateConfig.category]
+        ? missingItems[crateConfig.category].map(item => ({ ...item }))
+        : [];
+      if (itemsForCategory.length === 0) return;
+
+      // Continue generating new crates until there are no more missing items for this category.
+      while (itemsForCategory.some(item => item.missing > 0)) {
         let currentCrate = [];
         let currentCrateCount = 0;
-  
-        matchingItems.forEach((item) => {
-          let remainingMissing = item.missing;
-  
-          while (remainingMissing > 0) {
-            const remainingSpace = crate.maxItems - currentCrateCount;
-  
-            if (remainingSpace <= 0) {
-              recommended.push({
-                crateName: `${crate.name} - Crate ${recommended.length + 1}`,
-                category: crate.category,
-                items: currentCrate.filter((i) => i.quantity > 0),
-              });
-              currentCrate = [];
-              currentCrateCount = 0;
-            }
-  
-            const itemsToFit = Math.min(remainingMissing, remainingSpace);
-  
-            if (itemsToFit > 0) {
-              currentCrate.push({
-                id: item.id,
-                type: item.name,
-                quantity: itemsToFit,
-                image: item.image || null,
-              });
-  
-              currentCrateCount += itemsToFit;
-              remainingMissing -= itemsToFit;
-            }
+
+        // Fill the current crate one unit at a time.
+        while (
+          currentCrateCount < crateConfig.maxItems &&
+          itemsForCategory.some(item => item.missing > 0)
+        ) {
+          // Get only items that still need units.
+          const candidates = itemsForCategory.filter(item => item.missing > 0);
+
+          // Calculate the priority for each candidate.
+          candidates.forEach(item => {
+            item.priority = item.missing / item.maxAmount;
+          });
+
+          // Determine the maximum priority value among candidates.
+          const maxPriority = Math.max(...candidates.map(item => item.priority));
+          // Filter the candidates to those that have this maximum priority.
+          let topCandidates = candidates.filter(item => item.priority === maxPriority);
+
+          // Tie-breaker: choose the candidate with the fewest units already allocated in this crate.
+          topCandidates.sort((a, b) => {
+            const qtyA = currentCrate.find(i => i.id === a.id)?.quantity || 0;
+            const qtyB = currentCrate.find(i => i.id === b.id)?.quantity || 0;
+            return qtyA - qtyB;
+          });
+
+          const chosenItem = topCandidates[0];
+
+          // Add one unit of the chosen item to the current crate.
+          const crateItemIndex = currentCrate.findIndex(i => i.id === chosenItem.id);
+          if (crateItemIndex >= 0) {
+            currentCrate[crateItemIndex].quantity += 1;
+          } else {
+            currentCrate.push({
+              id: chosenItem.id,
+              type: chosenItem.name,
+              quantity: 1,
+              image: chosenItem.image || null,
+            });
           }
-  
-          // Mark the item as processed.
-          item.missing = 0;
-        });
-  
+
+          // Subtract the added unit from the chosen item's missing count.
+          chosenItem.missing -= 1;
+          currentCrateCount += 1;
+        }
+
+        // Once the crate is filled or no more units can be allocated, add it to the recommended list.
         if (currentCrate.length > 0) {
           recommended.push({
-            crateName: `${crate.name} - Crate ${recommended.length + 1}`,
-            category: crate.category,
-            items: currentCrate.filter((i) => i.quantity > 0),
+            crateName: `${crateConfig.name} - Crate ${recommended.length + 1}`,
+            category: crateConfig.category,
+            items: currentCrate.filter(i => i.quantity > 0),
           });
         }
       }
     });
-  
     return recommended;
   };
 
-  // Long press handler for deleting the missing items within a recommended crate.
+  // Handler to delete the items in a recommended crate.
+  // For each item, we subtract the quantity from its missing count in AsyncStorage.
   const handleDeleteCrateItems = (crate) => {
     Alert.alert(
       "Delete Crate Items",
@@ -131,30 +148,27 @@ const RecommendedCratesScreen = ({ route }) => {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            // For each item in the crate, subtract the quantity from local storage
             for (const item of crate.items) {
               const key = `missing_${item.id}_${bar.orgId}_${bar.name}`;
               const storedValue = await AsyncStorage.getItem(key);
-  
+
               if (storedValue) {
                 const currentMissing = parseInt(storedValue, 10);
                 const newMissing = currentMissing - item.quantity;
-  
+
                 if (newMissing <= 0) {
-                  // If zero or negative, remove the entire item
                   await AsyncStorage.removeItem(key);
                 } else {
-                  // Otherwise, update with the reduced missing count
                   await AsyncStorage.setItem(key, newMissing.toString());
                 }
               }
             }
-  
-            // Remove this crate from the recommendedCrates array
+
+            // Remove this crate from the list
             setRecommendedCrates((prev) =>
               prev.filter((r) => r.crateName !== crate.crateName)
             );
-  
+
             Alert.alert("Success", "Crate items have been removed.");
           },
         },
@@ -184,13 +198,11 @@ const RecommendedCratesScreen = ({ route }) => {
 
       {recommendedCrates.length > 0 ? (
         recommendedCrates.map((crate, index) => {
-          // Calculate how many total items are in this crate
+          // Calculate total units used in the crate.
           const usedItemsCount = crate.items.reduce((sum, i) => sum + i.quantity, 0);
-          // Retrieve crate.maxItems from your customCrates array, if it exists.
+          // Look up the defined crate capacity from customCrates.
           const crateDefinition = customCrates.find(c => c.name === crate.crateName.split(' - ')[0]);
           const maxItems = crateDefinition ? crateDefinition.maxItems : 0;
-
-          // Determine percentage used (capped at 100%)
           const usedPercent = maxItems > 0 ? Math.min(100, (usedItemsCount / maxItems) * 100) : 0;
 
           return (
@@ -229,7 +241,6 @@ const RecommendedCratesScreen = ({ route }) => {
                 </Text>
               </Text>
 
-              {/* Show how many items are used in this crate, plus a small usage bar */}
               {maxItems > 0 && (
                 <>
                   <Text
@@ -301,7 +312,6 @@ const RecommendedCratesScreen = ({ route }) => {
                       }}
                     />
                   )}
-
                   <Text
                     style={{
                       fontSize: 16,
