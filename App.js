@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import AppNavigator from './navigation/AppNavigator';
 import { CategoryProvider } from './contexts/CategoryContext';
 import Toast from 'react-native-toast-message';
+import { CoinProvider } from './contexts/CoinContext'; // Import here
 
 export default function App() {
   return (
@@ -13,10 +14,12 @@ export default function App() {
         {({ theme }) => (
           <CategoryProvider>
             <PaperProvider theme={theme}>
-              <NavigationContainer theme={theme}>
-                <AppNavigator />
-                <Toast />
-              </NavigationContainer>
+              <CoinProvider>
+                <NavigationContainer theme={theme}>
+                  <AppNavigator />
+                  <Toast />
+                </NavigationContainer>
+              </CoinProvider>
             </PaperProvider>
           </CategoryProvider>
         )}

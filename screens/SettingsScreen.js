@@ -20,6 +20,8 @@ const SettingsScreen = ({ navigation }) => {
   const [selectedOrgId, setSelectedOrgId] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [code, setCode] = useState('');
+  // State to track if the Gambling button should be displayed
+  const [isGambleUnlocked, setIsGambleUnlocked] = useState(false);
 
   // Check for logged-in user
   useEffect(() => {
@@ -43,6 +45,17 @@ const SettingsScreen = ({ navigation }) => {
     loadOrganizations();
   }, []);
 
+  // Check if the special code has been stored locally and unlock gamble if so
+  useEffect(() => {
+    const checkSpecialCode = async () => {
+      const storedCode = await AsyncStorage.getItem('specialCode');
+      if (storedCode === "42069") {
+        setIsGambleUnlocked(true);
+      }
+    };
+    checkSpecialCode();
+  }, []);
+
   const handleSetActiveOrganization = async (orgId) => {
     if (!orgId) {
       Toast.show({
@@ -55,7 +68,6 @@ const SettingsScreen = ({ navigation }) => {
     await AsyncStorage.setItem('activeOrgId', orgId);
     setActiveOrgId(orgId);
     setIsModalVisible(false);
-
     Toast.show({
       type: 'success',
       text1: 'Success',
@@ -63,6 +75,7 @@ const SettingsScreen = ({ navigation }) => {
     });
   };
 
+  // Single handler for "Fetch Organizations" that checks for the secret code
   const handleFetchByCode = async () => {
     if (!code) {
       Toast.show({
@@ -72,6 +85,20 @@ const SettingsScreen = ({ navigation }) => {
       });
       return;
     }
+
+    // If the secret code is entered, unlock the Gambling button
+    if (code === "42069") {
+      await AsyncStorage.setItem('specialCode', code);
+      setIsGambleUnlocked(true);
+      Toast.show({
+        type: 'success',
+        text1: 'Gamble Unlocked',
+        text2: 'Gambling feature unlocked!',
+      });
+      return;
+    }
+
+    // Otherwise, treat the entered code as a normal code for fetching organizations
     try {
       const orgs = await fetchOrganizationsByCode(code);
       if (orgs.length === 0) {
@@ -104,7 +131,14 @@ const SettingsScreen = ({ navigation }) => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <View style={{ flex: 1, padding: 16 }}>
-        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text, marginBottom: 20 }}>
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            marginBottom: 20,
+          }}
+        >
           Settings
         </Text>
 
@@ -129,7 +163,7 @@ const SettingsScreen = ({ navigation }) => {
 
         {/* Switch Theme Button */}
         <StyledButton
-          title={`Change Theme`}
+          title="Change Theme"
           onPress={toggleTheme}
           style={{ backgroundColor: theme.colors.primary }}
           textStyle={{ color: theme.colors.background }}
@@ -142,17 +176,30 @@ const SettingsScreen = ({ navigation }) => {
           style={{ backgroundColor: theme.colors.primary }}
           textStyle={{ color: theme.colors.background }}
         />
+
         <StyledButton
-  title="Calendar Settings"
-  onPress={() => navigation.navigate('Calendar')}
-  style={{ backgroundColor: theme.colors.primary }}
-  textStyle={{ color: theme.colors.background }}
-/>
+          title="Calendar Settings"
+          onPress={() => navigation.navigate('Calendar')}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
+
+        {/* Conditionally render the Gambling button if unlocked */}
+        {isGambleUnlocked && (
+          <StyledButton
+            title="Gamble"
+            onPress={() => navigation.navigate('GamblingHome')}
+            style={{ backgroundColor: theme.colors.primary, marginTop: 10 }}
+            textStyle={{ color: theme.colors.background }}
+          />
+        )}
       </View>
 
-      {/* Input and Fetch Button at Bottom */}
+      {/* Input and the Fetch Organizations button */}
       <View style={{ padding: 16 }}>
-        <Text style={{ color: theme.colors.text, fontSize: 16 }}>Enter 6-digit Code:</Text>
+        <Text style={{ color: theme.colors.text, fontSize: 16 }}>
+          Enter 6-digit Code:
+        </Text>
         <TextInput
           style={{
             borderColor: theme.colors.text,

@@ -21,6 +21,13 @@ import RecommendedCratesScreen from '../screens/RecommendedCratesScreen';
 import AllMissingItemsScreen from '../screens/AllMissingItemsScreen';   // Was NewAllMissingItemsScreen
 import BulkAddItemsScreen from '../screens/BulkAddItemsScreen';       // Was MultiItemEditorScreen
 import CalendarScreen from '../screens/CalendarScreen';
+import GambleHomeScreen from '../screens/gambling/GambleHomeScreen';
+import BlackjackScreen from '../screens/gambling/BlackjackScreen';
+import RouletteScreen from '../screens/gambling/RouletteScreen';
+import CookieClickerScreen from '../screens/gambling/CookieClickerScreen';
+import GamblingLoginScreen from '../screens/gambling/GamblingLoginScreen';
+import GamblingRegisterScreen from '../screens/gambling/GamblingRegister';
+import SlotMachineScreen from '../screens/gambling/SlotMachineScreen';
 
 const Stack = createStackNavigator();
 
@@ -47,6 +54,13 @@ const AppNavigator = () => {
           <Stack.Screen name="AllMissingItems" component={AllMissingItemsScreen} />
           <Stack.Screen name="BulkAddItems" component={BulkAddItemsScreen} />
           <Stack.Screen name="Calendar" component={CalendarScreen} />
+          <Stack.Screen name="GamblingHome" component={GambleHomeScreen} />
+          <Stack.Screen name="Blackjack" component={BlackjackScreen} />
+          <Stack.Screen name="Roulette" component={RouletteScreen} />
+          <Stack.Screen name="Clicker" component={CookieClickerScreen} />
+          <Stack.Screen name="GamblingLogin" component={GamblingLoginScreen} />
+          <Stack.Screen name="GamblingRegister" component={GamblingRegisterScreen} />
+          <Stack.Screen name="SlotMachine" component={SlotMachineScreen} />
         </Stack.Navigator>
       </FridgeProvider>
     </NativeBaseProvider>
