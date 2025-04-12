@@ -1,16 +1,13 @@
+// /src/screens/BlackjackScreen.js
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ImageBackground,
-  Alert,
-  TextInput
+  Alert
 } from 'react-native';
-import { ThemeContext } from '../../contexts/ThemeContext';
-import { CoinContext } from '../../contexts/CoinContext';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Card from '../../components/Card';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {
   doc,
@@ -26,85 +23,46 @@ import {
 import { db } from '../../utils/firebaseConfig';
 import { createDeck, shuffleDeck, getHandValue } from '../../utils/blackjackRules';
 
+import { ThemeContext } from '../../contexts/ThemeContext';
+import { CoinContext } from '../../contexts/CoinContext';
+
 const TABLES_COLLECTION = 'tables';
 const TABLE_ID = 'blackjackTable';
-const CARD_WIDTH_OWN = 70;
-const CARD_HEIGHT_OWN = 110;
-const CARD_WIDTH_OTHERS = 55;
-const CARD_HEIGHT_OTHERS = 80;
-
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// -----------------------
-// Card Component
-// -----------------------
-const Card = ({ card, delayTime = 0, size = 'own' }) => {
-  const translateY = useSharedValue(-200);
-  useEffect(() => {
-    translateY.value = withTiming(0, { duration: 600, delay: delayTime });
-  }, [delayTime]);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }]
-  }));
-  const isOwn = size === 'own';
-  const cardWidth = isOwn ? CARD_WIDTH_OWN : CARD_WIDTH_OTHERS;
-  const cardHeight = isOwn ? CARD_HEIGHT_OWN : CARD_HEIGHT_OTHERS;
-  const display = card && card.rank ? `${card.rank}${card.suit}` : card;
-  return (
-    <Animated.View
-      style={[
-        {
-          width: cardWidth,
-          height: cardHeight,
-          borderRadius: 8,
-          backgroundColor: '#fff',
-          margin: 4,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#000',
-          shadowOpacity: 0.3,
-          shadowOffset: { width: 0, height: 2 },
-          shadowRadius: 3,
-          elevation: 4
-        },
-        animatedStyle
-      ]}
-    >
-      <Text style={{ fontSize: isOwn ? 18 : 14, fontWeight: 'bold' }}>{display}</Text>
-    </Animated.View>
-  );
-};
+// Array of available play amounts
+const playAmounts = [10, 25, 50, 100, 500, 1000];
 
-// -----------------------
-// Main Blackjack Screen Component
-// -----------------------
 export default function BlackjackScreen() {
   const { theme } = useContext(ThemeContext);
   const { balance, updateBalance } = useContext(CoinContext);
+
+  // Game states
   const [dealerCards, setDealerCards] = useState([]);
   const [playerCards, setPlayerCards] = useState([]);
   const [gameState, setGameState] = useState('idle'); // idle, inProgress, dealerPlaying, gameOver
   const [result, setResult] = useState('');
   const [playerDoubled, setPlayerDoubled] = useState(false);
   const [myPlayerId, setMyPlayerId] = useState(null);
-  const [myPlayerStatus, setMyPlayerStatus] = useState('waiting'); // waiting, playing, stood, busted, surrendered
+  const [myPlayerStatus, setMyPlayerStatus] = useState('waiting');
   const [allPlayers, setAllPlayers] = useState([]);
   const [joinTimer, setJoinTimer] = useState(5);
   const [dealerPlayed, setDealerPlayed] = useState(false);
+
+  // New state for the amount the player is playing with
+  const [playAmount, setPlayAmount] = useState(null);
+
   const joinIntervalRef = useRef(null);
 
-  // New states for betting
-  const [currentBet, setCurrentBet] = useState('');
-  const [betPlaced, setBetPlaced] = useState(false);
-
   useEffect(() => {
+    // Force landscape orientation for a true casino-table feel
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
     return () => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
     };
   }, []);
 
-  // When leaving, remove yourself from the table
+  // When unmounting, remove yourself from the table
   useEffect(() => {
     return () => {
       if (myPlayerId) {
@@ -113,6 +71,7 @@ export default function BlackjackScreen() {
     };
   }, [myPlayerId]);
 
+  // Helper: if no players remain, set table idle
   const ensureTableIdleIfEmpty = async (players) => {
     if (players.length === 0) {
       await setDoc(
@@ -127,77 +86,41 @@ export default function BlackjackScreen() {
     setDoc(doc(db, TABLES_COLLECTION, TABLE_ID), { dealerCards: cards }, { merge: true });
   };
 
-  const updateMyHand = (hand, status = 'playing') => {
-    if (myPlayerId) {
-      setDoc(
-        doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId),
-        { hand, status },
-        { merge: true }
-      );
-    }
-  };
-
   const updateGameStateFirebase = async (newState) => {
-    await setDoc(
-      doc(db, TABLES_COLLECTION, TABLE_ID),
-      { gameStatus: newState },
-      { merge: true }
-    );
+    await setDoc(doc(db, TABLES_COLLECTION, TABLE_ID), { gameStatus: newState }, { merge: true });
   };
 
-  // -----------------------
-  // JOIN TABLE & BETTING
-  // -----------------------
+  // Join table – also enforce maximum of 3 players (yourself plus 2 others)
   const joinTable = async () => {
     if (gameState === 'inProgress' || gameState === 'dealerPlaying') {
       Alert.alert('Round in progress', 'A round is in progress. You can watch only.');
       return;
     }
     const playersSnap = await getDocs(collection(db, TABLES_COLLECTION, TABLE_ID, 'players'));
+    if (playersSnap.size >= 3) {
+      Alert.alert('Maximum Players', 'Only up to 3 players are allowed at a table.');
+      return;
+    }
     const count = playersSnap.size;
     const newPlayer = {
       name: `Player ${count + 1}`,
       hand: [],
       status: 'waiting',
-      bet: 0
+      // Optionally, store playAmount later if needed
+      bet: playAmount || 0,
     };
     const docRef = await addDoc(collection(db, TABLES_COLLECTION, TABLE_ID, 'players'), newPlayer);
     setMyPlayerId(docRef.id);
   };
 
-  const handlePlaceBet = async () => {
-    const bet = Number(currentBet);
-    if (!bet || bet <= 0) {
-      Alert.alert('Invalid Bet', 'Please enter a valid bet amount.');
-      return;
-    }
-    if (bet > balance) {
-      Alert.alert('Insufficient Funds', 'You do not have enough coins.');
-      return;
-    }
-    // Deduct bet from local balance and update player's bet in Firestore.
-    updateBalance(-bet);
-    if (myPlayerId) {
-      await setDoc(
-        doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId),
-        { bet: bet },
-        { merge: true }
-      );
-    }
-    setBetPlaced(true);
-    Alert.alert('Bet Placed', `You bet $${bet}`);
-  };
-
-  // -----------------------
-  // DEAL ROUND & INITIAL BLACKJACK CHECK
-  // -----------------------
+  // Deal new round – require that a play amount has been selected
   const dealNewRound = async () => {
+    if (!playAmount) {
+      Alert.alert('Select Amount', 'Please choose an amount to play with.');
+      return;
+    }
     if (allPlayers.length === 0) {
       Alert.alert('No Players', 'No players at the table. Cannot start a new round.');
-      return;
-    }
-    if (!betPlaced) {
-      Alert.alert('Place Bet', 'Please place your bet before dealing cards.');
       return;
     }
     setGameState('inProgress');
@@ -205,29 +128,29 @@ export default function BlackjackScreen() {
 
     let newDeck = shuffleDeck(createDeck());
 
+    // Deal 2 cards to each player; set local player’s bet to playAmount
     const playersSnap = await getDocs(collection(db, TABLES_COLLECTION, TABLE_ID, 'players'));
     for (let playerDoc of playersSnap.docs) {
-      // Each player gets two cards and status is set to 'playing'
       const hand = [newDeck.pop(), newDeck.pop()];
-      await setDoc(playerDoc.ref, { hand, status: 'playing' }, { merge: true });
+      // For your own device, include the playAmount as the bet value.
+      const updateData = playerDoc.id === myPlayerId 
+        ? { hand, status: 'playing', bet: playAmount }
+        : { hand, status: 'playing' };
+      await setDoc(playerDoc.ref, updateData, { merge: true });
       if (playerDoc.id === myPlayerId) {
         setPlayerCards(hand);
       }
     }
+    // Deal 2 cards to the dealer
     const dealerHand = [newDeck.pop(), newDeck.pop()];
     setDealerCards(dealerHand);
     updateDealerCardsFirebase(dealerHand);
 
-    await setDoc(
-      doc(db, TABLES_COLLECTION, TABLE_ID),
-      { deck: newDeck, dealerPlayed: false },
-      { merge: true }
-    );
+    await setDoc(doc(db, TABLES_COLLECTION, TABLE_ID), { deck: newDeck, dealerPlayed: false }, { merge: true });
     setPlayerDoubled(false);
     setResult('');
 
-    // Check for dealer blackjack immediately.
-    if (dealerHand.length === 2 && getHandValue(dealerHand) === 21) {
+    if (getHandValue(dealerHand) === 21) {
       await updateGameStateFirebase('gameOver');
       setResult('Dealer has blackjack!');
       processAllPlayersOutcome(dealerHand);
@@ -235,9 +158,6 @@ export default function BlackjackScreen() {
     }
   };
 
-  // -----------------------
-  // END ROUND & TIMER
-  // -----------------------
   const endRound = async () => {
     setGameState('gameOver');
     await updateGameStateFirebase('gameOver');
@@ -256,13 +176,11 @@ export default function BlackjackScreen() {
     }, 1000);
   };
 
-  // -----------------------
-  // PROCESS ALL PLAYERS' OUTCOMES
-  // -----------------------
   const processAllPlayersOutcome = async (dealerFinalHand) => {
     try {
       const dealerValue = getHandValue(dealerFinalHand);
       const playersSnap = await getDocs(collection(db, TABLES_COLLECTION, TABLE_ID, 'players'));
+
       playersSnap.docs.forEach(async (playerDoc) => {
         const data = playerDoc.data();
         const playerHand = data.hand || [];
@@ -270,61 +188,48 @@ export default function BlackjackScreen() {
         const bet = Number(data.bet || 0);
         let outcome = '';
         let payout = 0;
-        // If player surrendered, outcome was already handled.
+
         if (data.status === 'surrendered') {
-          outcome = 'Surrendered. Half bet refunded.';
+          outcome = 'Surrendered.';
         } else if (playerHand.length === 2 && playerValue === 21) {
-          // Player has blackjack
           if (dealerFinalHand.length === 2 && dealerValue === 21) {
             outcome = "Push! Dealer also has blackjack.";
-            payout = bet; // Refund bet
+            payout = bet;
           } else {
-            outcome = 'Blackjack! You win with a 3:2 payout!';
+            outcome = 'Blackjack!';
             payout = Math.floor(bet * 2.5);
           }
         } else if (playerValue > 21) {
-          outcome = 'Bust! You lose.';
-          payout = 0;
+          outcome = 'Bust!';
         } else if (dealerValue > 21) {
-          outcome = 'Dealer busted! You win!';
+          outcome = 'Dealer busted!';
           payout = bet * 2;
         } else if (playerValue > dealerValue) {
           outcome = 'You win!';
           payout = bet * 2;
         } else if (playerValue === dealerValue) {
-          outcome = "Push! It's a tie.";
+          outcome = "Push!";
           payout = bet;
         } else {
           outcome = 'Dealer wins.';
-          payout = 0;
         }
-        // Update each player document with the outcome message.
+
         await setDoc(playerDoc.ref, { result: outcome }, { merge: true });
-        // For the local player, update the coin balance (only if not already refunded in surrender).
         if (playerDoc.id === myPlayerId) {
           setResult(outcome);
           if (payout > 0) {
-            // This assumes that updateBalance will add the payout to the player's balance.
             updateBalance(payout);
           }
         }
       });
     } catch (error) {
-      console.error("Processing outcomes failed: ", error);
+      console.error('Processing outcomes failed: ', error);
     }
   };
 
-  // -----------------------
-  // CHECK IF ALL PLAYERS ARE DONE
-  // -----------------------
   const checkAllPlayersDone = async () => {
     const playersSnap = await getDocs(collection(db, TABLES_COLLECTION, TABLE_ID, 'players'));
-    // Only when all players’ status is no longer 'playing' – also, only the "host" triggers dealer play.
-    const allDone = playersSnap.docs.every((docSnap) => {
-      const data = docSnap.data();
-      return data.status !== 'playing';
-    });
-    // Only the host (first player) will trigger dealer play to avoid race conditions.
+    const allDone = playersSnap.docs.every((docSnap) => docSnap.data().status !== 'playing');
     if (
       allDone &&
       gameState === 'inProgress' &&
@@ -336,9 +241,7 @@ export default function BlackjackScreen() {
     }
   };
 
-  // -----------------------
-  // PLAYER ACTION HANDLERS
-  // -----------------------
+  // Player actions (Hit, Double Down, Stand, Surrender) remain unchanged
   const handleHit = async () => {
     if (gameState !== 'inProgress' || myPlayerStatus !== 'playing') return;
     try {
@@ -356,12 +259,11 @@ export default function BlackjackScreen() {
         const handValue = getHandValue(newHand);
         let newStatus = 'playing';
         if (handValue > 21) newStatus = 'busted';
-
         transaction.update(tableRef, { deck: newDeck });
         transaction.update(myPlayerRef, { hand: newHand, status: newStatus });
       });
     } catch (error) {
-      console.error("Hit transaction failed: ", error);
+      console.error('Hit transaction failed: ', error);
     }
     checkAllPlayersDone();
   };
@@ -374,22 +276,15 @@ export default function BlackjackScreen() {
       playerDoubled
     )
       return;
-    // Check that the player has enough funds for an additional bet equal to the original
-    const originalBet = Number(currentBet);
+    const originalBet = playAmount;
     if (balance < originalBet) {
       Alert.alert('Insufficient Funds', 'You do not have enough coins to double down.');
       return;
     }
     setPlayerDoubled(true);
-    // Deduct the additional bet
     updateBalance(-originalBet);
-    // Update the bet in Firestore to be doubled
     if (myPlayerId) {
-      await setDoc(
-        doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId),
-        { bet: originalBet * 2 },
-        { merge: true }
-      );
+      await setDoc(doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId), { bet: originalBet * 2 }, { merge: true });
     }
     try {
       await runTransaction(db, async (transaction) => {
@@ -406,45 +301,31 @@ export default function BlackjackScreen() {
         const handValue = getHandValue(newHand);
         let newStatus = 'playing';
         if (handValue > 21) newStatus = 'busted';
-
         transaction.update(tableRef, { deck: newDeck });
         transaction.update(myPlayerRef, { hand: newHand, status: newStatus });
       });
     } catch (error) {
-      console.error("Double Down transaction failed: ", error);
+      console.error('Double Down transaction failed: ', error);
     }
     checkAllPlayersDone();
   };
 
   const handleStand = async () => {
     if (gameState !== 'inProgress' || myPlayerStatus !== 'playing') return;
-    await setDoc(
-      doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId),
-      { status: 'stood' },
-      { merge: true }
-    );
+    await setDoc(doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId), { status: 'stood' }, { merge: true });
     checkAllPlayersDone();
   };
 
   const handleSurrender = async () => {
     if (gameState !== 'inProgress' || myPlayerStatus !== 'playing') return;
-    await setDoc(
-      doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId),
-      { status: 'surrendered', result: 'Surrendered. You lose half your bet.' },
-      { merge: true }
-    );
-    const bet = Number(currentBet);
-    updateBalance(Math.floor(bet / 2)); // refund half bet
-    setResult('You surrendered. You lose half your bet.');
+    await setDoc(doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId), { status: 'surrendered', result: 'Surrendered.' }, { merge: true });
+    updateBalance(0);
+    setResult('You surrendered.');
     checkAllPlayersDone();
   };
 
-  // -----------------------
-  // DEALER PLAY & OUTCOME PROCESSING
-  // -----------------------
   const triggerDealerPlay = async () => {
     try {
-      // Only allow the dealer to play if not already done.
       await runTransaction(db, async (transaction) => {
         const tableRef = doc(db, TABLES_COLLECTION, TABLE_ID);
         const tableDoc = await transaction.get(tableRef);
@@ -454,7 +335,6 @@ export default function BlackjackScreen() {
         }
         let currentDeck = tableData.deck || [];
         let currentDealerCards = tableData.dealerCards || [];
-        // Dealer hits until the hand value is 17 or more.
         while (getHandValue(currentDealerCards) < 17 && currentDeck.length > 0) {
           const card = currentDeck[currentDeck.length - 1];
           currentDeck = currentDeck.slice(0, -1);
@@ -468,24 +348,17 @@ export default function BlackjackScreen() {
         });
       });
       setDealerPlayed(true);
-      // Wait a moment so that onSnapshot updates come in.
       await delay(700);
-      // Get the fresh dealer cards from Firestore.
       const tableSnapshot = await getDoc(doc(db, TABLES_COLLECTION, TABLE_ID));
       const dealerFinalHand = tableSnapshot.data().dealerCards || [];
-      // Process outcomes for every player.
       processAllPlayersOutcome(dealerFinalHand);
       endRound();
-      setCurrentBet('');
-      setBetPlaced(false);
     } catch (error) {
-      console.error("Dealer play transaction failed: ", error);
+      console.error('Dealer play transaction failed: ', error);
     }
   };
 
-  // -----------------------
-  // SUBSCRIPTIONS
-  // -----------------------
+  // Subscriptions
   useEffect(() => {
     const unsubPlayers = onSnapshot(
       collection(db, TABLES_COLLECTION, TABLE_ID, 'players'),
@@ -505,15 +378,9 @@ export default function BlackjackScreen() {
     const unsub = onSnapshot(doc(db, TABLES_COLLECTION, TABLE_ID), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (data.dealerCards) {
-          setDealerCards(data.dealerCards);
-        }
-        if (data.gameStatus) {
-          setGameState(data.gameStatus);
-        }
-        if (typeof data.dealerPlayed === 'boolean') {
-          setDealerPlayed(data.dealerPlayed);
-        }
+        if (data.dealerCards) setDealerCards(data.dealerCards);
+        if (data.gameStatus) setGameState(data.gameStatus);
+        if (typeof data.dealerPlayed === 'boolean') setDealerPlayed(data.dealerPlayed);
       }
     });
     return () => unsub();
@@ -521,350 +388,310 @@ export default function BlackjackScreen() {
 
   useEffect(() => {
     if (myPlayerId) {
-      const unsubMyPlayer = onSnapshot(
-        doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId),
-        (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data.hand) {
-              setPlayerCards(data.hand);
-            }
-            if (data.status) {
-              setMyPlayerStatus(data.status);
-            }
-          }
+      const unsubMyPlayer = onSnapshot(doc(db, TABLES_COLLECTION, TABLE_ID, 'players', myPlayerId), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.hand) setPlayerCards(data.hand);
+          if (data.status) setMyPlayerStatus(data.status);
         }
-      );
+      });
       return () => unsubMyPlayer();
     }
   }, [myPlayerId]);
 
-  const otherPlayers = allPlayers.filter((p) => p.id !== myPlayerId);
-  const leftPlayers = otherPlayers.filter((_, index) => index % 2 === 0);
-  const rightPlayers = otherPlayers.filter((_, index) => index % 2 === 1);
+  // For layout, only allow up to 2 other players (maximum 3 total)
+  const otherPlayers = allPlayers.filter((p) => p.id !== myPlayerId).slice(0, 2);
+  // For positioning, assume:
+  // - If there are 2 other players, display one on the left and one on the right
+  // - If only one, position it at top left
+  const leftPlayer = otherPlayers[0];
+  const rightPlayer = otherPlayers[1];
 
-  // -----------------------
-  // RENDER
-  // -----------------------
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1 }}>
       <ImageBackground
         source={require('../../assets/casino_felt.jpg')}
         resizeMode="cover"
-        style={styles.backgroundImage}
+        style={{ flex: 1, paddingHorizontal: 30, paddingVertical: 20, justifyContent: 'flex-start' }}
       >
-        {/* Coin balance and betting header */}
+        {/* Top Bar: only display balance now */}
         {myPlayerId && (
-          <View style={styles.balanceHeader}>
-            <Text style={styles.balanceText}>Balance: ${balance}</Text>
-            {gameState === 'idle' && !betPlaced && (
-              <View style={styles.betContainer}>
-                <TextInput
-                  style={styles.betInput}
-                  value={currentBet}
-                  onChangeText={setCurrentBet}
-                  placeholder="Enter bet amount"
-                  keyboardType="numeric"
-                  placeholderTextColor="#fff"
-                />
-                <TouchableOpacity style={styles.betButton} onPress={handlePlaceBet}>
-                  <Text style={styles.betButtonText}>Place Bet</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            padding: 12,
+            borderRadius: 10,
+            marginBottom: 10,
+          }}>
+            <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', position: 'absolute', top: 10, left: 10 }}>
+              Balance: ${balance}
+            </Text>
           </View>
         )}
 
+        {/* If not joined: show Join Table UI */}
         {!myPlayerId ? (
-          <View style={styles.joinContainer}>
-            <Text style={styles.infoText}>
+          <View style={{ alignItems: 'center', marginTop: 40 }}>
+            <Text style={{ fontSize: 20, color: '#fff', textAlign: 'center', fontWeight: '600' }}>
               {gameState === 'inProgress' || gameState === 'dealerPlaying'
                 ? 'Round in progress. Watch only.'
                 : gameState === 'gameOver'
                 ? `New round starts in ${joinTimer} sec. Join now!`
                 : 'Table is free. Join now!'}
             </Text>
-            {(gameState === 'idle' || gameState === 'gameOver') && (
-              <TouchableOpacity style={styles.joinButton} onPress={joinTable}>
-                <Text style={styles.joinButtonText}>Join Table</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={[styles.joinButton, { marginTop: 20 }]} onPress={async () => {
-              // Debug button to clear table
-              const playersSnap = await getDocs(collection(db, TABLES_COLLECTION, TABLE_ID, 'players'));
-              for (const playerDoc of playersSnap.docs) {
-                await deleteDoc(playerDoc.ref);
-              }
-              setMyPlayerId(null);
-              setAllPlayers([]);
-              await setDoc(
-                doc(db, TABLES_COLLECTION, TABLE_ID),
-                { dealerCards: [], deck: [], gameStatus: 'idle', dealerPlayed: false },
-                { merge: true }
-              );
-            }}>
-              <Text style={styles.joinButtonText}>Clear Table (Debug)</Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#fcd703',
+                paddingHorizontal: 36,
+                paddingVertical: 14,
+                borderRadius: 10,
+                marginTop: 25,
+                shadowColor: '#000',
+                shadowOpacity: 0.4,
+                shadowOffset: { width: 0, height: 3 },
+                shadowRadius: 4,
+                elevation: 5,
+              }}
+              onPress={joinTable}
+            >
+              <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 18 }}>Join Table</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#fcd703',
+                paddingHorizontal: 36,
+                paddingVertical: 14,
+                borderRadius: 10,
+                marginTop: 20,
+                shadowColor: '#000',
+                shadowOpacity: 0.4,
+                shadowOffset: { width: 0, height: 3 },
+                shadowRadius: 4,
+                elevation: 5,
+              }}
+              onPress={async () => {
+                const playersSnap = await getDocs(collection(db, TABLES_COLLECTION, TABLE_ID, 'players'));
+                for (const playerDoc of playersSnap.docs) {
+                  await deleteDoc(playerDoc.ref);
+                }
+                setMyPlayerId(null);
+                setAllPlayers([]);
+                await setDoc(
+                  doc(db, TABLES_COLLECTION, TABLE_ID),
+                  { dealerCards: [], deck: [], gameStatus: 'idle', dealerPlayed: false },
+                  { merge: true }
+                );
+              }}
+            >
+              <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 18 }}>Clear Table (Debug)</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.tableLayout}>
-            <View style={styles.dealerSection}>
-              <Text style={styles.sectionHeader}>Dealer</Text>
-              <View style={styles.cardRow}>
+          <>
+            {/* Dealer Section (Always on top center) */}
+            <View style={{ alignItems: 'center', marginBottom: 15 }}>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 8 }}>
+                Dealer
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                 {dealerCards.map((card, index) => {
-                  // Hide second card if round is still in progress.
                   const hidden = index === 1 && gameState === 'inProgress';
                   const cardData = hidden ? { rank: '?', suit: '' } : card;
                   return (
-                    <Card
-                      key={`dealer-${index}`}
-                      card={cardData}
-                      delayTime={index * 100}
-                      size="others"
-                    />
+                    <Card key={`dealer-${index}`} card={cardData} delayTime={index * 100} size="others" />
                   );
                 })}
               </View>
             </View>
 
-            <View style={styles.middleRow}>
-              <View style={styles.playersColumn}>
-                {leftPlayers.map((player) => (
-                  <View key={player.id} style={styles.otherPlayerContainer}>
-                    <Text style={styles.otherPlayerName}>
-                      {player.name} ({player.status})
-                    </Text>
-                    <View style={styles.cardRow}>
-                      {player.hand?.map((c, idx) => (
-                        <Card
-                          key={`${player.id}-${idx}`}
-                          card={c}
-                          delayTime={idx * 100}
-                          size="others"
-                        />
-                      ))}
-                    </View>
+            {/* Other Players Section (positioned above your own area) */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              {/* Left Player */}
+              {leftPlayer && (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, color: '#fff', fontWeight: '600', marginBottom: 4 }}>
+                    {leftPlayer.name} ({leftPlayer.status})
+                  </Text>
+                  <View style={{ flexDirection: 'row' }}>
+                    {leftPlayer.hand?.map((c, idx) => (
+                      <Card key={`${leftPlayer.id}-${idx}`} card={c} delayTime={idx * 100} size="others" />
+                    ))}
                   </View>
-                ))}
-              </View>
-              <View style={styles.myHandContainer}>
-                <Text style={styles.sectionHeader}>
-                  Your Hand ({getHandValue(playerCards)}) [{myPlayerStatus}]
-                </Text>
-                <View style={styles.cardRow}>
-                  {playerCards.map((card, index) => (
-                    <Card
-                      key={`myhand-${index}`}
-                      card={card}
-                      delayTime={index * 100}
-                      size="own"
-                    />
-                  ))}
                 </View>
-              </View>
-              <View style={styles.playersColumn}>
-                {rightPlayers.map((player) => (
-                  <View key={player.id} style={styles.otherPlayerContainer}>
-                    <Text style={styles.otherPlayerName}>
-                      {player.name} ({player.status})
-                    </Text>
-                    <View style={styles.cardRow}>
-                      {player.hand?.map((c, idx) => (
-                        <Card
-                          key={`${player.id}-${idx}`}
-                          card={c}
-                          delayTime={idx * 100}
-                          size="others"
-                        />
-                      ))}
-                    </View>
+              )}
+              {/* If only one other player exists, you may leave right side empty */}
+              {rightPlayer && (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, color: '#fff', fontWeight: '600', marginBottom: 4 }}>
+                    {rightPlayer.name} ({rightPlayer.status})
+                  </Text>
+                  <View style={{ flexDirection: 'row' }}>
+                    {rightPlayer.hand?.map((c, idx) => (
+                      <Card key={`${rightPlayer.id}-${idx}`} card={c} delayTime={idx * 100} size="others" />
+                    ))}
                   </View>
-                ))}
-              </View>
+                </View>
+              )}
             </View>
 
-            {result.length > 0 && <Text style={[styles.infoText, { marginTop: 5 }]}>{result}</Text>}
+            {/* Your Player Section (always in the middle) */}
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              {/* If no play amount selected, show amount selection buttons */}
+              {!playAmount ? (
+                <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                  {playAmounts.map((amount) => (
+                    <TouchableOpacity
+                      key={amount}
+                      style={{
+                        backgroundColor: '#fcd703',
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        borderRadius: 8,
+                        marginHorizontal: 5,
+                        shadowColor: '#000',
+                        shadowOpacity: 0.4,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowRadius: 3,
+                        elevation: 4,
+                      }}
+                      onPress={() => setPlayAmount(amount)}
+                    >
+                      <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 16 }}>${amount}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ color: '#fff', fontSize: 18, marginBottom: 10, fontWeight: '600' }}>
+                  Playing with: ${playAmount}
+                </Text>
+              )}
+              <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 8 }}>
+                Your Hand ({getHandValue(playerCards)}) [{myPlayerStatus}]
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                {playerCards.map((card, index) => (
+                  <Card key={`myhand-${index}`} card={card} delayTime={index * 100} size="own" />
+                ))}
+              </View>
+              {result?.length > 0 && (
+                <Text style={{ fontSize: 18, color: '#fff', textAlign: 'center', marginTop: 12, fontWeight: '600' }}>
+                  {result}
+                </Text>
+              )}
+            </View>
+
+            {/* Action Buttons */}
             {gameState === 'inProgress' && (
-              <View style={styles.actionsContainer}>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={{
+                    backgroundColor: '#fcd703',
+                    paddingVertical: 14,
+                    paddingHorizontal: 22,
+                    borderRadius: 10,
+                    marginHorizontal: 5,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.4,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowRadius: 3,
+                    elevation: 4,
+                  }}
                   onPress={handleHit}
                   disabled={myPlayerStatus !== 'playing'}
                 >
-                  <Text style={styles.actionButtonText}>Hit</Text>
+                  <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 18 }}>Hit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={{
+                    backgroundColor: '#fcd703',
+                    paddingVertical: 14,
+                    paddingHorizontal: 22,
+                    borderRadius: 10,
+                    marginHorizontal: 5,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.4,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowRadius: 3,
+                    elevation: 4,
+                  }}
                   onPress={handleStand}
                   disabled={myPlayerStatus !== 'playing'}
                 >
-                  <Text style={styles.actionButtonText}>Stand</Text>
+                  <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 18 }}>Stand</Text>
                 </TouchableOpacity>
                 {playerCards.length === 2 && !playerDoubled && (
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={{
+                      backgroundColor: '#fcd703',
+                      paddingVertical: 14,
+                      paddingHorizontal: 22,
+                      borderRadius: 10,
+                      marginHorizontal: 5,
+                      shadowColor: '#000',
+                      shadowOpacity: 0.4,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowRadius: 3,
+                      elevation: 4,
+                    }}
                     onPress={handleDoubleDown}
                     disabled={myPlayerStatus !== 'playing'}
                   >
-                    <Text style={styles.actionButtonText}>Double Down</Text>
+                    <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 18 }}>Double</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={{
+                    backgroundColor: '#fcd703',
+                    paddingVertical: 14,
+                    paddingHorizontal: 22,
+                    borderRadius: 10,
+                    marginHorizontal: 5,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.4,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowRadius: 3,
+                    elevation: 4,
+                  }}
                   onPress={handleSurrender}
                   disabled={myPlayerStatus !== 'playing'}
                 >
-                  <Text style={styles.actionButtonText}>Surrender</Text>
+                  <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 18 }}>Surrender</Text>
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* Deal Button (available when game is idle) */}
             {gameState === 'idle' && (
-              <TouchableOpacity style={[styles.actionButton, { marginTop: 10 }]} onPress={dealNewRound}>
-                <Text style={styles.actionButtonText}>Deal Cards</Text>
-              </TouchableOpacity>
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#fcd703',
+                    paddingVertical: 14,
+                    paddingHorizontal: 22,
+                    borderRadius: 10,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.4,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowRadius: 3,
+                    elevation: 4,
+                  }}
+                  onPress={dealNewRound}
+                >
+                  <Text style={{ color: '#333', fontWeight: 'bold', fontSize: 18 }}>Deal</Text>
+                </TouchableOpacity>
+              </View>
             )}
-            {gameState === 'gameOver' && <Text style={styles.infoText}>New round in {joinTimer} sec...</Text>}
-          </View>
+
+            {/* If game over, show countdown */}
+            {gameState === 'gameOver' && (
+              <Text style={{ fontSize: 18, color: '#fff', textAlign: 'center', marginBottom: 20 }}>
+                New round in {joinTimer} sec...
+              </Text>
+            )}
+          </>
         )}
       </ImageBackground>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  },
-  backgroundImage: {
-    flex: 1,
-    paddingHorizontal: 20,
-    justifyContent: 'flex-start'
-  },
-  joinContainer: {
-    alignItems: 'center',
-    marginTop: 30
-  },
-  joinButton: {
-    backgroundColor: '#e2b007',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 4
-  },
-  joinButtonText: {
-    color: '#333',
-    fontWeight: 'bold',
-    fontSize: 18
-  },
-  tableLayout: {
-    flex: 1,
-    marginVertical: 10,
-    justifyContent: 'space-around'
-  },
-  dealerSection: {
-    alignItems: 'center',
-    marginBottom: 8
-  },
-  sectionHeader: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 10
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  middleRow: {
-    flex: 1,
-    flexDirection: 'row',
-    marginVertical: 10
-  },
-  playersColumn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start'
-  },
-  otherPlayerContainer: {
-    marginVertical: 8,
-    alignItems: 'center'
-  },
-  otherPlayerName: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-    marginBottom: 4
-  },
-  myHandContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginVertical: 10
-  },
-  actionButton: {
-    backgroundColor: '#e2b007',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginHorizontal: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 4
-  },
-  actionButtonText: {
-    color: '#333',
-    fontWeight: 'bold',
-    fontSize: 16
-  },
-  balanceHeader: {
-    padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  balanceText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold'
-  },
-  betContainer: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  betInput: {
-    borderWidth: 1,
-    borderColor: '#fff',
-    color: '#fff',
-    padding: 5,
-    width: 100,
-    marginRight: 10,
-    borderRadius: 4
-  },
-  betButton: {
-    backgroundColor: '#e2b007',
-    padding: 8,
-    borderRadius: 4
-  },
-  betButtonText: {
-    color: '#333',
-    fontWeight: 'bold'
-  },
-  infoText: {
-    fontSize: 18,
-    color: '#fff',
-    textAlign: 'center'
-  }
-});

@@ -55,7 +55,7 @@ const AppNavigator = () => {
           <Stack.Screen name="BulkAddItems" component={BulkAddItemsScreen} />
           <Stack.Screen name="Calendar" component={CalendarScreen} />
           <Stack.Screen name="GamblingHome" component={GambleHomeScreen} />
-          <Stack.Screen name="Blackjack" component={BlackjackScreen} />
+          <Stack.Screen name="Blackjack" component={BlackjackScreen}  options={{ headerShown: false }} />
           <Stack.Screen name="Roulette" component={RouletteScreen} />
           <Stack.Screen name="Clicker" component={CookieClickerScreen} />
           <Stack.Screen name="GamblingLogin" component={GamblingLoginScreen} />
