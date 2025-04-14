@@ -18,4 +18,13 @@ const getData = async (key) => {
   }
 };
 
-export { saveData, getData };
+const removeData = async (key) => {
+  try {
+    await AsyncStorage.removeItem(key);
+    console.log(`Removed data for key: ${key}`);
+  } catch (error) {
+    console.error(`Failed to remove data for key: ${key}`, error);
+  }
+};
+
+export { saveData, getData, removeData };

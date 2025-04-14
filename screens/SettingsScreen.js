@@ -1,210 +1,183 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, TextInput, Modal, Button } from 'react-native';
+import React, { useContext, useState, useEffect } from 'react';
+import { View, Text, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
+import { ThemeContext } from '../contexts/ThemeContext';
+import { auth } from '../utils/firebaseConfig';
+import {
+  fetchUserOrganizations,
+  fetchOrganizationsByCode,
+  logLocalStorage,
+} from '../utils/firebaseService';
+import StyledButton from '../components/StyledButton';
+import ModalSelector from '../components/ModalSelector';
 
-const SettingsScreen = () => {
-  const [bars, setBars] = useState([]);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editBar, setEditBar] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [editFridges, setEditFridges] = useState('');
-  const [editShelves, setEditShelves] = useState('');
+const SettingsScreen = ({ navigation }) => {
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  const [user, setUser] = useState(null);
+  const [organizations, setOrganizations] = useState([]);
+  const [activeOrgId, setActiveOrgId] = useState(null);
+  const [selectedOrgId, setSelectedOrgId] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [code, setCode] = useState('');
 
+  // Check for logged-in user
   useEffect(() => {
-    fetchBars();
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const fetchBars = async () => {
-    try {
-      const storedBars = await AsyncStorage.getItem('bars');
-      if (storedBars) {
-        setBars(JSON.parse(storedBars));
+  // Load organizations from local storage
+  useEffect(() => {
+    const loadOrganizations = async () => {
+      const storedOrganizations = await AsyncStorage.getItem('organizations');
+      const storedActiveOrg = await AsyncStorage.getItem('activeOrgId');
+      if (storedOrganizations) setOrganizations(JSON.parse(storedOrganizations));
+      if (storedActiveOrg) {
+        setActiveOrgId(storedActiveOrg);
+        setSelectedOrgId(storedActiveOrg);
       }
+    };
+    loadOrganizations();
+  }, []);
+
+  const handleSetActiveOrganization = async (orgId) => {
+    if (!orgId) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please select an organization.',
+      });
+      return;
+    }
+    await AsyncStorage.setItem('activeOrgId', orgId);
+    setActiveOrgId(orgId);
+    setIsModalVisible(false);
+
+    Toast.show({
+      type: 'success',
+      text1: 'Success',
+      text2: 'Active organization set successfully!',
+    });
+  };
+
+  const handleFetchByCode = async () => {
+    if (!code) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Enter a valid 6-digit code.',
+      });
+      return;
+    }
+    try {
+      const orgs = await fetchOrganizationsByCode(code);
+      if (orgs.length === 0) {
+        Toast.show({
+          type: 'info',
+          text1: 'No Organizations Found',
+          text2: 'No organizations match the entered code.',
+        });
+        return;
+      }
+      await AsyncStorage.setItem('organizations', JSON.stringify(orgs));
+      setOrganizations(orgs);
+      logLocalStorage();
+
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Organizations fetched and stored.',
+      });
     } catch (error) {
-      console.error('Failed to load bars from storage', error);
+      console.error(error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to fetch organizations.',
+      });
     }
   };
 
-  const deleteBar = async (barName) => {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this bar?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          onPress: async () => {
-            const filteredBars = bars.filter(bar => bar.name !== barName);
-            setBars(filteredBars);
-            await AsyncStorage.setItem('bars', JSON.stringify(filteredBars));
-          },
-          style: 'destructive',
-        },
-      ],
-      { cancelable: false }
-    );
-  };
-
-  const editBarDetails = (bar) => {
-    setEditBar(bar);
-    setEditName(bar.name);
-    setEditFridges(bar.fridges ? bar.fridges.toString() : ''); // Handle potential null values
-    setEditShelves(bar.shelves ? bar.shelves.toString() : ''); // Handle potential null values
-    setEditModalVisible(true);
-  };
-
-  const saveBarDetails = async () => {
-    const updatedBars = bars.map(bar => {
-      if (bar.name === editBar.name) {
-        return { ...bar, name: editName, fridges: parseInt(editFridges) || 0, shelves: parseInt(editShelves) || 0 };
-      }
-      return bar;
-    });
-    setBars(updatedBars);
-    await AsyncStorage.setItem('bars', JSON.stringify(updatedBars));
-    setEditModalVisible(false);
-  };
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Settings</Text>
-      {bars.map((bar, index) => (
-        <View key={index} style={styles.barContainer}>
-          <Text style={styles.barText}>{bar.name}</Text>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.editButton} onPress={() => editBarDetails(bar)}>
-              <Text style={styles.buttonText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteButton} onPress={() => deleteBar(bar.name)}>
-              <Text style={styles.buttonText}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={{ flex: 1, padding: 16 }}>
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text, marginBottom: 20 }}>
+          Settings
+        </Text>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={editModalVisible}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Edit Bar</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Name"
-              value={editName}
-              onChangeText={setEditName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Fridges"
-              value={editFridges}
-              keyboardType="numeric"
-              onChangeText={setEditFridges}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Shelves"
-              value={editShelves}
-              keyboardType="numeric"
-              onChangeText={setEditShelves}
-            />
-            <View style={styles.modalButtonContainer}>
-              <Button title="Save" onPress={saveBarDetails} />
-              <Button title="Cancel" onPress={() => setEditModalVisible(false)} />
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        {/* Choose Organization Button */}
+        <StyledButton
+          title="Choose Organization"
+          onPress={() => setIsModalVisible(true)}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
+
+        {/* Modal for Selecting Organization */}
+        <ModalSelector
+          visible={isModalVisible}
+          items={organizations}
+          selectedId={selectedOrgId}
+          activeId={activeOrgId}
+          onSelect={setSelectedOrgId}
+          onSetActive={handleSetActiveOrganization}
+          onClose={() => setIsModalVisible(false)}
+        />
+
+        {/* Switch Theme Button */}
+        <StyledButton
+          title={`Change Theme`}
+          onPress={toggleTheme}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
+
+        {/* Admin Features Button */}
+        <StyledButton
+          title="Admin"
+          onPress={() => navigation.navigate('AdminDashboard')}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
+        <StyledButton
+  title="Calendar Settings"
+  onPress={() => navigation.navigate('Calendar')}
+  style={{ backgroundColor: theme.colors.primary }}
+  textStyle={{ color: theme.colors.background }}
+/>
+      </View>
+
+      {/* Input and Fetch Button at Bottom */}
+      <View style={{ padding: 16 }}>
+        <Text style={{ color: theme.colors.text, fontSize: 16 }}>Enter 6-digit Code:</Text>
+        <TextInput
+          style={{
+            borderColor: theme.colors.text,
+            borderWidth: 1,
+            padding: 10,
+            borderRadius: 5,
+            marginBottom: 10,
+            color: theme.colors.text,
+          }}
+          placeholder="Enter 6-digit code"
+          placeholderTextColor={theme.colors.text}
+          value={code}
+          onChangeText={setCode}
+          keyboardType="numeric"
+          maxLength={6}
+        />
+        <StyledButton
+          title="Fetch Organizations"
+          onPress={handleFetchByCode}
+          style={{ backgroundColor: theme.colors.primary }}
+          textStyle={{ color: theme.colors.background }}
+        />
+      </View>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#fff',
-    flexGrow: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  barContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  barText: {
-    fontSize: 18,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-  },
-  editButton: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    marginRight: 10,
-    borderRadius: 5,
-  },
-  deleteButton: {
-    backgroundColor: '#FF0000',
-    padding: 10,
-    borderRadius: 5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  input: {
-    width: '100%',
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    marginBottom: 10,
-    paddingHorizontal: 8,
-  },
-  modalButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-});
 
 export default SettingsScreen;
