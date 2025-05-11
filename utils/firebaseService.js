@@ -547,7 +547,7 @@ export const addCrateToFirebase = async (orgId, crate) => {
   const crateRef = doc(db, 'organizations', orgId, 'crates', crate.id);
   await setDoc(crateRef, {
     name: crate.name,
-    category: crate.category,
+    categories: crate.categories ?? (crate.category ? [crate.category] : []),
     maxItems: crate.maxItems,
     orgId,
     id: crate.id,

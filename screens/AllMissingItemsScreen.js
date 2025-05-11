@@ -185,23 +185,28 @@ const AllMissingItemsScreen = () => {
         setAggregatedData({});
         return;
       }
+  
+      // Load bars and items from AsyncStorage
       const storedBars = await AsyncStorage.getItem(`bars_${activeOrgId}`);
       const bars = storedBars ? JSON.parse(storedBars) : [];
       const storedItems = await AsyncStorage.getItem(`items_${activeOrgId}`);
       const items = storedItems ? JSON.parse(storedItems) : [];
-
+  
       const aggregated = {};
+  
       for (const bar of bars) {
-        let barData = {};
+        const barData = {};
+  
+        // 1️⃣ Official items loop (unchanged)
         for (const item of items) {
           const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
           const savedMissing = await AsyncStorage.getItem(missingKey);
           const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
+  
           if (missingAmount > 0) {
             const category = item.categoryName || 'Uncategorized';
-            if (!barData[category]) {
-              barData[category] = [];
-            }
+            if (!barData[category]) barData[category] = [];
+  
             barData[category].push({
               ...item,
               missing: missingAmount,
@@ -211,23 +216,48 @@ const AllMissingItemsScreen = () => {
             });
           }
         }
+  
+        // 2️⃣ Custom items loop (new)
+        const customItemsKey = `custom_missing_items_${activeOrgId}_${bar.name}`;
+        const customItems = JSON.parse(await AsyncStorage.getItem(customItemsKey)) || [];
+        for (const customItem of customItems) {
+          const missingKey = `missing_${customItem.id}_${customItem.orgId}_${bar.name}`;
+          const savedMissing = await AsyncStorage.getItem(missingKey);
+          const missingAmount = savedMissing
+            ? parseInt(savedMissing, 10)
+            : (customItem.missing || 0);
+  
+          if (missingAmount > 0) {
+            const category = customItem.categoryName || 'Custom';
+            if (!barData[category]) barData[category] = [];
+  
+            barData[category].push({
+              ...customItem,
+              missing: missingAmount,
+              barName: bar.name,
+              orgId: customItem.orgId,
+              completed: false,
+            });
+          }
+        }
+  
+        // Only add bars that actually have missing items
         if (Object.keys(barData).length > 0) {
           aggregated[bar.name] = barData;
         }
       }
-      // After you build your 'aggregated' object in fetchAllMissingItems:
-setAggregatedData(aggregated);
-
-// Set all bars to expanded by default:
-const expanded = {};
-Object.keys(aggregated).forEach((barName) => {
-  expanded[barName] = true;
-});
-setExpandedBars(expanded);
+  
+      // Update state & expand all bars by default
+      setAggregatedData(aggregated);
+      const expanded = {};
+      Object.keys(aggregated).forEach(barName => { expanded[barName] = true; });
+      setExpandedBars(expanded);
+  
     } catch (error) {
       console.error('Error fetching aggregated missing items:', error);
     }
   };
+  
 
   // Collapsible toggling
   const toggleBar = (barName) => {
