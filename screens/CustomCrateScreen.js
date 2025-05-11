@@ -1,14 +1,23 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, FlatList, StyleSheet } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Switch,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 
 const CustomCratesScreen = () => {
   const { theme } = useContext(ThemeContext);
+
   const [crates, setCrates] = useState([]);
   const [crateName, setCrateName] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [categories, setCategories] = useState([]);
   const [maxItems, setMaxItems] = useState('');
 
@@ -20,17 +29,18 @@ const CustomCratesScreen = () => {
           Alert.alert('Error', 'No active organization selected.');
           return;
         }
-        const storedCategories = JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) || [];
-        const filteredCategories = storedCategories.filter(
-          (category) => category.orgId === activeOrgId
+        const storedCategories =
+          JSON.parse(await AsyncStorage.getItem(`categories_${activeOrgId}`)) ||
+          [];
+        const filtered = storedCategories.filter(
+          (cat) => cat.orgId === activeOrgId
         );
-        setCategories(filteredCategories);
-      } catch (error) {
-        console.error('Error fetching categories from local storage:', error);
+        setCategories(filtered);
+      } catch (e) {
+        console.error(e);
         Alert.alert('Error', 'Failed to load categories.');
       }
     };
-
     fetchCategories();
     fetchCrates();
   }, []);
@@ -42,55 +52,64 @@ const CustomCratesScreen = () => {
         setCrates([]);
         return;
       }
-      const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
-      const filteredCrates = storedCrates.filter((crate) => crate.orgId === activeOrgId);
-      setCrates(filteredCrates);
-    } catch (error) {
-      console.error('Error fetching crates:', error);
+      const stored =
+        JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) ||
+        [];
+      const filtered = stored.filter((c) => c.orgId === activeOrgId);
+      setCrates(filtered);
+    } catch (e) {
+      console.error(e);
     }
   };
 
+  const toggleCategory = (name) => {
+    setSelectedCategories((prev) =>
+      prev.includes(name)
+        ? prev.filter((c) => c !== name)
+        : [...prev, name]
+    );
+  };
+
   const handleAddCrate = async () => {
-    if (!crateName.trim() || !selectedCategory || !maxItems.trim()) {
+    if (!crateName.trim() || selectedCategories.length === 0 || !maxItems.trim()) {
       Alert.alert('Error', 'All fields are required.');
       return;
     }
-  
-    if (isNaN(maxItems) || parseInt(maxItems) <= 0) {
+    if (isNaN(maxItems) || parseInt(maxItems, 10) <= 0) {
       Alert.alert('Error', 'Maximum items must be a positive number.');
       return;
     }
-  
     try {
       const activeOrgId = await AsyncStorage.getItem('activeOrgId');
       if (!activeOrgId) {
         Alert.alert('Error', 'No active organization selected.');
         return;
       }
-  
       const newCrate = {
         id: Date.now().toString(),
         name: crateName.trim(),
-        category: selectedCategory,
-        maxItems: parseInt(maxItems),
+        categories: selectedCategories,   // now an array
+        maxItems: parseInt(maxItems, 10),
         orgId: activeOrgId,
       };
-  
-      const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
-      const updatedCrates = [...storedCrates, newCrate];
-      await AsyncStorage.setItem(`customCrates_${activeOrgId}`, JSON.stringify(updatedCrates));
-  
+      const stored =
+        JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) ||
+        [];
+      const updated = [...stored, newCrate];
+      await AsyncStorage.setItem(
+        `customCrates_${activeOrgId}`,
+        JSON.stringify(updated)
+      );
       fetchCrates();
       setCrateName('');
-      setSelectedCategory('');
+      setSelectedCategories([]);
       setMaxItems('');
       Alert.alert('Success', 'Crate added successfully.');
-    } catch (error) {
-      console.error('Error adding crate:', error);
+    } catch (e) {
+      console.error(e);
       Alert.alert('Error', 'Failed to add crate.');
     }
   };
-  
 
   const handleDeleteCrate = async (crateId) => {
     try {
@@ -99,17 +118,21 @@ const CustomCratesScreen = () => {
         Alert.alert('Error', 'No active organization selected.');
         return;
       }
-      const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) || [];
-      const updatedCrates = storedCrates.filter((crate) => crate.id !== crateId);
-      await AsyncStorage.setItem(`customCrates_${activeOrgId}`, JSON.stringify(updatedCrates));
+      const stored =
+        JSON.parse(await AsyncStorage.getItem(`customCrates_${activeOrgId}`)) ||
+        [];
+      const updated = stored.filter((c) => c.id !== crateId);
+      await AsyncStorage.setItem(
+        `customCrates_${activeOrgId}`,
+        JSON.stringify(updated)
+      );
       fetchCrates();
       Alert.alert('Success', 'Crate deleted successfully.');
-    } catch (error) {
-      console.error('Error deleting crate:', error);
+    } catch (e) {
+      console.error(e);
       Alert.alert('Error', 'Failed to delete crate.');
     }
   };
-  
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -121,47 +144,80 @@ const CustomCratesScreen = () => {
           placeholderTextColor={theme.colors.onSurface}
           value={crateName}
           onChangeText={setCrateName}
-          style={[styles.input, { borderColor: theme.colors.outline, color: theme.colors.text }]}
+          style={[
+            styles.input,
+            { borderColor: theme.colors.outline, color: theme.colors.text },
+          ]}
         />
-        <View style={[styles.pickerContainer, { borderColor: theme.colors.outline }]}>
-          <Picker
-            selectedValue={selectedCategory}
-            onValueChange={(itemValue) => setSelectedCategory(itemValue)}
-            style={[styles.picker, { color: theme.colors.text }]}
-          >
-            <Picker.Item label="Select a Category" value="" />
-            {categories.map((category) => (
-              <Picker.Item key={category.id} label={category.name} value={category.name} />
-            ))}
-          </Picker>
+
+        {/* Multi-select categories list */}
+        <View style={styles.multiSelectContainer}>
+          <Text style={[styles.multiSelectLabel, { color: theme.colors.text }]}>
+            Select Categories:
+          </Text>
+          {categories.map((cat) => (
+            <View key={cat.id} style={styles.categoryOption}>
+              <Text style={[styles.categoryLabel, { color: theme.colors.text }]}>
+                {cat.name}
+              </Text>
+              <Switch
+                value={selectedCategories.includes(cat.name)}
+                onValueChange={() => toggleCategory(cat.name)}
+                trackColor={{ true: theme.colors.primary }}
+              />
+            </View>
+          ))}
         </View>
+
         <TextInput
           placeholder="Maximum Items"
           placeholderTextColor={theme.colors.onSurface}
           value={maxItems}
           onChangeText={setMaxItems}
           keyboardType="numeric"
-          style={[styles.input, { borderColor: theme.colors.outline, color: theme.colors.text }]}
+          style={[
+            styles.input,
+            { borderColor: theme.colors.outline, color: theme.colors.text },
+          ]}
         />
-        <TouchableOpacity style={[styles.addButton, { backgroundColor: theme.colors.primary }]} onPress={handleAddCrate}>
-          <Text style={[styles.addButtonText, { color: theme.colors.background }]}>Add Crate</Text>
+
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
+          onPress={handleAddCrate}
+        >
+          <Text style={[styles.addButtonText, { color: theme.colors.background }]}>
+            Add Crate
+          </Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
         data={crates}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={[styles.crateCard, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <View>
-              <Text style={[styles.crateText, { color: theme.colors.text }]}>{item.name}</Text>
-              <Text style={[styles.crateSubText, { color: theme.colors.text }]}>{item.category} (Max: {item.maxItems})</Text>
+        renderItem={({ item }) => {
+          const cats = Array.isArray(item.categories)
+            ? item.categories.join(', ')
+            : item.category;
+          return (
+            <View
+              style={[styles.crateCard, { backgroundColor: theme.colors.surfaceVariant }]}
+            >
+              <View>
+                <Text style={[styles.crateText, { color: theme.colors.text }]}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.crateSubText, { color: theme.colors.text }]}>
+                  {cats} (Max: {item.maxItems})
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => handleDeleteCrate(item.id)}>
+                <Text style={[styles.deleteText, { color: theme.colors.error }]}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => handleDeleteCrate(item.id)}>
-              <Text style={[styles.deleteText, { color: theme.colors.error }]}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          );
+        }}
         contentContainerStyle={styles.listContainer}
       />
     </View>
@@ -189,15 +245,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderRadius: 8,
+  multiSelectContainer: {
     marginBottom: 12,
-    overflow: 'hidden',
   },
-  picker: {
-    height: 50,
-    width: '100%',
+  multiSelectLabel: {
+    fontSize: 16,
+    marginBottom: 6,
+  },
+  categoryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  categoryLabel: {
+    fontSize: 16,
   },
   addButton: {
     padding: 15,

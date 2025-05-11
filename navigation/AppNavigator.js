@@ -21,6 +21,8 @@ import RecommendedCratesScreen from '../screens/RecommendedCratesScreen';
 import AllMissingItemsScreen from '../screens/AllMissingItemsScreen';   // Was NewAllMissingItemsScreen
 import BulkAddItemsScreen from '../screens/BulkAddItemsScreen';       // Was MultiItemEditorScreen
 import CalendarScreen from '../screens/CalendarScreen';
+import AllRecommendedCratesScreen from '../screens/AllRecommendedCratesScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 
 const Stack = createStackNavigator();
 
@@ -47,6 +49,9 @@ const AppNavigator = () => {
           <Stack.Screen name="AllMissingItems" component={AllMissingItemsScreen} />
           <Stack.Screen name="BulkAddItems" component={BulkAddItemsScreen} />
           <Stack.Screen name="Calendar" component={CalendarScreen} />
+          <Stack.Screen name="AllRecommendedCrates" component={AllRecommendedCratesScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+
         </Stack.Navigator>
       </FridgeProvider>
     </NativeBaseProvider>

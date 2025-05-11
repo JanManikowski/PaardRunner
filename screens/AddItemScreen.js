@@ -1,5 +1,12 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
@@ -9,146 +16,222 @@ const ItemEditorScreen = ({ route, navigation }) => {
   const { categoryName, item } = route.params || {};
   const { theme } = useContext(ThemeContext);
 
-  const [itemName, setItemName] = useState(item ? item.name : '');
-  const [maxAmount, setMaxAmount] = useState(item ? item.maxAmount?.toString() : '');
-  const [image, setImage] = useState(item ? item.image : null);
+  const [itemName, setItemName] = useState(item?.name || '');
+  const [maxAmount, setMaxAmount] = useState(
+    item?.maxAmount?.toString() || ''
+  );
+  const [image, setImage] = useState(item?.image || null);
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  // Pick from gallery
+  const pickFromLibrary = async () => {
+    const { status } =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission denied', 'We need camera roll permissions to select images.');
-      return;
+      return Alert.alert(
+        'Permission denied',
+        'Need permission to access your photos.'
+      );
     }
-  
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-  
     if (!result.canceled) {
-      const pickedUri = result.assets[0].uri;
-      const fileName = pickedUri.split('/').pop();
-      const newPath = FileSystem.documentDirectory + fileName;
-  
-      try {
-        await FileSystem.copyAsync({
-          from: pickedUri,
-          to: newPath,
-        });
-        setImage(newPath); // store local file path, not base64
-      } catch (error) {
-        console.error('Error saving image locally:', error);
-      }
+      const uri = result.assets[0].uri;
+      await saveLocal(uri);
     }
   };
-  
-  
+
+  // Take a new photo
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      return Alert.alert(
+        'Permission denied',
+        'Need camera permission to take photo.'
+      );
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+      await saveLocal(uri);
+    }
+  };
+
+  // Copy into app storage and update state
+  const saveLocal = async uri => {
+    const name = uri.split('/').pop();
+    const dest = FileSystem.documentDirectory + name;
+    try {
+      await FileSystem.copyAsync({ from: uri, to: dest });
+      setImage(dest);
+    } catch (e) {
+      console.error('Failed to save image:', e);
+    }
+  };
 
   const handleSaveItem = async () => {
-    if (itemName.trim() === '') {
-      Alert.alert('Error', 'Item name is required');
-      return;
+    if (!itemName.trim()) {
+      return Alert.alert('Error', 'Item name is required');
     }
-  
-    const numericMaxAmount = parseInt(maxAmount, 10);
-  
-    if (isNaN(numericMaxAmount) || numericMaxAmount <= 0) {
-      Alert.alert('Error', 'Max amount must be greater than 0');
-      return;
+    const num = parseInt(maxAmount, 10);
+    if (isNaN(num) || num <= 0) {
+      return Alert.alert('Error', 'Max amount must be > 0');
     }
-  
     try {
-      const activeOrgId = await AsyncStorage.getItem('activeOrgId');
-      if (!activeOrgId) {
-        Alert.alert('Error', 'No active organization selected');
-        return;
+      const orgId = await AsyncStorage.getItem('activeOrgId');
+      if (!orgId) {
+        return Alert.alert('Error', 'No active organization');
       }
-  
-      const storageKey = `categories_${activeOrgId}`;
-      const storedCategories = await AsyncStorage.getItem(storageKey);
-      let categories = storedCategories ? JSON.parse(storedCategories) : [];
-  
-      // Check for duplicate item name
-      const category = categories.find(cat => cat.name === categoryName);
-  
-      if (category) {
-        const itemExists = category.items?.some(i => i.name.toLowerCase() === itemName.toLowerCase() && i.id !== (item ? item.id : ''));
-  
-        if (itemExists) {
-          Alert.alert('Error', 'An item with this name already exists in this category');
-          return;
-        }
-      }
-  
+      const key = `categories_${orgId}`;
+      const stored = await AsyncStorage.getItem(key);
+      const cats = stored ? JSON.parse(stored) : [];
+
       const newItem = {
-        id: item ? item.id : Date.now().toString(),
+        id: item?.id || Date.now().toString(),
         name: itemName,
-        maxAmount: numericMaxAmount,
+        maxAmount: num,
         image: image || null,
         categoryName,
-        orgId: activeOrgId,
+        orgId,
       };
-  
-      categories = categories.map(cat => {
-        if (cat.name === categoryName) {
-          let items = cat.items || [];
-          if (item) {
-            items = items.map(i => i.id === item.id ? newItem : i);
-          } else {
-            items.push(newItem);
-          }
-          return { ...cat, items };
+
+      const updatedCats = cats.map(cat => {
+        if (cat.name !== categoryName) return cat;
+        const items = cat.items || [];
+        let newList;
+        if (item) {
+          newList = items.map(i => (i.id === item.id ? newItem : i));
+        } else {
+          newList = [...items, newItem];
         }
-        return cat;
+        return { ...cat, items: newList };
       });
-  
-      await AsyncStorage.setItem(storageKey, JSON.stringify(categories));
-  
-      Alert.alert('Success', item ? 'Item updated successfully' : 'Item added successfully');
-      navigation.navigate('ManageCategoryItems', { categoryName, orgId: activeOrgId, refresh: true });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save item');
-      console.error(error);
+
+      await AsyncStorage.setItem(key, JSON.stringify(updatedCats));
+      Alert.alert('Success', item ? 'Updated!' : 'Added!');
+      navigation.navigate('ManageCategoryItems', {
+        categoryName,
+        refresh: true,
+      });
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Save failed');
     }
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.colors.text }}>
+    <View
+      style={{
+        flex: 1,
+        padding: 16,
+        backgroundColor: theme.colors.background,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: 'bold',
+          marginBottom: 20,
+          color: theme.colors.text,
+        }}
+      >
         {item ? 'Edit Item' : 'Add New Item'}
       </Text>
 
       <TextInput
-        style={{ borderColor: theme.colors.border, borderWidth: 1, padding: 10, borderRadius: 5, marginBottom: 10, backgroundColor: theme.colors.surfaceVariant, color: theme.colors.text }}
-        placeholder="Item Name"
-        placeholderTextColor={theme.colors.onSurface}
         value={itemName}
         onChangeText={setItemName}
+        placeholder="Item Name"
+        placeholderTextColor={theme.colors.onSurface}
+        style={{
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          borderRadius: 5,
+          padding: 10,
+          marginBottom: 10,
+          backgroundColor: theme.colors.surfaceVariant,
+          color: theme.colors.text,
+        }}
       />
 
       <TextInput
-        style={{ borderColor: theme.colors.border, borderWidth: 1, padding: 10, borderRadius: 5, marginBottom: 10, backgroundColor: theme.colors.surfaceVariant, color: theme.colors.text }}
-        placeholder="Max Amount"
-        placeholderTextColor={theme.colors.onSurface}
         value={maxAmount}
         onChangeText={setMaxAmount}
+        placeholder="Max Amount"
+        placeholderTextColor={theme.colors.onSurface}
         keyboardType="numeric"
+        style={{
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          borderRadius: 5,
+          padding: 10,
+          marginBottom: 20,
+          backgroundColor: theme.colors.surfaceVariant,
+          color: theme.colors.text,
+        }}
       />
 
-      <TouchableOpacity style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center', marginBottom: 10 }} onPress={pickImage}>
-        <Text style={{ color: theme.colors.onPrimary }}>
-          {image ? 'Change Image' : 'Pick Image'}
-        </Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+        <TouchableOpacity
+          onPress={pickFromLibrary}
+          style={{
+            flex: 1,
+            backgroundColor: theme.colors.primary,
+            padding: 10,
+            borderRadius: 5,
+            alignItems: 'center',
+            marginRight: 5,
+          }}
+        >
+          <Text style={{ color: theme.colors.onPrimary }}>Pick Image</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={takePhoto}
+          style={{
+            flex: 1,
+            backgroundColor: theme.colors.primary,
+            padding: 10,
+            borderRadius: 5,
+            alignItems: 'center',
+            marginLeft: 5,
+          }}
+        >
+          <Text style={{ color: theme.colors.onPrimary }}>Take Photo</Text>
+        </TouchableOpacity>
+      </View>
 
       {image && (
-        <Image source={{ uri: image }} style={{ width: 150, height: 150, borderRadius: 10, alignSelf: 'center', marginBottom: 20, backgroundColor: '#ccc' }} />
+        <Image
+          source={{ uri: image }}
+          style={{
+            width: 150,
+            height: 150,
+            borderRadius: 10,
+            backgroundColor: '#ccc',
+            alignSelf: 'center',
+            marginBottom: 20,
+          }}
+          resizeMode="cover"
+        />
       )}
 
-      <TouchableOpacity style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5, alignItems: 'center' }} onPress={handleSaveItem}>
-        <Text style={{ color: theme.colors.onPrimary }}>
+      <TouchableOpacity
+        onPress={handleSaveItem}
+        style={{
+          backgroundColor: theme.colors.primary,
+          padding: 12,
+          borderRadius: 5,
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ color: theme.colors.onPrimary, fontSize: 16 }}>
           {item ? 'Save Changes' : 'Add Item'}
         </Text>
       </TouchableOpacity>

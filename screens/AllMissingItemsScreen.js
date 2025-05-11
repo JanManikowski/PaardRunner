@@ -20,7 +20,7 @@ import Animated, {
   withTiming,
   interpolate,
 } from 'react-native-reanimated';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
 
@@ -143,6 +143,7 @@ const AllMissingItemsScreen = () => {
   const [circleMode, setCircleMode] = useState(false);
   const [checkedItems, setCheckedItems] = useState([]);
   const [justEnteredSelectMode, setJustEnteredSelectMode] = useState(false);
+  const navigation = useNavigation();
 
   // Collapsible state: barName => bool
   const [expandedBars, setExpandedBars] = useState({});
@@ -502,7 +503,7 @@ setExpandedBars(expanded);
 
       {/* Bottom buttons */}
       <View style={styles.bottomButtonsContainer}>
-        {/* Normal buttons */}
+                {/* Normal buttons */}
         <Animated.View
           style={[
             normalBottomStyle,
@@ -510,9 +511,17 @@ setExpandedBars(expanded);
             { pointerEvents: circleMode ? 'none' : 'auto' },
           ]}
         >
+          <View style={{ marginBottom: 10 }}>
+                <Button
+                  title="Show Recommended Crates"
+                  onPress={() => navigation.navigate('AllRecommendedCrates')}
+                  color="#FFA500"
+                />
+              </View>
           <View style={styles.buttonSpacing}>
             <Button title="Share List" onPress={shareList} color="#4CAF50" />
           </View>
+          
           <View style={styles.buttonSpacing}>
             <Button
               title="Delete All Items"

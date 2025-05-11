@@ -1,175 +1,228 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Alert,
+  Switch,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from '../contexts/ThemeContext';
+
+const BIG_CRATE_CAPACITY = 42;
+const POINTS_PER_CATEGORY = { Fridge: 1, Shelves: 4, Strong: 4 };
 
 const RecommendedCratesScreen = ({ route }) => {
   const { bar } = route.params || {};
   const { theme } = useContext(ThemeContext);
+
   const [recommendedCrates, setRecommendedCrates] = useState([]);
   const [customCrates, setCustomCrates] = useState([]);
+  const [missingItemsState, setMissingItemsState] = useState({});
+  const [isBigCrate, setIsBigCrate] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Retrieve custom crate configurations (each includes category and maxItems)
-        const storedCrates = JSON.parse(await AsyncStorage.getItem(`customCrates_${bar.orgId}`)) || [];
-        setCustomCrates(storedCrates);
+        // load custom crates (now each has `.categories: string[]`)
+        const stored = JSON.parse(
+          await AsyncStorage.getItem(`customCrates_${bar.orgId}`)
+        ) || [];
+        setCustomCrates(stored);
 
-        // Get the missing items per category from local storage.
-        const missingItems = await fetchMissingItems(bar);
-        // Generate recommended crates using the new dynamic priority algorithm.
-        const crates = generateRecommendedCrates(missingItems, storedCrates);
-        setRecommendedCrates(crates);
-      } catch (error) {
-        console.error('Error fetching data for crates:', error);
+        const missing = await fetchMissingItems(bar);
+        setMissingItemsState(missing);
+
+        setRecommendedCrates(
+          isBigCrate
+            ? generateBigCrates(missing)
+            : generateRecommendedCrates(missing, stored)
+        );
+      } catch (e) {
+        console.error(e);
       }
     };
-
     fetchData();
-  }, [bar]);
+  }, [bar, isBigCrate]);
 
-  // Retrieves missing item counts per category.
-  // Each item is expected to have a defined maximum (item.maxAmount).
+  // re-generate whenever missingItems or toggle changes
+  useEffect(() => {
+    if (!missingItemsState) return;
+    setRecommendedCrates(
+      isBigCrate
+        ? generateBigCrates(missingItemsState)
+        : generateRecommendedCrates(missingItemsState, customCrates)
+    );
+  }, [isBigCrate, missingItemsState, customCrates]);
+
+  // fetch missing counts
   const fetchMissingItems = async (bar) => {
-    const categorizedItems = {};
-    const categoriesKey = `categories_${bar.orgId}`;
-    const storedCategories = JSON.parse(await AsyncStorage.getItem(categoriesKey)) || [];
-
-    for (const category of storedCategories) {
-      for (const item of category.items || []) {
-        const missingKey = `missing_${item.id}_${bar.orgId}_${bar.name}`;
-        const savedMissing = await AsyncStorage.getItem(missingKey);
-        const missingAmount = savedMissing ? parseInt(savedMissing, 10) : 0;
-
-        if (missingAmount > 0) {
-          if (!categorizedItems[category.name]) {
-            categorizedItems[category.name] = [];
-          }
-          // Copy the item and attach its missing count.
-          categorizedItems[category.name].push({
-            ...item,
-            missing: missingAmount,
-          });
+    const byCat = {};
+    const cats =
+      JSON.parse(await AsyncStorage.getItem(`categories_${bar.orgId}`)) || [];
+    for (let c of cats) {
+      for (let item of c.items || []) {
+        const key = `missing_${item.id}_${bar.orgId}_${bar.name}`;
+        const val = await AsyncStorage.getItem(key);
+        const missing = val ? parseInt(val, 10) : 0;
+        if (missing > 0) {
+          byCat[c.name] = byCat[c.name] || [];
+          byCat[c.name].push({ ...item, missing });
         }
       }
     }
-    return categorizedItems;
+    return byCat;
   };
 
-  // Generate recommended crates using a dynamic, unit-by-unit algorithm.
-  // For each custom crate configuration, items are added one-by-one.
-  // In each round we calculate priority (missing / maxAmount), choose the candidate
-  // with the highest priority (and with least allocated units in the current crate on tie),
-  // then update its missing count before proceeding.
+  // ORIGINAL algorithm, but now each crateConfig.categories is an array
   const generateRecommendedCrates = (missingItems, crateConfigs) => {
-    const recommended = [];
+    const result = [];
+    crateConfigs.forEach((cfg) => {
+      // support both old single `category` and new `categories[]`
+      const cats = Array.isArray(cfg.categories)
+        ? cfg.categories
+        : [cfg.category];
 
-    // Iterate through each custom crate configuration
-    crateConfigs.forEach((crateConfig) => {
-      // Get a shallow copy of all items in the category so we can update their missing counts
-      const itemsForCategory = missingItems[crateConfig.category]
-        ? missingItems[crateConfig.category].map(item => ({ ...item }))
-        : [];
-      if (itemsForCategory.length === 0) return;
+      // flatten all items from each selected category
+      let pool = cats
+        .flatMap((cat) =>
+          (missingItems[cat] || []).map((i) => ({ ...i, category: cat }))
+        )
+        .filter((i) => i.missing > 0);
+      if (!pool.length) return;
 
-      // Continue generating new crates until there are no more missing items for this category.
-      while (itemsForCategory.some(item => item.missing > 0)) {
-        let currentCrate = [];
-        let currentCrateCount = 0;
-
-        // Fill the current crate one unit at a time.
+      // keep generating crates until nothing left
+      while (pool.some((i) => i.missing > 0)) {
+        let current = [];
+        let count = 0;
         while (
-          currentCrateCount < crateConfig.maxItems &&
-          itemsForCategory.some(item => item.missing > 0)
+          count < cfg.maxItems &&
+          pool.some((i) => i.missing > 0)
         ) {
-          // Get only items that still need units.
-          const candidates = itemsForCategory.filter(item => item.missing > 0);
-
-          // Calculate the priority for each candidate.
-          candidates.forEach(item => {
-            item.priority = item.missing / item.maxAmount;
+          const candidates = pool.filter((i) => i.missing > 0);
+          candidates.forEach((i) => {
+            i.priority = i.missing / i.maxAmount;
           });
-
-          // Determine the maximum priority value among candidates.
-          const maxPriority = Math.max(...candidates.map(item => item.priority));
-          // Filter the candidates to those that have this maximum priority.
-          let topCandidates = candidates.filter(item => item.priority === maxPriority);
-
-          // Tie-breaker: choose the candidate with the fewest units already allocated in this crate.
-          topCandidates.sort((a, b) => {
-            const qtyA = currentCrate.find(i => i.id === a.id)?.quantity || 0;
-            const qtyB = currentCrate.find(i => i.id === b.id)?.quantity || 0;
-            return qtyA - qtyB;
+          const maxP = Math.max(...candidates.map((i) => i.priority));
+          let top = candidates.filter((i) => i.priority === maxP);
+          top.sort((a, b) => {
+            const qa = current.find((x) => x.id === a.id)?.quantity || 0;
+            const qb = current.find((x) => x.id === b.id)?.quantity || 0;
+            return qa - qb;
           });
-
-          const chosenItem = topCandidates[0];
-
-          // Add one unit of the chosen item to the current crate.
-          const crateItemIndex = currentCrate.findIndex(i => i.id === chosenItem.id);
-          if (crateItemIndex >= 0) {
-            currentCrate[crateItemIndex].quantity += 1;
-          } else {
-            currentCrate.push({
-              id: chosenItem.id,
-              type: chosenItem.name,
+          const pick = top[0];
+          const idx = current.findIndex((x) => x.id === pick.id);
+          if (idx >= 0) current[idx].quantity += 1;
+          else
+            current.push({
+              id: pick.id,
+              type: pick.name,
               quantity: 1,
-              image: chosenItem.image || null,
+              image: pick.image || null,
             });
-          }
-
-          // Subtract the added unit from the chosen item's missing count.
-          chosenItem.missing -= 1;
-          currentCrateCount += 1;
+          pick.missing -= 1;
+          count += 1;
         }
-
-        // Once the crate is filled or no more units can be allocated, add it to the recommended list.
-        if (currentCrate.length > 0) {
-          recommended.push({
-            crateName: `${crateConfig.name} - Crate ${recommended.length + 1}`,
-            category: crateConfig.category,
-            items: currentCrate.filter(i => i.quantity > 0),
+        if (current.length) {
+          result.push({
+            crateName: `${cfg.name} - Crate ${result.length + 1}`,
+            // show joined category names
+            category: cats.join(', '),
+            items: current,
           });
         }
       }
     });
-    return recommended;
+    return result;
   };
 
-  // Handler to delete the items in a recommended crate.
-  // For each item, we subtract the quantity from its missing count in AsyncStorage.
+  // BIG crate stays the same
+  const generateBigCrates = (missingItems) => {
+    const flat = [];
+    Object.entries(missingItems).forEach(([cat, items]) =>
+      items.forEach((i) =>
+        flat.push({ ...i, category: cat, priority: i.missing / i.maxAmount })
+      )
+    );
+    const pool = flat.map((i) => ({ ...i }));
+    const crates = [];
+    let idx = 1;
+    while (
+      pool.some(
+        (i) => i.missing > 0 && POINTS_PER_CATEGORY[i.category] <= BIG_CRATE_CAPACITY
+      )
+    ) {
+      let used = 0;
+      const curr = [];
+      while (used < BIG_CRATE_CAPACITY) {
+        const cand = pool
+          .filter(
+            (i) =>
+              i.missing > 0 &&
+              (POINTS_PER_CATEGORY[i.category] || 1) <= BIG_CRATE_CAPACITY - used
+          )
+          .map((i) => {
+            i.priority = i.missing / i.maxAmount;
+            return i;
+          });
+        if (!cand.length) break;
+        const maxP = Math.max(...cand.map((i) => i.priority));
+        let top = cand.filter((i) => i.priority === maxP);
+        top.sort((a, b) => {
+          const qa = curr.find((x) => x.id === a.id)?.quantity || 0;
+          const qb = curr.find((x) => x.id === b.id)?.quantity || 0;
+          return qa - qb;
+        });
+        const pick = top[0];
+        const cost = POINTS_PER_CATEGORY[pick.category] || 1;
+        const fidx = curr.findIndex((x) => x.id === pick.id);
+        if (fidx >= 0) curr[fidx].quantity += 1;
+        else
+          curr.push({
+            id: pick.id,
+            type: pick.name,
+            quantity: 1,
+            image: pick.image || null,
+          });
+        pick.missing -= 1;
+        used += cost;
+      }
+      crates.push({
+        crateName: `Big Crate - Crate ${idx++}`,
+        category: 'Big Crate',
+        items: curr,
+        usedPoints: used,
+      });
+    }
+    return crates;
+  };
+
   const handleDeleteCrateItems = (crate) => {
     Alert.alert(
-      "Delete Crate Items",
-      `Are you sure you want to remove the crate items for ${crate.crateName}?`,
+      'Delete Crate Items',
+      `Remove items from ${crate.crateName}?`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Delete",
-          style: "destructive",
+          text: 'Delete',
+          style: 'destructive',
           onPress: async () => {
-            for (const item of crate.items) {
+            for (let item of crate.items) {
               const key = `missing_${item.id}_${bar.orgId}_${bar.name}`;
-              const storedValue = await AsyncStorage.getItem(key);
-
-              if (storedValue) {
-                const currentMissing = parseInt(storedValue, 10);
-                const newMissing = currentMissing - item.quantity;
-
-                if (newMissing <= 0) {
-                  await AsyncStorage.removeItem(key);
-                } else {
-                  await AsyncStorage.setItem(key, newMissing.toString());
-                }
-              }
+              const val = await AsyncStorage.getItem(key);
+              if (!val) continue;
+              const cur = parseInt(val, 10);
+              const delta = item.quantity;
+              const next = cur - delta;
+              if (next <= 0) await AsyncStorage.removeItem(key);
+              else await AsyncStorage.setItem(key, next.toString());
             }
-
-            // Remove this crate from the list
             setRecommendedCrates((prev) =>
               prev.filter((r) => r.crateName !== crate.crateName)
             );
-
-            Alert.alert("Success", "Crate items have been removed.");
+            Alert.alert('Success', 'Crate items removed.');
           },
         },
       ]
@@ -189,35 +242,62 @@ const RecommendedCratesScreen = ({ route }) => {
           fontSize: 26,
           fontWeight: 'bold',
           textAlign: 'center',
-          marginBottom: 24,
+          marginBottom: 16,
           color: theme.colors.text,
         }}
       >
         Recommended Crates for {bar.name}
       </Text>
 
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 24,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            marginRight: 8,
+            color: theme.colors.text,
+          }}
+        >
+          Big Crate
+        </Text>
+        <Switch
+          value={isBigCrate}
+          onValueChange={setIsBigCrate}
+          trackColor={{ true: theme.colors.primary }}
+        />
+      </View>
+
       {recommendedCrates.length > 0 ? (
-        recommendedCrates.map((crate, index) => {
-          // Calculate total units used in the crate.
-          const usedItemsCount = crate.items.reduce((sum, i) => sum + i.quantity, 0);
-          // Look up the defined crate capacity from customCrates.
-          const crateDefinition = customCrates.find(c => c.name === crate.crateName.split(' - ')[0]);
-          const maxItems = crateDefinition ? crateDefinition.maxItems : 0;
-          const usedPercent = maxItems > 0 ? Math.min(100, (usedItemsCount / maxItems) * 100) : 0;
+        recommendedCrates.map((crate, i) => {
+          const totalQty = crate.items.reduce((s, x) => s + x.quantity, 0);
+          const def = customCrates.find(
+            (c) => c.name === crate.crateName.split(' - ')[0]
+          );
+          const maxItems = def?.maxItems ?? 0;
+          const pct = maxItems ? (totalQty / maxItems) * 100 : 0;
+
+          const usedPts = crate.usedPoints ?? 0;
+          const ptsPct = (usedPts / BIG_CRATE_CAPACITY) * 100;
 
           return (
             <TouchableOpacity
-              key={index}
+              key={i}
               style={{
                 borderRadius: 10,
                 padding: 16,
                 marginBottom: 20,
+                backgroundColor: theme.colors.surfaceVariant,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.1,
                 shadowRadius: 4,
                 elevation: 3,
-                backgroundColor: theme.colors.surfaceVariant,
               }}
               onLongPress={() => handleDeleteCrateItems(crate)}
             >
@@ -241,16 +321,10 @@ const RecommendedCratesScreen = ({ route }) => {
                 </Text>
               </Text>
 
-              {maxItems > 0 && (
+              {isBigCrate ? (
                 <>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: '#999',
-                      marginBottom: 6,
-                    }}
-                  >
-                    {usedItemsCount}/{maxItems} Items Used
+                  <Text style={{ fontSize: 14, color: '#999', marginBottom: 6 }}>
+                    Points Used: {usedPts}/{BIG_CRATE_CAPACITY}
                   </Text>
                   <View
                     style={{
@@ -265,34 +339,54 @@ const RecommendedCratesScreen = ({ route }) => {
                     <View
                       style={{
                         height: '100%',
-                        width: `${usedPercent}%`,
+                        width: `${ptsPct}%`,
                         backgroundColor: theme.colors.primary,
                       }}
                     />
                   </View>
                 </>
+              ) : (
+                maxItems > 0 && (
+                  <>
+                    <Text style={{ fontSize: 14, color: '#999', marginBottom: 6 }}>
+                      {totalQty}/{maxItems} Items Used
+                    </Text>
+                    <View
+                      style={{
+                        height: 10,
+                        width: '100%',
+                        backgroundColor: '#ccc',
+                        borderRadius: 5,
+                        overflow: 'hidden',
+                        marginBottom: 8,
+                      }}
+                    >
+                      <View
+                        style={{
+                          height: '100%',
+                          width: `${pct}%`,
+                          backgroundColor: theme.colors.primary,
+                        }}
+                      />
+                    </View>
+                  </>
+                )
               )}
 
-              <View
-                style={{
-                  height: 1,
-                  backgroundColor: '#ccc',
-                  marginVertical: 6,
-                }}
-              />
+              <View style={{ height: 1, backgroundColor: '#ccc', marginVertical: 6 }} />
 
-              {crate.items.map((item, itemIndex) => (
+              {crate.items.map((it, idx2) => (
                 <View
-                  key={itemIndex}
+                  key={idx2}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
                     marginBottom: 6,
                   }}
                 >
-                  {item.image ? (
+                  {it.image ? (
                     <Image
-                      source={{ uri: item.image }}
+                      source={{ uri: it.image }}
                       style={{
                         width: 40,
                         height: 40,
@@ -319,7 +413,7 @@ const RecommendedCratesScreen = ({ route }) => {
                       color: theme.colors.text,
                     }}
                   >
-                    {item.type} x{item.quantity}
+                    {it.type} x{it.quantity}
                   </Text>
                 </View>
               ))}

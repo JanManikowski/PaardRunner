@@ -1,125 +1,83 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Image, Text, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Image, Text } from 'react-native';
 import { Icon } from 'react-native-elements';
-import { ThemeContext } from '../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const CategoryListScreen = ({ route, navigation }) => {
   const { categories, bar, categoryName } = route.params;
   const { theme } = useContext(ThemeContext);
 
-  // Holds the items for the currently selected category
   const [items, setItems] = useState([]);
-
-  // Start with null to indicate we haven’t decided which category index to show
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(null);
 
-  /**
-   * 1) Decide which category index we want to show, based on categoryName (if given).
-   *    We do this in a plain useEffect so the order of hooks never changes.
-   */
+  // decide initial category index
   useEffect(() => {
     if (categories?.length) {
-      let index = -1;
-      if (categoryName) {
-        index = categories.findIndex(cat => cat.name === categoryName);
-      }
-      // If not found, default to the last category (or 0—your choice)
-      if (index === -1) {
-        index = categories.length - 1;
-      }
-      setCurrentCategoryIndex(index);
+      let idx = categoryName
+        ? categories.findIndex(c => c.name === categoryName)
+        : -1;
+      if (idx === -1) idx = categories.length - 1;
+      setCurrentCategoryIndex(idx);
     } else {
-      // If no categories, you could keep it at null or set to 0
       setCurrentCategoryIndex(null);
     }
-  }, [categoryName, categories]);
+  }, [categories, categoryName]);
 
-  useEffect(() => {
-    if (route.params?.preloadedItems) {
-      setItems(route.params.preloadedItems);
-    }
-  }, [route.params?.preloadedItems]);
-  
-
-  /**
-   * 2) We define fetchItems at the top level. 
-   *    If currentCategoryIndex is null, we simply do nothing in the function.
-   */
+  // fetch items for the selected category
   const fetchItems = useCallback(async () => {
+    if (currentCategoryIndex === null) return;
+
+    const catName = categories[currentCategoryIndex]?.name;
+    if (!catName || !bar?.orgId) {
+      setItems([]);
+      return;
+    }
+
     try {
-      if (currentCategoryIndex === null) {
-        // We haven't determined a category index yet, so skip
-        return;
-      }
-
-      const currentCategoryName = categories[currentCategoryIndex]?.name;
-      if (!currentCategoryName) {
+      const storedCats = JSON.parse(
+        await AsyncStorage.getItem(`categories_${bar.orgId}`)
+      ) || [];
+      const cat = storedCats.find(c => c.name === catName);
+      if (!cat?.items) {
         setItems([]);
         return;
       }
 
-      const orgId = bar?.orgId;
-      if (!orgId) {
-        console.error('No orgId found in bar');
-        setItems([]);
-        return;
-      }
-
-      // Load from AsyncStorage
-      const categoriesKey = `categories_${orgId}`;
-      const storedCategories = JSON.parse(await AsyncStorage.getItem(categoriesKey)) || [];
-      const currentCategory = storedCategories.find(
-        category => category.name === currentCategoryName
-      );
-
-      if (!currentCategory || !currentCategory.items) {
-        setItems([]);
-        return;
-      }
-
-      // Load "missing" for each item
-      const updatedItems = await Promise.all(
-        currentCategory.items.map(async (item) => {
-          const missingKey = `missing_${item.id}_${orgId}_${bar.name}`;
-          const savedMissing = await AsyncStorage.getItem(missingKey);
+      const updated = await Promise.all(
+        cat.items.map(async item => {
+          const key = `missing_${item.id}_${bar.orgId}_${bar.name}`;
+          const val = await AsyncStorage.getItem(key);
           return {
             ...item,
-            missing: savedMissing ? parseInt(savedMissing, 10) : 0,
+            missing: val ? parseInt(val, 10) : 0,
           };
         })
       );
-
-      setItems(updatedItems);
-    } catch (error) {
-      console.error('Error fetching items:', error);
+      setItems(updated);
+    } catch (e) {
+      console.error('Error fetching items:', e);
+      setItems([]);
     }
   }, [bar, categories, currentCategoryIndex]);
 
-  /**
-   * 3) We always call useFocusEffect, unconditionally. 
-   *    Inside it, we call fetchItems(). Because fetchItems() checks if currentCategoryIndex === null,
-   *    we won’t break the rules of hooks.
-   */
+  // reload when screen focuses
   useFocusEffect(
     useCallback(() => {
       fetchItems();
     }, [fetchItems])
   );
 
-  /**
-   * 4) If we still haven’t determined the category index (null), show a loading or placeholder.
-   *    Importantly, we do this AFTER all hooks are declared.
-   */
+  // show loading until we know which category to load
   if (currentCategoryIndex === null) {
     return (
       <View
         style={{
           flex: 1,
+          backgroundColor: theme.colors.background,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: theme.colors.background,
         }}
       >
         <Text style={{ color: theme.colors.text }}>Loading category...</Text>
@@ -127,104 +85,172 @@ const CategoryListScreen = ({ route, navigation }) => {
     );
   }
 
-  // Now we know currentCategoryIndex is a valid integer
-  const currentCategoryName = categories[currentCategoryIndex]?.name || '';
+  const currName = categories[currentCategoryIndex]?.name || '';
+  const prevName =
+    categories[
+      (currentCategoryIndex - 1 + categories.length) % categories.length
+    ]?.name || '…';
+  const nextName =
+    categories[(currentCategoryIndex + 1) % categories.length]?.name || '…';
 
-  // For navigation buttons
-  const previousCategoryName =
-    categories[(currentCategoryIndex - 1 + categories.length) % categories.length]?.name || 'No Category';
-  const nextCategoryName =
-    categories[(currentCategoryIndex + 1) % categories.length]?.name || 'No Category';
-
-  /**
-   * 5) Category navigation: updates currentCategoryIndex so that
-   *    fetchItems will run again via useFocusEffect.
-   */
-  const navigateToCategory = (direction) => {
-    if (!categories?.length) return;
-    const newIndex =
-      direction === 'next'
-        ? (currentCategoryIndex + 1) % categories.length
-        : (currentCategoryIndex - 1 + categories.length) % categories.length;
-    setCurrentCategoryIndex(newIndex);
+  const navigate = dir => {
+    const len = categories.length;
+    const nextIdx =
+      dir === 'next'
+        ? (currentCategoryIndex + 1) % len
+        : (currentCategoryIndex - 1 + len) % len;
+    setCurrentCategoryIndex(nextIdx);
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.background }}>
-      {/* Header with navigation buttons */}
-      <View style={styles.header}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16 }}>
+      {/* header */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 20,
+          width: '100%',
+        }}
+      >
         <TouchableOpacity
-          onPress={() => navigateToCategory('previous')}
-          style={[styles.navButton, { backgroundColor: theme.colors.primary }]}
+          onPress={() => navigate('previous')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 10,
+            borderRadius: 5,
+            maxWidth: 120,
+            backgroundColor: theme.colors.primary,
+          }}
         >
-          <Icon name="arrow-back-ios" type="material" size={12} color={theme.colors.onPrimary} />
-          <Text style={[styles.navButtonText, { color: theme.colors.onPrimary }]}>
-            {previousCategoryName.slice(0, 10)}
-            {previousCategoryName.length > 10 ? '...' : ''}
+          <Icon
+            name="arrow-back-ios"
+            type="material"
+            size={12}
+            color={theme.colors.onPrimary}
+          />
+          <Text
+            style={{
+              fontSize: 14,
+              marginHorizontal: 5,
+              textAlign: 'center',
+              color: theme.colors.onPrimary,
+            }}
+          >
+            {prevName.length > 10 ? prevName.slice(0, 10) + '…' : prevName}
           </Text>
         </TouchableOpacity>
 
         <Text
-          style={[styles.currentCategory, { color: theme.colors.text }]}
+          style={{
+            flex: 2,
+            fontSize: 20,
+            fontWeight: 'bold',
+            textAlign: 'center',
+            color: theme.colors.text,
+          }}
           numberOfLines={1}
           ellipsizeMode="tail"
         >
-          {currentCategoryName}
+          {currName}
         </Text>
 
         <TouchableOpacity
-          onPress={() => navigateToCategory('next')}
-          style={[styles.navButton, { backgroundColor: theme.colors.primary }]}
+          onPress={() => navigate('next')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 10,
+            borderRadius: 5,
+            maxWidth: 120,
+            backgroundColor: theme.colors.primary,
+          }}
         >
-          <Text style={[styles.navButtonText, { color: theme.colors.onPrimary }]}>
-            {nextCategoryName.slice(0, 10)}
-            {nextCategoryName.length > 10 ? '...' : ''}
+          <Text
+            style={{
+              fontSize: 14,
+              marginHorizontal: 5,
+              textAlign: 'center',
+              color: theme.colors.onPrimary,
+            }}
+          >
+            {nextName.length > 10 ? nextName.slice(0, 10) + '…' : nextName}
           </Text>
-          <Icon name="arrow-forward-ios" type="material" size={12} color={theme.colors.onPrimary} />
+          <Icon
+            name="arrow-forward-ios"
+            type="material"
+            size={12}
+            color={theme.colors.onPrimary}
+          />
         </TouchableOpacity>
       </View>
 
-      {/* Items List */}
-      <ScrollView>
-        {items.map((item, index) => (
+      {/* items */}
+      <ScrollView removeClippedSubviews={true}>
+        {items.map((item, idx) => (
           <TouchableOpacity
-            key={item.id || index}
+            key={item.id ?? idx}
+            onPress={() =>
+              navigation.navigate('ManageMissingAmount', {
+                items,
+                itemIndex: idx,
+                bar,
+              })
+            }
             style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: theme.colors.surfaceVariant,
+              padding: 10,
               borderRadius: 10,
               marginVertical: 5,
-              backgroundColor: theme.colors.surfaceVariant,
               shadowColor: theme.colors.shadow,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.1,
               shadowRadius: 5,
               elevation: 2,
-              padding: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
             }}
-            onPress={() => navigation.navigate('ManageMissingAmount', { items, itemIndex: index, bar })}
           >
-            {/* Left side: Image + Name */}
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Image
-                source={item.image ? { uri: item.image } : require('../assets/placeholder.jpg')}
+                source={
+                  item.image
+                    ? { uri: item.image }
+                    : require('../assets/placeholder.jpg')
+                }
                 style={{
                   width: 50,
                   height: 50,
                   borderRadius: 25,
                   marginRight: 10,
-                  backgroundColor: 'white',
+                  backgroundColor: '#fff',
                 }}
+                resizeMode="cover"
+                resizeMethod="resize"
               />
-              <Text style={{ fontWeight: 'bold', fontSize: 18, color: theme.colors.text }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: 'bold',
+                  color: theme.colors.text,
+                }}
+              >
                 {item.name}
               </Text>
             </View>
-
-            {/* Right side: Missing amount */}
             {item.missing > 0 && (
-              <Text style={{ color: theme.colors.error, fontSize: 16, paddingRight: 10 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: theme.colors.error,
+                  paddingRight: 10,
+                }}
+              >
                 Missing: {item.missing}
               </Text>
             )}
@@ -232,7 +258,13 @@ const CategoryListScreen = ({ route, navigation }) => {
         ))}
 
         {items.length === 0 && (
-          <Text style={{ marginTop: 20, textAlign: 'center', color: theme.colors.text }}>
+          <Text
+            style={{
+              marginTop: 20,
+              textAlign: 'center',
+              color: theme.colors.text,
+            }}
+          >
             No items in this category
           </Text>
         )}
@@ -240,34 +272,5 @@ const CategoryListScreen = ({ route, navigation }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    width: '100%',
-  },
-  navButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-    borderRadius: 5,
-    maxWidth: 120,
-  },
-  navButtonText: {
-    fontSize: 14,
-    marginHorizontal: 5,
-    textAlign: 'center',
-  },
-  currentCategory: {
-    flex: 2,
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-});
 
 export default CategoryListScreen;
