@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useMemo } from 'react';
-import { DefaultTheme as PaperDefaultTheme, DarkTheme as PaperDarkTheme } from 'react-native-paper';
-import { DefaultTheme as NavigationDefaultTheme, DarkTheme as NavigationDarkTheme } from '@react-navigation/native';
+import { DefaultTheme as PaperDefaultTheme, MD3DarkTheme  as PaperDarkTheme } from 'react-native-paper';
 import merge from 'deepmerge';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
